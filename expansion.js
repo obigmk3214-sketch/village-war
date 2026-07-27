@@ -383,18 +383,18 @@ function marketTrade() {
 // =====================================================================
 // ROYAL BANK (interest on deposits)
 // =====================================================================
-const BANK_RATE_PER_HR = 0.02; // 2% / hour, capped
+const BANK_RATE_PER_HR = 0.005; // 0.5% / hour, capped
 function bankAccrued() {
     const b = state.exp.bank;
     const hrs = (Date.now() - b.since) / 3600000;
-    return Math.floor(b.deposited * Math.min(0.5, BANK_RATE_PER_HR * hrs));
+    return Math.floor(b.deposited * Math.min(0.15, BANK_RATE_PER_HR * hrs));
 }
 function openBank() {
     ensureExp();
     const acc = bankAccrued();
     expModal(`
         <h3 class="exp-title">${svgIcon('bank')} Royal Bank</h3>
-        <p class="exp-hint">Deposited coins earn 2%/hr interest (max +50% per cycle). Withdraw to collect.</p>
+        <p class="exp-hint">Deposited coins earn 0.5%/hr interest (max +15% per cycle). Withdraw to collect.</p>
         <div class="bank-stat"><span>Deposited</span><b>${formatNum(state.exp.bank.deposited)} ${svgIcon('coins')}</b></div>
         <div class="bank-stat"><span>Interest ready</span><b class="bank-int">+${formatNum(acc)} ${svgIcon('coins')}</b></div>
         <div class="market-row"><label>Amount: <input id="bk-amt" type="number" value="500" min="50" step="50"></label></div>
@@ -583,8 +583,8 @@ function claimPass(i, track) {
 // TALENT TREE
 // =====================================================================
 const TALENTS = {
-    industry:  { name: 'Industry',     icon: '', max: 5, desc: '+coins/gold trickle per tick', tier: 0 },
-    forester:  { name: 'Forestry',     icon: svgIcon('tree'), max: 5, desc: '+wood/iron trickle per tick', tier: 0 },
+    industry:  { name: 'Industry',     icon: '', max: 5, desc: '+3 coins & gold/min per rank', tier: 0 },
+    forester:  { name: 'Forestry',     icon: svgIcon('tree'), max: 5, desc: '+3 wood & iron/min per rank', tier: 0 },
     mason:     { name: 'Master Mason', icon: '', max: 3, desc: 'Each rank: instant +1000 coins now', tier: 0 },
     quartermaster: { name: 'Quartermaster', icon: svgIcon('crate'), max: 3, desc: 'Each rank: +5% storage caps', tier: 1 },
     warlord:   { name: 'Warlord',      icon: svgIcon('dagger'), max: 3, desc: 'Each rank: instant +2 trophies & +1 troop', tier: 1 },
@@ -690,11 +690,11 @@ function claimChallenge(i) {
 // WORLD REGIONS (conquer for passive bonus)
 // =====================================================================
 const REGIONS = [
-    { id: 'meadow',  name: 'Green Meadows',  icon: svgIcon('wheat'), cost: { coins: 2000, food: 500 },  bonus: '+1 food/tick', need: 1 },
-    { id: 'forest',  name: 'Darkwood',       icon: svgIcon('tree'), cost: { coins: 3000, wood: 800 },  bonus: '+1 wood/tick', need: 2 },
-    { id: 'hills',   name: 'Iron Hills',     icon: '', cost: { coins: 4000, iron: 800 },  bonus: '+1 iron/tick', need: 3 },
-    { id: 'mines',   name: 'Gold Mines',     icon: '', cost: { coins: 6000, gold: 1000 }, bonus: '+2 gold/tick', need: 4 },
-    { id: 'capital', name: 'Old Capital',    icon: svgIcon('castle'), cost: { coins: 10000, gold: 2000 },bonus: '+3 coins/tick & +50 trophies', need: 5 }
+    { id: 'meadow',  name: 'Green Meadows',  icon: svgIcon('wheat'), cost: { coins: 2000, food: 500 },  bonus: '+7.5 food/min', need: 1 },
+    { id: 'forest',  name: 'Darkwood',       icon: svgIcon('tree'), cost: { coins: 3000, wood: 800 },  bonus: '+7.5 wood/min', need: 2 },
+    { id: 'hills',   name: 'Iron Hills',     icon: '', cost: { coins: 4000, iron: 800 },  bonus: '+7.5 iron/min', need: 3 },
+    { id: 'mines',   name: 'Gold Mines',     icon: '', cost: { coins: 6000, gold: 1000 }, bonus: '+15 gold/min', need: 4 },
+    { id: 'capital', name: 'Old Capital',    icon: svgIcon('castle'), cost: { coins: 10000, gold: 2000 },bonus: '+15 coins/min & +50 trophies', need: 5 }
 ];
 function regionOwned(id) { return !!(state.exp.regions && state.exp.regions[id]); }
 function openRegions() {
@@ -732,11 +732,13 @@ function conquerRegion(id) {
 }
 function regionTrickle() {
     const t = { coins: 0, gold: 0, iron: 0, wood: 0, food: 0 };
-    if (regionOwned('meadow')) t.food += 1;
-    if (regionOwned('forest')) t.wood += 1;
-    if (regionOwned('hills')) t.iron += 1;
-    if (regionOwned('mines')) t.gold += 2;
-    if (regionOwned('capital')) t.coins += 3;
+    // Per 2s tick — keep these small: 0.25/tick = 7.5/min. The old whole-number
+    // values out-produced entire buildings invisibly.
+    if (regionOwned('meadow')) t.food += 0.25;
+    if (regionOwned('forest')) t.wood += 0.25;
+    if (regionOwned('hills')) t.iron += 0.25;
+    if (regionOwned('mines')) t.gold += 0.5;
+    if (regionOwned('capital')) t.coins += 0.5;
     return t;
 }
 
@@ -752,7 +754,7 @@ function openBossRaid() {
         <div class="boss-card">
             <div class="boss-emoji">${svgIcon('dragon')}</div>
             <div class="boss-name">Warlord Grimfang · Lv ${bossLvl}</div>
-            <div class="boss-reward">Rewards: ${svgIcon('coins')}5000 · ${svgIcon('coin')}2500 · ${svgIcon('gem')}30 · ${svgIcon('gift')} Crate</div>
+            <div class="boss-reward">Rewards: ${svgIcon('coins')}5000 · ${svgIcon('coin')}2500 · ${svgIcon('gem')}15 · ${svgIcon('gift')} Crate</div>
         </div>
         <div class="exp-actions">
             <button class="btn btn-danger btn-glow" onclick="startBossRaid(${bossLvl})">${svgIcon('swords')}️ Attack Boss</button>
@@ -761,8 +763,13 @@ function openBossRaid() {
 }
 function startBossRaid(bossLvl) {
     ensureExp();
+    // Once per day — this was an infinitely repeatable gem/resource faucet.
+    if (Date.now() - (state.exp.bossDoneAt || 0) < DAY_MS) {
+        toast('The warlord has fled. He returns tomorrow!', 'info');
+        return;
+    }
     closeExpModal();
-    const reward = () => { expGainRes({ coins: 5000, gold: 2500 }); addGems(30); state.exp.crates++; state.exp.stats.bossKills++; addPassXp(60); toast('Boss defeated! Loot claimed.', 'success'); saveGame(); };
+    const reward = () => { state.exp.bossDoneAt = Date.now(); expGainRes({ coins: 5000, gold: 2500 }); addGems(15); state.exp.crates++; state.exp.stats.bossKills++; addPassXp(60); toast('Boss defeated! Loot claimed.', 'success'); saveGame(); };
     if (typeof runLiveRaid === 'function' && typeof getDeployed === 'function' && getDeployed('army') && getDeployed('army').length) {
         runLiveRaid({ name: 'Warlord Grimfang', level: bossLvl, loot: { coins: 5000, gold: 2500 }, xp: 120, kind: 'boss', onWin: reward });
         // also reward on win via outcome hook fallback
@@ -796,7 +803,12 @@ function openClanWar() {
             </div>`);
     } else { renderClanWar(); }
 }
-function startClanWar() { ensureExp(); state.exp.clanWar = { round: 0, wins: 0, losses: 0, over: false, log: [] }; saveGame(); renderClanWar(); }
+function startClanWar() {
+    ensureExp();
+    // One war per 12h — back-to-back restarts were an unbounded reward loop.
+    if (Date.now() - (state.exp.warDoneAt || 0) < DAY_MS / 2) { toast('The clans rest. Next war in a few hours.', 'info'); return; }
+    state.exp.clanWar = { round: 0, wins: 0, losses: 0, over: false, log: [] }; saveGame(); renderClanWar();
+}
 function renderClanWar() {
     const w = state.exp.clanWar;
     expModal(`
@@ -819,7 +831,8 @@ function clanWarAttack() {
     else { w.losses++; w.log.push({ win: false, text: `Battle ${w.round}: defeat. (${Math.round(power)} vs ${Math.round(enemy)})` }); }
     if (w.wins >= 3 || w.losses >= 3 || w.round >= 5) {
         w.over = true;
-        if (w.wins > w.losses) { expGainRes({ coins: 4000, gold: 2000 }); addGems(25); state.exp.stats.warWins++; addPassXp(50); w.log.push({ win: true, text: 'WAR WON! +4000c +2000g +25' }); }
+        state.exp.warDoneAt = Date.now();
+        if (w.wins > w.losses) { expGainRes({ coins: 4000, gold: 2000 }); addGems(15); state.exp.stats.warWins++; addPassXp(50); w.log.push({ win: true, text: 'WAR WON! +4000c +2000g +15' }); }
         else { w.log.push({ win: false, text: 'War lost. Regroup and try again.' }); }
     }
     saveGame(); updateResources(); renderClanWar();
@@ -842,7 +855,12 @@ function openTournament() {
             </div>`);
     } else renderTournament();
 }
-function startTournament() { ensureExp(); state.exp.tournament = { round: 0, alive: TOURNEY_NAMES.slice(), over: false, out: false }; saveGame(); renderTournament(); }
+function startTournament() {
+    ensureExp();
+    // One bracket per day — restart-on-loss made this an infinite gem loop.
+    if (Date.now() - (state.exp.tourneyDoneAt || 0) < DAY_MS) { toast('The arena is being swept. Next tournament tomorrow!', 'info'); return; }
+    state.exp.tournament = { round: 0, alive: TOURNEY_NAMES.slice(), over: false, out: false }; saveGame(); renderTournament();
+}
 function renderTournament() {
     const t = state.exp.tournament;
     const roundName = ['Quarter-finals', 'Semi-finals', 'Final', 'Champion!'][Math.min(t.round, 3)];
@@ -863,7 +881,7 @@ function tourneyFight() {
     const survivors = [];
     // you fight first
     const youWin = Math.random() < power;
-    if (!youWin) { t.out = true; toast('Knocked out of the tournament.', 'info'); }
+    if (!youWin) { t.out = true; state.exp.tourneyDoneAt = Date.now(); toast('Knocked out of the tournament.', 'info'); }
     else survivors.push('You');
     // others
     const others = t.alive.filter(n => n !== 'You');
@@ -876,8 +894,8 @@ function tourneyFight() {
     if (t.out) { t.alive = t.alive.filter(n => n !== 'You'); }
     t.round++;
     if (!t.out && t.alive.length <= 1 && t.alive[0] === 'You') {
-        t.over = true; expGainRes({ coins: 3000 }); addGems(50); addPassXp(50);
-        toast('Tournament WON! +50', 'success');
+        t.over = true; state.exp.tourneyDoneAt = Date.now(); expGainRes({ coins: 3000 }); addGems(30); addPassXp(50);
+        toast('Tournament WON! +30', 'success');
     }
     saveGame(); updateResources(); renderTournament();
 }
@@ -930,8 +948,8 @@ function visitFriend(i) {
 // =====================================================================
 // GEM MINE (passive trickle)
 // =====================================================================
-const GEM_MINE_PER_HR = 2;
-const GEM_MINE_CAP = 24;
+const GEM_MINE_PER_HR = 1;
+const GEM_MINE_CAP = 12;
 function gemMineReady() {
     const hrs = (Date.now() - state.exp.gemMineSince) / 3600000;
     return Math.min(GEM_MINE_CAP, Math.floor(hrs * GEM_MINE_PER_HR));
@@ -1122,8 +1140,9 @@ function expTick() {
     const mult = boostActive() ? 2 : 1;
     const ind = talentRank('industry'), fore = talentRank('forester');
     const add = regionTrickle();
-    add.coins += ind; add.gold += ind;
-    add.wood += fore; add.iron += fore;
+    // 0.1/tick per rank = 3/min per rank — a perk, not a shadow economy.
+    add.coins += ind * 0.1; add.gold += ind * 0.1;
+    add.wood += fore * 0.1; add.iron += fore * 0.1;
     let any = false;
     for (const k in add) {
         const v = add[k] * mult;
@@ -1140,7 +1159,7 @@ function expTick() {
 // Hooks other systems can call (safe no-ops if exp absent)
 function expOnRaid(won) {
     if (!state.exp) return;
-    if (won) { state.exp.stats.raidsWon++; addPassXp(25); challengeProgress('raid', 1); }
+    if (won) { state.exp.stats.raidsWon++; addPassXp(10); challengeProgress('raid', 1); }
     else state.exp.stats.raidsLost++;
     saveGame();
 }

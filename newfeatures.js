@@ -296,7 +296,7 @@ function revengeRaid(logIndex) {
     runLiveRaid({
         name: entry.target + ' (Revenge)', level: lvl,
         troops: { warrior: 8 + lvl * 2, archer: 4 + lvl },
-        loot: { coins: 800 * lvl, gold: 120 * lvl, iron: 80 * lvl },
+        loot: { coins: 300 * lvl, gold: 50 * lvl, iron: 40 * lvl },
         xp: 30 + lvl * 12, kind: 'revenge'
     });
 }

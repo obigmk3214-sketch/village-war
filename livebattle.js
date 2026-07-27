@@ -70,14 +70,20 @@ function runLiveRaid(spec) {
 }
 
 function applyRaidOutcome(spec, r) {
-    // permadeath
-    removeSoldiers(r.killedIds);
+    // Capture the fallen (with names/ranks) before permadeath removes them.
+    const killedSet = new Set(r.killedIds);
+    const fallenNamed = state.soldiers.filter(s => killedSet.has(s.id));
+    removeSoldiers(r.killedIds, spec.name);
     const victory = r.stars >= 1;
+    if (victory && typeof adjustMorale === 'function') adjustMorale(3);
     if (typeof expOnRaid === 'function') expOnRaid(victory);
     if (victory && spec.kind === 'boss' && typeof spec.onWin === 'function') { try { spec.onWin(); } catch(e) {} }
     const lootGained = {};
     if (victory) {
-        const mult = 0.3 + 0.7 * r.destruction;
+        // Plunderer trait: +4% loot per surviving Plunderer in the army (cap +12%)
+        const plunderers = getDeployed('army').filter(s => s.trait === 'plunderer').length;
+        const plunderMult = 1 + Math.min(0.12, plunderers * 0.04);
+        const mult = (0.25 + 0.5 * r.destruction) * plunderMult;
         for (const [res, amt] of Object.entries(spec.loot || {})) {
             lootGained[res] = Math.floor(amt * mult * (typeof eventLootMult === 'function' ? eventLootMult(res) : 1));
         }
@@ -111,7 +117,7 @@ function applyRaidOutcome(spec, r) {
     };
     state.battleLog.unshift(logEntry);
     if (state.battleLog.length > 50) state.battleLog.pop();
-    state.raidCooldown = Date.now() + 15000;
+    state.raidCooldown = Date.now() + 45000;
 
     // Result screen
     const el = document.getElementById('battle-result');
@@ -122,7 +128,12 @@ function applyRaidOutcome(spec, r) {
             <div class="result-stars">${[1,2,3].map(s => `<span class="rstar ${r.stars >= s ? 'lit' : ''}">${svgIcon('star')}</span>`).join('')}</div>
             <p style="color:var(--text2)">${spec.name} — ${Math.round(r.destruction * 100)}% destroyed</p>
             ${victory ? `<div class="loot-gained">${Object.entries(lootGained).filter(([,v]) => v > 0).map(([res, v]) => `<div class="loot-item">${RES_ICONS[res] || res} +${formatNum(v)}</div>`).join('')}</div>` : '<p style="color:var(--danger)">Destroy at least 50% to win loot.</p>'}
-            <div class="losses">Fallen soldiers: ${r.killedIds.length ? Object.entries(r.lossCounts).map(([t, v]) => `${v} ${TROOP_DEFS[t]?.name || t}`).join(', ') : 'None'} ${r.killedIds.length ? '(gone forever)' : ''}</div>
+            <div class="losses">${fallenNamed.length ? `Fallen: ${fallenNamed.length <= 4
+                    ? fallenNamed.map(s => s.name).join(', ')
+                    : fallenNamed.slice(0, 3).map(s => s.name).join(', ') + ` and ${fallenNamed.length - 3} more`} <span style="opacity:.75">(buried at the Memorial)</span>`
+                : 'Fallen soldiers: None'}</div>
+            ${fallenNamed.filter(s => typeof rankIndex === 'function' && rankIndex(s) >= 2).map(s =>
+                `<div class="losses" style="color:var(--warning,#fbbf24)">⚑ ${s.name} the ${rankOf(s).name} — ${s.kills} kills, ${s.raids} raids. Gone forever.</div>`).join('')}
             <button class="btn btn-primary" onclick="document.getElementById('battle-result').classList.add('hidden')">Continue</button>
         </div>`;
     if (victory) { try { Audio.victory(); confetti(60); } catch(e) {} } else { try { Audio.defeat(); } catch(e) {} }
@@ -138,15 +149,21 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
     const totalHP = base.buildings.reduce((s, b) => s + b.hp, 0) + base.defenses.reduce((s, d) => s + d.hp, 0);
     const isRangedT = (t) => t === 'archer' || t === 'crossbowman' || t === 'catapult';
 
-    // troop templates with research + hero boosts
+    // troop templates with research + hero boosts + veteran rank/trait/morale
     const heroB = (typeof getHeroBonus === 'function') ? getHeroBonus() : { all: { atkMult: 1, hpMult: 1 } };
-    const mkStats = (type) => {
+    const moraleM = (typeof moraleAtkMult === 'function') ? moraleAtkMult() : 1;
+    const mkStats = (soldier) => {
+        const type = soldier.type || soldier; // tolerate a bare type string
         const d = TROOP_DEFS[type];
         const rb = (typeof getResearchTroopBoost === 'function') ? getResearchTroopBoost(type) : { hp: 1, atk: 1 };
+        const vet = (soldier.type && typeof vetStatMult === 'function') ? vetStatMult(soldier) : 1;
+        const trait = soldier.trait || null;
+        let speed = type === 'cavalry' ? 20 : (type === 'siege' || type === 'catapult') ? 9 : 13;
+        if (trait === 'fleetfoot') speed *= 1.2;
         return {
-            hp: Math.round(d.hp * rb.hp * (heroB.all.hpMult || 1)),
-            atk: Math.round(d.attack * rb.atk * (heroB.all.atkMult || 1)),
-            speed: type === 'cavalry' ? 20 : (type === 'siege' || type === 'catapult') ? 9 : 13,
+            hp: Math.round(d.hp * rb.hp * (heroB.all.hpMult || 1) * vet),
+            atk: Math.round(d.attack * rb.atk * (heroB.all.atkMult || 1) * vet * moraleM),
+            speed,
             range: isRangedT(type) ? (type === 'catapult' ? 30 : 22) : 4.5
         };
     };
@@ -205,11 +222,15 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
 
     function renderTray() {
         const trayEl = overlay.querySelector('#lb-tray');
-        trayEl.innerHTML = Object.entries(tray).map(([t, list]) => `
+        trayEl.innerHTML = Object.entries(tray).map(([t, list]) => {
+            const bestPips = (typeof rankIndex === 'function') ? list.reduce((m, s) => Math.max(m, rankIndex(s)), 0) : 0;
+            return `
             <button class="lb-chip ${t === selectedType ? 'sel' : ''}" data-type="${t}" ${list.length === 0 ? 'disabled' : ''}>
+                ${bestPips > 0 ? `<span class="lb-chip-pips">${'<i></i>'.repeat(bestPips)}</span>` : ''}
                 <span class="lb-chip-ico">${(typeof topUnitSVG === 'function') ? topUnitSVG(t, false) : ''}</span>
                 <span class="lb-chip-n">${list.length}</span>
-            </button>`).join('');
+            </button>`;
+        }).join('');
         trayEl.querySelectorAll('.lb-chip').forEach(ch => ch.onclick = () => { selectedType = ch.dataset.type; armedSpell = null; renderTray(); updateSpellUI(); });
     }
     function updateSpellUI() {
@@ -252,13 +273,17 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
     }
 
     function spawnTroop(soldier, x, y) {
-        const st = mkStats(soldier.type);
+        const st = mkStats(soldier);
+        const pips = (typeof rankIndex === 'function') ? rankIndex(soldier) : 0;
         const el = document.createElement('div');
         el.className = 'lb-troop';
-        el.innerHTML = `<div class="lb-thp"><div class="lb-thpfill"></div></div><div class="lb-tspr">${(typeof topUnitSVG === 'function') ? topUnitSVG(soldier.type, false) : ''}</div>`;
+        el.innerHTML = `<div class="lb-thp"><div class="lb-thpfill"></div></div>
+            ${pips > 0 ? `<div class="lb-tpips" title="${(typeof rankOf === 'function') ? rankOf(soldier).name : ''} ${soldier.name || ''}">${'<span class="lb-pip"></span>'.repeat(pips)}</div>` : ''}
+            <div class="lb-tspr">${(typeof topUnitSVG === 'function') ? topUnitSVG(soldier.type, false) : ''}</div>`;
         el.style.left = x + '%'; el.style.top = y + '%';
         troopLayer.appendChild(el);
-        troops.push({ id: soldier.id, type: soldier.type, x, y, hp: st.hp, maxHp: st.hp, atk: st.atk, speed: st.speed, range: st.range, el, dead: false, atkCd: 0, rageUntil: 0 });
+        troops.push({ id: soldier.id, type: soldier.type, soldier, x, y, hp: st.hp, maxHp: st.hp, atk: st.atk, speed: st.speed, range: st.range, el, dead: false, atkCd: 0, rageUntil: 0,
+                      trait: soldier.trait || null, unbrokenUsed: false, battleKills: 0 });
         // trap check happens during movement
     }
 
@@ -303,13 +328,14 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
         }
         return best;
     }
-    function damageStructure(s, dmg) {
+    function damageStructure(s, dmg, attacker) {
         if (s.hp <= 0) return;
         s.hp -= dmg;
         const f = s.el && s.el.querySelector('.lb-bhpfill');
         if (f) { f.style.width = Math.max(0, (s.hp / s.maxHp) * 100) + '%'; if (s.hp / s.maxHp < 0.4) f.classList.add('low'); }
         if (s.hp <= 0) {
             destroyedHP += s.maxHp;
+            if (attacker && !attacker.dead) attacker.battleKills++;   // last hit claims the kill
             if (s.th) thDown = true;
             if (s.el) { s.el.classList.add('lb-destroyed'); }
             lbBoom(fxLayer, s.x, s.y);
@@ -364,7 +390,8 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
                 if (t.atkCd <= 0) {
                     t.atkCd = 0.5;
                     const raged = performance.now() < t.rageUntil;
-                    damageStructure(target, Math.round(t.atk * (raged ? 1.6 : 1)));
+                    const deadeye = (t.trait === 'deadeye' && target.kind === 'def') ? 1.25 : 1;
+                    damageStructure(target, Math.round(t.atk * (raged ? 1.6 : 1) * deadeye), t);
                     if (isRangedT(t.type)) lbShot(fxLayer, t.x, t.y, target.x, target.y);
                     else lbSlash(fxLayer, target.x, target.y);
                 }
@@ -391,7 +418,14 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
     }
     function hurtTroop(t, dmg) {
         if (t.dead) return;
+        if (t.trait === 'shieldwall') dmg *= 0.85;
         t.hp -= dmg;
+        if (t.hp <= 0 && t.trait === 'unbroken' && !t.unbrokenUsed) {
+            // Unbroken: the first killing blow each battle leaves them at 1 HP
+            t.unbrokenUsed = true;
+            t.hp = 1;
+            lbRing(fxLayer, t.x, t.y, '#fbbf24');
+        }
         const f = t.el.querySelector('.lb-thpfill');
         if (f) { f.style.width = Math.max(0, (t.hp / t.maxHp) * 100) + '%'; }
         if (t.hp <= 0) {
@@ -446,6 +480,23 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
             const t = troops.find(x => x.id === id);
             if (t) lossCounts[t.type] = (lossCounts[t.type] || 0) + 1;
         }
+        // ---- Veteran write-back: survivors log the raid, claim kills, rank up ----
+        const promotions = [];
+        const killedSet = new Set(killedIds);
+        for (const t of troops) {
+            const s = t.soldier;
+            if (!s || killedSet.has(t.id)) continue;
+            const beforeRank = (typeof rankIndex === 'function') ? rankIndex(s) : 0;
+            s.raids = (s.raids || 0) + 1;
+            s.kills = (s.kills || 0) + (t.battleKills || 0);
+            const afterRank = (typeof rankIndex === 'function') ? rankIndex(s) : 0;
+            if (afterRank > beforeRank) {
+                if (afterRank >= 2 && !s.trait && typeof rollTrait === 'function') s.trait = rollTrait();
+                const traitNote = (s.trait && afterRank === 2 && typeof VET_TRAITS !== 'undefined')
+                    ? ` Trait: ${VET_TRAITS[s.trait].name}.` : '';
+                promotions.push(`${s.name} is now a ${rankOf(s).name}!${traitNote}`);
+            }
+        }
         // big star reveal
         const reveal = document.createElement('div');
         reveal.className = 'lb-reveal';
@@ -454,7 +505,15 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
         overlay.appendChild(reveal);
         setTimeout(() => {
             overlay.style.opacity = '0';
-            setTimeout(() => { overlay.remove(); onDone({ stars, destruction: destr, killedIds, lossCounts, victory: stars >= 1 }); }, 350);
+            setTimeout(() => {
+                overlay.remove();
+                onDone({ stars, destruction: destr, killedIds, lossCounts, victory: stars >= 1 });
+                // announce promotions after the result lands, staggered
+                promotions.forEach((msg, i) => setTimeout(() => {
+                    toast(`⚔️ ${msg}`, 'success');
+                    try { Audio.achievement(); } catch (e) {}
+                }, 600 + i * 900));
+            }, 350);
         }, 1700);
     }
     overlay.querySelector('#lb-end').onclick = endBattle;

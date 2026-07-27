@@ -7,7 +7,7 @@ const BUILDING_DEFS = {
         name: 'Town Hall', icon: svgIcon('castle'), category: 'resource',
         desc: 'Heart of your village. Upgrading unlocks new buildings.',
         maxLevel: 10, unique: true,
-        baseCost: { coins: 200, wood: 100 },
+        baseCost: { coins: 200, wood: 100, food: 120 },
         costMult: 2.2,
         baseHP: 500,
         production: null,
@@ -20,7 +20,7 @@ const BUILDING_DEFS = {
         baseCost: { coins: 100, wood: 50 },
         costMult: 1.8,
         baseHP: 200,
-        production: { gold: 5 },
+        production: { gold: 8 },
         prodMult: 1.5
     },
     ironmine: {
@@ -30,7 +30,7 @@ const BUILDING_DEFS = {
         baseCost: { coins: 100, wood: 50 },
         costMult: 1.8,
         baseHP: 200,
-        production: { iron: 5 },
+        production: { iron: 8 },
         prodMult: 1.5,
         reqTH: 2
     },
@@ -41,7 +41,7 @@ const BUILDING_DEFS = {
         baseCost: { coins: 80, gold: 20 },
         costMult: 1.8,
         baseHP: 200,
-        production: { wood: 6 },
+        production: { wood: 10 },
         prodMult: 1.5
     },
     farm: {
@@ -61,7 +61,7 @@ const BUILDING_DEFS = {
         baseCost: { gold: 80, iron: 40 },
         costMult: 1.8,
         baseHP: 200,
-        production: { coins: 5 },   // basic at Lv1; upgrades scale it up fast
+        production: { coins: 10 },  // basic at Lv1; upgrades scale it up fast
         prodMult: 1.6,
         reqTH: 3
     },
@@ -73,14 +73,14 @@ const BUILDING_DEFS = {
         costMult: 1.7,
         baseHP: 300,
         production: null,
-        storageBonus: 500,
+        storageBonus: 800,
         reqTH: 2
     },
     barracks: {
         name: 'Barracks', icon: svgIcon('swords'), category: 'military',
         desc: 'Train warriors and archers. Build more to grow your army!',
         maxLevel: 10, unique: false,
-        baseCost: { coins: 300, wood: 150, iron: 50 },
+        baseCost: { coins: 200, wood: 120, iron: 50 },
         costMult: 2.0,
         baseHP: 400,
         production: null,
@@ -281,9 +281,9 @@ const CPU_CAMPS = [
     { name: 'Goblin Outpost',    icon: 'goblin',    minLvl: 1,  difficulty: 'easy',    level: 1,  troops: { warrior: 5 }, loot: { coins: 200, wood: 100 }, xp: 20 },
     { name: 'Wolf Den',          icon: 'wolf',      minLvl: 1,  difficulty: 'easy',    level: 1,  troops: { warrior: 6 }, loot: { coins: 250, food: 150 }, xp: 25 },
     { name: 'Bandit Camp',       icon: 'pirate',    minLvl: 2,  difficulty: 'easy',    level: 2,  troops: { warrior: 8, archer: 3 }, loot: { coins: 350, gold: 50, wood: 150 }, xp: 35 },
-    { name: 'Smuggler\'s Den',   icon: 'crate',     minLvl: 3,  difficulty: 'easy',    level: 2,  troops: { warrior: 10, archer: 4 }, loot: { coins: 450, gold: 80, iron: 60 }, xp: 45 },
+    { name: 'Smuggler\'s Den',   icon: 'crate',     minLvl: 3,  difficulty: 'easy',    level: 2,  troops: { warrior: 10, archer: 4 }, loot: { coins: 450, gold: 80, iron: 60, wood: 120 }, xp: 45 },
     // Tier 2 — mid game
-    { name: 'Dark Forest',       icon: 'tree',      minLvl: 4,  difficulty: 'medium',  level: 3,  troops: { warrior: 12, archer: 6 }, loot: { coins: 500, gold: 100, iron: 80 }, xp: 60 },
+    { name: 'Dark Forest',       icon: 'tree',      minLvl: 4,  difficulty: 'medium',  level: 3,  troops: { warrior: 12, archer: 6 }, loot: { coins: 500, gold: 100, iron: 80, wood: 150 }, xp: 60 },
     { name: 'Cursed Swamp',      icon: 'frog',      minLvl: 5,  difficulty: 'medium',  level: 4,  troops: { warrior: 14, archer: 7, shieldbearer: 2 }, loot: { coins: 650, gold: 150, iron: 120, food: 200 }, xp: 80 },
     { name: 'Orc Stronghold',    icon: 'orc',       minLvl: 6,  difficulty: 'medium',  level: 5,  troops: { warrior: 15, archer: 8, shieldbearer: 3 }, loot: { coins: 800, gold: 200, iron: 150, wood: 200 }, xp: 100 },
     { name: 'Frozen Peak',       icon: 'snowflake', minLvl: 7,  difficulty: 'medium',  level: 6,  troops: { warrior: 18, archer: 10, shieldbearer: 4 }, loot: { coins: 1000, gold: 300, iron: 200, wood: 250 }, xp: 130 },
@@ -670,14 +670,152 @@ function ensureSoldiers() {
         autoFillFormation('army');
     }
     if (state._sidCounter == null) state._sidCounter = state.soldiers.reduce((m, s) => Math.max(m, s.id), 0);
+    // Veteran migration: name any soldier from an older save and backfill fields.
+    ensureMorale();
+    for (const s of state.soldiers) {
+        if (!s.name) s.name = genSoldierName();
+        if (s.kills == null) s.kills = 0;
+        if (s.raids == null) s.raids = 0;
+        if (s.trait === undefined) s.trait = null;
+    }
 }
 
 function addSoldier(type, assignment = 'reserve') {
     const def = TROOP_DEFS[type];
     state._sidCounter = (state._sidCounter || 0) + 1;
-    const s = { id: state._sidCounter, type, assignment, cell: null };
+    const s = { id: state._sidCounter, type, assignment, cell: null,
+                name: genSoldierName(), kills: 0, raids: 0, trait: null, born: Date.now() };
     state.soldiers.push(s);
     return s;
+}
+
+// ============================================================
+// VETERANS & THE MEMORIAL ISLE
+// Every soldier has a name, earns ranks by surviving raids, and
+// rolls a trait at Veteran. Permadeath already exists — this makes
+// each death a story: the fallen are buried on the island's shore.
+// ============================================================
+const VET_FIRST = ['Aldric','Berta','Cedric','Dunstan','Edda','Falk','Gerd','Hilda','Ivo','Jorunn',
+    'Kettil','Leif','Maud','Nils','Osric','Petra','Quen','Rurik','Sigrid','Tove',
+    'Ulf','Vera','Wilm','Ysolt','Znorre','Ansel','Brigid','Corin','Dagny','Ebba'];
+const VET_LAST = ['Oakhelm','Stonebrook','Ashford','Winterborn','Saltmane','Thornwood','Ironside','Greymoor',
+    'Harrowgate','Foxglove','Blackwater','Elderberry','Frostbeard','Mossbank','Ravenhill','Shieldwright',
+    'Tidewalker','Understone','Wolfsbane','Yarrow'];
+function genSoldierName() {
+    const f = VET_FIRST[Math.floor(Math.random() * VET_FIRST.length)];
+    const l = VET_LAST[Math.floor(Math.random() * VET_LAST.length)];
+    const name = `${f} ${l}`;
+    // duplicate among the living? append a numeral
+    const dupes = (state.soldiers || []).filter(s => s.name === name || (s.name || '').startsWith(name + ' ')).length;
+    return dupes ? `${name} ${['II','III','IV','V','VI'][Math.min(dupes - 1, 4)]}` : name;
+}
+
+const VET_RANKS = [
+    { raids: 0,  name: 'Recruit', pips: 0 },
+    { raids: 1,  name: 'Regular', pips: 1 },
+    { raids: 3,  name: 'Veteran', pips: 2 },
+    { raids: 7,  name: 'Elite',   pips: 3 },
+    { raids: 15, name: 'Legend',  pips: 4 }
+];
+function rankOf(s) {
+    let r = VET_RANKS[0];
+    for (const rk of VET_RANKS) if ((s.raids || 0) >= rk.raids) r = rk;
+    return r;
+}
+function rankIndex(s) { return VET_RANKS.indexOf(rankOf(s)); }
+// +6% HP/ATK per rank above Recruit (max +24% at Legend)
+function vetStatMult(s) { return 1 + 0.06 * rankIndex(s); }
+
+const VET_TRAITS = {
+    shieldwall: { name: 'Shieldwall', desc: '-15% damage taken' },
+    deadeye:    { name: 'Deadeye',    desc: '+25% damage to defenses' },
+    fleetfoot:  { name: 'Fleetfoot',  desc: '+20% move speed' },
+    unbroken:   { name: 'Unbroken',   desc: 'Survives the first killing blow each battle at 1 HP' },
+    plunderer:  { name: 'Plunderer',  desc: '+4% raid loot while they live (stacks to +12%)' }
+};
+function rollTrait() {
+    const keys = Object.keys(VET_TRAITS);
+    return keys[Math.floor(Math.random() * keys.length)];
+}
+
+// ---- Morale: a story dial (0..100), gentle ±8% ATK swing ----
+function ensureMorale() {
+    if (typeof state.morale !== 'number') state.morale = 70;
+    if (!Array.isArray(state.memorial)) state.memorial = [];
+}
+function moraleAtkMult() { ensureMorale(); return 1 + ((state.morale - 50) / 50) * 0.08; }
+function moraleWord() {
+    ensureMorale();
+    const m = state.morale;
+    return m >= 85 ? 'Fervent' : m >= 65 ? 'Steady' : m >= 45 ? 'Uneasy' : m >= 25 ? 'Grim' : 'Broken';
+}
+function adjustMorale(delta) {
+    ensureMorale();
+    state.morale = Math.max(0, Math.min(100, state.morale + delta));
+}
+
+// Record fallen soldiers on the Memorial before they're removed.
+function recordFallen(ids, fellTo) {
+    ensureMorale();
+    if (!ids || !ids.length) return [];
+    const set = new Set(ids);
+    const fallen = state.soldiers.filter(s => set.has(s.id));
+    for (const s of fallen) {
+        state.memorial.unshift({
+            name: s.name || 'Unknown Soldier', type: s.type, rank: rankOf(s).name,
+            kills: s.kills || 0, raids: s.raids || 0, trait: s.trait || null,
+            fellTo: fellTo || 'battle', at: Date.now()
+        });
+        adjustMorale(rankIndex(s) >= 2 ? -6 : -2);
+    }
+    // Cap at 80: prune oldest non-Legends first, then oldest.
+    while (state.memorial.length > 80) {
+        let idx = -1;
+        for (let i = state.memorial.length - 1; i >= 0; i--) {
+            if (state.memorial[i].rank !== 'Legend') { idx = i; break; }
+        }
+        state.memorial.splice(idx >= 0 ? idx : state.memorial.length - 1, 1);
+    }
+    return fallen;
+}
+
+function openMemorial() {
+    ensureMorale();
+    const unhonored = state.memorial.filter(m => !m.honored);
+    const funeralCost = 100 + unhonored.filter(m => m.rank === 'Veteran' || m.rank === 'Elite' || m.rank === 'Legend').length * 50;
+    const rows = state.memorial.map(m => {
+        const vet = m.rank === 'Veteran' || m.rank === 'Elite' || m.rank === 'Legend';
+        return `<div class="memorial-row" style="display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border-bottom:1px solid var(--border);${vet ? 'color:var(--warning,#fbbf24)' : ''}">
+            <span>${vet ? '⚑ ' : ''}${m.name}${m.trait && VET_TRAITS[m.trait] ? ` <i style="opacity:.8">the ${VET_TRAITS[m.trait].name}</i>` : ''}</span>
+            <span style="white-space:nowrap;opacity:.85">${m.rank} · ${m.kills} kills · fell to ${m.fellTo}</span>
+        </div>`;
+    }).join('');
+    const html = `
+        <h3 class="exp-title">🕯️ The Memorial</h3>
+        <p class="exp-hint">${state.memorial.length} soldier${state.memorial.length === 1 ? '' : 's'} rest on the western shore.
+            Morale: <b>${moraleWord()}</b> (${state.morale}/100)</p>
+        <div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:10px">${rows || '<p class="exp-hint" style="padding:10px">No fallen yet. May it stay that way.</p>'}</div>
+        <div class="exp-actions">
+            ${unhonored.length ? `<button class="btn btn-primary" onclick="holdFuneral()">Hold Funeral — ${funeralCost} food (+morale)</button>` : ''}
+            <button class="btn" onclick="closeExpModal()">Close</button>
+        </div>`;
+    if (typeof expModal === 'function') expModal(html);
+    else { document.getElementById('modal-content').innerHTML = html; document.getElementById('modal-overlay').classList.remove('hidden'); }
+}
+
+function holdFuneral() {
+    ensureMorale();
+    const unhonored = state.memorial.filter(m => !m.honored);
+    if (!unhonored.length) return;
+    const vets = unhonored.filter(m => m.rank === 'Veteran' || m.rank === 'Elite' || m.rank === 'Legend').length;
+    const cost = 100 + vets * 50;
+    if ((state.resources.food || 0) < cost) { toast(`The feast requires ${cost} food.`, 'error'); return; }
+    spendResources({ food: cost });
+    unhonored.forEach(m => m.honored = true);
+    adjustMorale(Math.min(20, 10 + vets * 2));
+    toast(`The village honors its ${unhonored.length} fallen. Morale: ${moraleWord()}.`, 'success');
+    try { Audio.achievement(); sparkleBurst(window.innerWidth / 2, window.innerHeight / 2); } catch (e) {}
+    updateResources(); saveGame(); openMemorial();
 }
 
 function getSoldiers(assignment) { ensureSoldiers(); return state.soldiers.filter(s => s.assignment === assignment); }
@@ -735,8 +873,10 @@ function pickCasualties(list, lossMap) {
     return killed;
 }
 
-function removeSoldiers(ids) {
+function removeSoldiers(ids, fellTo) {
     if (!ids || !ids.length) return;
+    // Every permadeath passes through here → the Memorial never misses a burial.
+    recordFallen(ids, fellTo);
     const set = new Set(ids);
     state.soldiers = state.soldiers.filter(s => !set.has(s.id));
 }
@@ -855,6 +995,13 @@ function renderGrid() {
         el.addEventListener('click', (e) => {
             e.stopPropagation();
             if (typeof gemFinish === 'function') gemFinish(parseInt(el.dataset.pos));
+        });
+    });
+    // The Memorial graveyard → roll of honor
+    grid.querySelectorAll('.memorial-g').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openMemorial();
         });
     });
 
@@ -1242,7 +1389,7 @@ function demolishBuilding(pos) {
 }
 
 function updateStorageCaps() {
-    const baseStorage = 2000;
+    const baseStorage = 3000;
     let bonus = 0;
     for (const b of state.buildings) {
         if (BUILDING_DEFS[b.type].storageBonus) {
@@ -1361,7 +1508,9 @@ function renderArmyView() {
         <p class="formation-hint">${currentFormation === 'army'
             ? 'These soldiers go on <b>raids</b>. Click a reserve below, then click a tile to deploy. Front rows (top) fight first.'
             : 'These soldiers <b>guard your kingdom</b> from CPU attacks. Click a reserve below, then a tile to deploy.'}
-            <br>️ <b>Soldiers who die in battle are gone forever.</b></p>
+            <br>️ <b>Soldiers who die in battle are gone forever.</b>
+            <br>Morale: <b>${typeof moraleWord === 'function' ? moraleWord() : 'Steady'}</b>${typeof state.morale === 'number' && state.morale < 45 ? ' — the men speak of the fallen. Hold a funeral at the Memorial.' : ''}
+            · Survivors earn ranks: <b>+6% HP &amp; ATK per rank</b>, a trait at Veteran.</p>
 
         <div class="formation-grid-wrap">
             <div class="enemy-side-label"> Enemy approaches from here </div>
@@ -1400,8 +1549,11 @@ function renderFormationGrid() {
         if (s) {
             const def = TROOP_DEFS[s.type];
             const sel = s.id === selectedSoldierId ? 'selected' : '';
-            html += `<div class="fcell occupied ${frontClass} ${sel}" onclick="onFormationCellClick(${c})" title="${def.name} — click to recall">
+            const rk = (typeof rankOf === 'function') ? rankOf(s) : null;
+            const vetTip = rk ? `${s.name} — ${rk.name}${s.trait && VET_TRAITS[s.trait] ? ` (${VET_TRAITS[s.trait].name})` : ''}, ${s.kills || 0} kills, ${s.raids || 0} raids · ` : '';
+            html += `<div class="fcell occupied ${frontClass} ${sel}" onclick="onFormationCellClick(${c})" title="${vetTip}${def.name} — click to recall">
                 <span class="fcell-ico">${(typeof charSprite==='function' ? charSprite(s.type) : def.icon)}</span>
+                ${rk && rk.pips > 0 ? `<span class="fcell-pips">${'<i></i>'.repeat(rk.pips)}</span>` : ''}
             </div>`;
         } else {
             html += `<div class="fcell ${frontClass}" onclick="onFormationCellClick(${c})"></div>`;
@@ -1791,13 +1943,13 @@ function launchRaid(type, index) {
 
     state.battleLog.unshift(logEntry);
     if (state.battleLog.length > 50) state.battleLog.pop();
-    state.raidCooldown = Date.now() + 15000;
+    state.raidCooldown = Date.now() + 45000;
 
     logEntry.casualtyCount = killedIds.length;
 
     const finishRaid = () => {
         // Apply permadeath now (after the player has watched the battle)
-        removeSoldiers(killedIds);
+        removeSoldiers(killedIds, target.name);
         showBattleResult(result, target, logEntry);
         if (result.victory && Object.keys(logEntry.loot).length) {
             setTimeout(() => lootPopups(logEntry.loot, window.innerWidth/2, window.innerHeight/2 - 100), 100);
@@ -1919,7 +2071,7 @@ function cpuAttack() {
     const startDefense = () => {
         alert.classList.add('hidden');
         const finishDef = () => {
-            removeSoldiers(killedIds);
+            removeSoldiers(killedIds, `${attackerName}'s raid`);
             try { screenShake(6, 400); } catch(e) {}
             if (defended) toast(`Defended against ${attackerName}!`, 'success');
             else toast(`${attackerName} breached your defenses!`, 'error');

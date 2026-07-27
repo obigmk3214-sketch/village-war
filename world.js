@@ -1054,6 +1054,7 @@ function renderIsoWorld() {
             <g class="boats">${boat}</g>
             <g class="hits">${hitSVG}</g>
             <g class="entities" filter="url(#bldShadow)">${entSVG}</g>
+            <g class="memorial">${memorialLayerSVG(ownedTiles)}</g>
             <g class="animals">${animals}</g>
             <g class="carts">${cart}</g>
             <g class="workers">${workerSvg}</g>
@@ -1065,6 +1066,62 @@ function renderIsoWorld() {
         </g>
         <rect class="day-night-overlay" x="0" y="0" width="${w}" height="${h}" fill="url(#dayNight)" pointer-events="none"/>
     </svg>`;
+}
+
+// ============================================================
+// THE MEMORIAL — a small graveyard on the island's western shore.
+// One headstone per fallen Elite/Legend (max 8 shown) + a cairn
+// for the rest. Grows as your war history does. Click to open.
+// ============================================================
+function memorialLayerSVG(ownedTiles) {
+    if (!state.memorial || !state.memorial.length) return '';
+    // Find a free owned shore tile, westernmost on screen (min gx-gy).
+    const occupied = (gx, gy) => {
+        const pos = gx + gy * ISO.GW;
+        if (typeof tileOccupiedBy === 'function' && tileOccupiedBy(pos)) return true;
+        return state.buildings.some(b => b.pos === pos);
+    };
+    const isOwned = (gx, gy) => (gx >= 0 && gx < ISO.GW && gy >= 0 && gy < ISO.GH) && (!ownedTiles || ownedTiles.has(gx + gy * ISO.GW));
+    let best = null;
+    for (let gy = 0; gy < ISO.GH; gy++) {
+        for (let gx = 0; gx < ISO.GW; gx++) {
+            if (!isOwned(gx, gy) || occupied(gx, gy)) continue;
+            const shore = !isOwned(gx - 1, gy) || !isOwned(gx + 1, gy) || !isOwned(gx, gy - 1) || !isOwned(gx, gy + 1);
+            if (!shore) continue;
+            const westness = gx - gy;
+            if (!best || westness < best.westness) best = { gx, gy, westness };
+        }
+    }
+    if (!best) return '';
+    const { x, y } = iso(best.gx, best.gy);
+    const honored = state.memorial.filter(m => m.rank === 'Elite' || m.rank === 'Legend').slice(0, 8);
+    const rest = state.memorial.length - honored.length;
+    let g = '';
+    // low fence + consecrated ground
+    g += `<ellipse cx="${x}" cy="${y}" rx="${ISO.TW * 0.82}" ry="${ISO.TH * 0.82}" fill="rgba(60,80,60,0.35)" stroke="rgba(230,220,190,0.5)" stroke-width="0.8" stroke-dasharray="3 3"/>`;
+    // headstones for the honored dead
+    honored.forEach((m, i) => {
+        const col = i % 4, row = Math.floor(i / 4);
+        const hx = x - 14 + col * 9, hy = y - 4 + row * 9;
+        g += `<g transform="translate(${hx},${hy})">
+            <ellipse cx="0" cy="1.4" rx="4" ry="1.3" fill="rgba(0,0,0,0.35)"/>
+            <path d="M -3 1 L -3 -5 A 3 3 0 0 1 3 -5 L 3 1 Z" fill="#9aa3ab" stroke="#4b5259" stroke-width="0.7"/>
+            <line x1="-1.6" y1="-3.4" x2="1.6" y2="-3.4" stroke="#4b5259" stroke-width="0.6"/>
+            ${m.rank === 'Legend' ? `<circle cx="0" cy="-6.6" r="1.5" fill="#fbbf24" stroke="#7a5410" stroke-width="0.5"/>` : ''}
+        </g>`;
+    });
+    // cairn for the rest
+    if (rest > 0) {
+        g += `<g transform="translate(${x + 12},${y + 6})">
+            <ellipse cx="0" cy="2" rx="6" ry="2" fill="rgba(0,0,0,0.3)"/>
+            <circle cx="-2.5" cy="0" r="2.6" fill="#8b8f94" stroke="#4b5259" stroke-width="0.5"/>
+            <circle cx="2.3" cy="0.4" r="2.2" fill="#9aa3ab" stroke="#4b5259" stroke-width="0.5"/>
+            <circle cx="0" cy="-2.4" r="2" fill="#a8b0b8" stroke="#4b5259" stroke-width="0.5"/>
+            <g transform="translate(8,-2)"><rect x="-7" y="-5" width="14" height="10" rx="4" fill="#0e1726" stroke="#9aa3ab" stroke-width="0.8"/><text x="0" y="2.6" text-anchor="middle" font-size="7" font-weight="800" fill="#cbd5e1">+${rest}</text></g>
+        </g>`;
+    }
+    return `<g class="memorial-g" style="cursor:pointer" data-memorial="1">
+        <title>The Memorial — ${state.memorial.length} fallen. Click to honor them.</title>${g}</g>`;
 }
 
 // Tap a building to collect accumulated resources (Clash of Clans style)

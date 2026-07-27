@@ -3753,3 +3753,20 @@ h2 .nav-ic .vw-ic, .exp-title .vw-ic, .codex-h .vw-ic { width: 1.05em; height: 1
 
 /* Heading polish for the Cinzel display face */
 .logo, h1, h2, h3, .hero-section-title, .view-tab { letter-spacing: 0.02em; }
+
+/* ============================================================
+   VETERANS & THE MEMORIAL
+   ============================================================ */
+/* Rank pips on live-battle troops */
+.lb-tpips { position: absolute; left: 50%; top: -12px; transform: translateX(-50%); display: flex; gap: 2px; pointer-events: none; }
+.lb-pip { width: 5px; height: 5px; border-radius: 50%; background: #fbbf24; border: 1px solid #7a5410; box-shadow: 0 0 3px rgba(251,191,36,0.8); }
+/* Rank pips on formation cells */
+.fcell { position: relative; }
+.fcell-pips { position: absolute; right: 2px; top: 2px; display: flex; gap: 2px; }
+.fcell-pips i { width: 4.5px; height: 4.5px; border-radius: 50%; background: #fbbf24; border: 1px solid #7a5410; display: block; }
+/* Rank pips on the battle deploy tray */
+.lb-chip { position: relative; }
+.lb-chip-pips { position: absolute; left: 4px; top: 3px; display: flex; gap: 2px; }
+.lb-chip-pips i { width: 4px; height: 4px; border-radius: 50%; background: #fbbf24; display: block; }
+/* Memorial graveyard on the island */
+.memorial-g:hover { filter: brightness(1.25) drop-shadow(0 0 6px rgba(251,191,36,0.5)); }
