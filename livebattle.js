@@ -12,8 +12,10 @@ function generateEnemyBase(camp) {
     const lvl = camp.level || 1;
     const buildings = [];
     const hpScale = 1 + lvl * 0.25;
+    // Battles now run 50s (was 20): structures are ~55% tougher so the fight
+    // fills the clock with decisions, not a blitz.
     // Town hall — center upper area
-    buildings.push({ type: 'townhall', x: 50, y: 22, hp: Math.round(900 * hpScale), w: 13, th: true });
+    buildings.push({ type: 'townhall', x: 50, y: 22, hp: Math.round(1400 * hpScale), w: 13, th: true });
     // Resource buildings ring
     const resTypes = ['goldmine', 'farm', 'lumbermill', 'storage', 'coinmint', 'ironmine'];
     const nRes = Math.min(7, 3 + Math.floor(lvl / 3));
@@ -23,7 +25,7 @@ function generateEnemyBase(camp) {
             type: resTypes[i % resTypes.length],
             x: 50 + Math.cos(a) * (16 + rnd() * 10),
             y: 26 + Math.sin(a) * (11 + rnd() * 6),
-            hp: Math.round(380 * hpScale), w: 9
+            hp: Math.round(600 * hpScale), w: 9
         });
     }
     // Defenses — towers & cannons that FIGHT BACK
@@ -36,10 +38,23 @@ function generateEnemyBase(camp) {
             type: isCannon ? 'cannon' : 'archertower',
             x: Math.max(8, Math.min(92, 50 + Math.cos(a) * (24 + rnd() * 8))),
             y: Math.max(8, Math.min(46, 25 + Math.sin(a) * (14 + rnd() * 5))),
-            hp: Math.round(520 * hpScale), w: 8,
+            hp: Math.round(800 * hpScale), w: 8,
             range: isCannon ? 26 : 32,
             dmg: Math.round((isCannon ? 34 : 20) * (1 + lvl * 0.12)),
             cd: isCannon ? 1.6 : 0.9, cdLeft: 0
+        });
+    }
+    // Mortars (lvl 5+, max 2): long range, splash on clustered troops, but a
+    // minRange dead zone — deploy tight under their skirts or spread out wide.
+    const nMortar = lvl >= 5 ? Math.min(2, 1 + Math.floor(lvl / 9)) : 0;
+    for (let i = 0; i < nMortar; i++) {
+        defenses.push({
+            type: 'mortar',
+            x: 34 + i * 30 + rnd() * 6, y: 14 + rnd() * 8,
+            hp: Math.round(650 * hpScale), w: 9,
+            range: 45, minRange: 14,
+            dmg: Math.round(26 * (1 + lvl * 0.10)),
+            cd: 4, cdLeft: 2
         });
     }
     // Hidden traps
@@ -51,11 +66,27 @@ function generateEnemyBase(camp) {
     return { buildings, defenses, traps, garrison: camp.troops || {} };
 }
 
+// ---- Unit roles: who they hunt & how they fight ----
+// tank: soaks — towers prefer them, -20% damage taken
+// sniper: hunts defenses anywhere on the field
+// siege: hits the biggest building, ignores defenses; catapult splashes
+// raider: hunts resource buildings; each one razed = +3% raid loot
+// line: fights whatever is nearest; pikemen skewer guards (2x)
+const TROOP_ROLES = {
+    warrior: 'line', pikeman: 'line',
+    shieldbearer: 'tank', knight: 'tank', paladin: 'tank',
+    archer: 'sniper', crossbowman: 'sniper',
+    siege: 'siege', catapult: 'siege',
+    cavalry: 'raider'
+};
+const RESOURCE_BLD = { goldmine: 1, farm: 1, lumbermill: 1, storage: 1, coinmint: 1, ironmine: 1 };
+
 // ---- Spells ----
 const LB_SPELLS = [
-    { id: 'rage',  icon: svgIcon('rage'), name: 'Rage',      desc: '+60% attack, 8s, area' },
-    { id: 'heal',  icon: svgIcon('heal'), name: 'Heal',      desc: 'Restore 50% HP, area' },
-    { id: 'bolt',  icon: svgIcon('bolt'), name: 'Lightning', desc: '300 damage, area' }
+    { id: 'rage',   icon: svgIcon('rage'),   name: 'Rage',           desc: '+60% attack & +30% speed, 8s, area' },
+    { id: 'heal',   icon: svgIcon('heal'),   name: 'Healing Rain',   desc: 'Zone that heals 12%/s for 8s — cast ahead of the push' },
+    { id: 'bolt',   icon: svgIcon('bolt'),   name: 'Chain Lightning',desc: '300 dmg + chains to 2 nearby structures, stuns defenses' },
+    { id: 'banner', icon: svgIcon('flag'),   name: 'War Banner',     desc: 'Plant a banner defenses must shoot (600 HP, 6s). Needs a Fortress.' }
 ];
 
 // ---- Main entry ----
@@ -83,7 +114,9 @@ function applyRaidOutcome(spec, r) {
         // Plunderer trait: +4% loot per surviving Plunderer in the army (cap +12%)
         const plunderers = getDeployed('army').filter(s => s.trait === 'plunderer').length;
         const plunderMult = 1 + Math.min(0.12, plunderers * 0.04);
-        const mult = (0.25 + 0.5 * r.destruction) * plunderMult;
+        // Raider bonus: +3% loot per resource building razed by cavalry (cap +9%)
+        const raiderMult = 1 + Math.min(0.09, (r.raiderRazes || 0) * 0.03);
+        const mult = (0.25 + 0.5 * r.destruction) * plunderMult * raiderMult;
         for (const [res, amt] of Object.entries(spec.loot || {})) {
             lootGained[res] = Math.floor(amt * mult * (typeof eventLootMult === 'function' ? eventLootMult(res) : 1));
         }
@@ -107,8 +140,12 @@ function applyRaidOutcome(spec, r) {
             // small trophy gain by stars
             state.trophies = (state.trophies || 0) + r.stars * 4;
         }
+        if (spec.kind === 'player' && spec.trophyReward) {
+            state.trophies = (state.trophies || 0) + spec.trophyReward;
+        }
     } else {
         if (spec.kind === 'cpu') state.trophies = Math.max(0, (state.trophies || 0) - 5);
+        if (spec.kind === 'player' && spec.trophyReward) state.trophies = Math.max(0, (state.trophies || 0) - Math.floor(spec.trophyReward / 2));
     }
     const logEntry = {
         time: Date.now(), type: 'attack', target: spec.name, victory,
@@ -158,7 +195,7 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
         const rb = (typeof getResearchTroopBoost === 'function') ? getResearchTroopBoost(type) : { hp: 1, atk: 1 };
         const vet = (soldier.type && typeof vetStatMult === 'function') ? vetStatMult(soldier) : 1;
         const trait = soldier.trait || null;
-        let speed = type === 'cavalry' ? 20 : (type === 'siege' || type === 'catapult') ? 9 : 13;
+        let speed = type === 'cavalry' ? 17 : (type === 'siege' || type === 'catapult') ? 8 : 11;
         if (trait === 'fleetfoot') speed *= 1.2;
         return {
             hp: Math.round(d.hp * rb.hp * (heroB.all.hpMult || 1) * vet),
@@ -172,7 +209,12 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
     const tray = {};
     for (const s of armyList) (tray[s.type] = tray[s.type] || []).push(s);
     let selectedType = Object.keys(tray)[0];
-    const spells = { rage: 1, heal: 1, bolt: 1 };
+    const thLvl = (typeof getTHLevel === 'function') ? getTHLevel() : 1;
+    const hasFortress = (typeof getBuilding === 'function') && !!getBuilding('fortress');
+    const spells = { rage: thLvl >= 5 ? 2 : 1, heal: 1, bolt: 1 };
+    if (hasFortress) spells.banner = 1;   // War Banner unlocks with the Fortress
+    const healZones = [];                 // {x, y, until}
+    const banners = [];                   // {x, y, hp, until, el} — War Banner decoys
     let armedSpell = null;
 
     overlay.innerHTML = `
@@ -180,6 +222,8 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
             <div class="lb-field" id="lb-field">
                 <div class="lb-grass"></div>
                 <div class="lb-deployzone"></div>
+                <div class="lb-deployzone lb-dz-west" title="Flanking cove — +15% attack surge"></div>
+                <div class="lb-deployzone lb-dz-east" title="Flanking cove — +15% attack surge"></div>
                 ${base.buildings.map((b, i) => `
                     <div class="lb-bld ${b.th ? 'lb-th' : ''}" id="lbb-${i}" style="left:${b.x}%;top:${b.y}%;width:${b.w}%">
                         <div class="lb-bhp"><div class="lb-bhpfill"></div></div>
@@ -198,16 +242,16 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
                 <span class="lb-title">${svgIcon('swords')}️ ${spec.name}</span>
                 <span class="lb-destruction" id="lb-destr">0%</span>
                 <span class="lb-starbar" id="lb-stars">${svgIcon('starOutline').repeat(3)}</span>
-                <span class="lb-timer" id="lb-timer">20</span>
+                <span class="lb-timer" id="lb-timer">50</span>
                 <button class="bv-skip" id="lb-end">End Battle</button>
             </div>
             <div class="lb-bottom">
                 <div class="lb-tray" id="lb-tray"></div>
                 <div class="lb-spells" id="lb-spells">
-                    ${LB_SPELLS.map(s => `<button class="lb-spell" data-spell="${s.id}" title="${s.name}: ${s.desc}">${s.icon}<span class="lb-spell-n">1</span></button>`).join('')}
+                    ${LB_SPELLS.filter(s => spells[s.id] != null).map(s => `<button class="lb-spell" data-spell="${s.id}" title="${s.name}: ${s.desc}">${s.icon}<span class="lb-spell-n">1</span></button>`).join('')}
                 </div>
             </div>
-            <div class="lb-hint" id="lb-hint">Pick a unit below, then TAP the highlighted zone to deploy!</div>
+            <div class="lb-hint" id="lb-hint">Pick a unit, then TAP a beach — south shore, or the flanking coves for a +15% surge!</div>
         </div>`;
     document.body.appendChild(overlay);
 
@@ -218,7 +262,8 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
     // ---- live entities ----
     const troops = [];     // {id, type, x, y, hp, maxHp, atk, speed, range, el, dead, rageUntil}
     const killedIds = [];
-    let destroyedHP = 0, thDown = false, running = true, timeLeft = 20;
+    let destroyedHP = 0, thDown = false, running = true, timeLeft = 50;
+    let overtimeUsed = false;
 
     function renderTray() {
         const trayEl = overlay.querySelector('#lb-tray');
@@ -257,7 +302,11 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
         const x = ((e.clientX - r.left) / r.width) * 100;
         const y = ((e.clientY - r.top) / r.height) * 100;
         if (armedSpell) { castSpell(armedSpell, x, y); return; }
-        if (y < 62) { flashHint('Deploy in the highlighted zone at the bottom!'); return; }
+        // Beach landings: the south shore plus two flanking coves. Flank landings
+        // start outside most tower arcs and surge (+15% ATK for 6s) — but it's a
+        // longer march past the defenses' kill zone.
+        const onBeach = y > 62 || x < 12 || x > 88;
+        if (!onBeach) { flashHint('Land on a beach — south shore or the flanking coves!'); return; }
         const list = tray[selectedType];
         if (!list || list.length === 0) { flashHint('No more of that unit — pick another!'); return; }
         const soldier = list.shift();
@@ -283,7 +332,8 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
         el.style.left = x + '%'; el.style.top = y + '%';
         troopLayer.appendChild(el);
         troops.push({ id: soldier.id, type: soldier.type, soldier, x, y, hp: st.hp, maxHp: st.hp, atk: st.atk, speed: st.speed, range: st.range, el, dead: false, atkCd: 0, rageUntil: 0,
-                      trait: soldier.trait || null, unbrokenUsed: false, battleKills: 0 });
+                      trait: soldier.trait || null, unbrokenUsed: false, battleKills: 0,
+                      flankUntil: (x < 14 || x > 86) ? performance.now() + 6000 : 0 });   // beach-landing surge
         // trap check happens during movement
     }
 
@@ -297,19 +347,46 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
             if (!boltTarget) { flashHint('No building in range — aim the bolt at a structure!'); return; }
         }
         spells[id]--; armedSpell = null; updateSpellUI();
-        lbRing(fxLayer, x, y, id === 'rage' ? '#f97316' : id === 'heal' ? '#4ade80' : '#fde047');
+        lbRing(fxLayer, x, y, id === 'rage' ? '#f97316' : id === 'heal' ? '#4ade80' : id === 'banner' ? '#60a5fa' : '#fde047');
         try { Audio.whoosh(); } catch(e) {}
         const inArea = troops.filter(t => !t.dead && Math.hypot(t.x - x, (t.y - y) * 1.4) < 18);
         if (id === 'rage') { const until = performance.now() + 8000; inArea.forEach(t => t.rageUntil = until); }
-        if (id === 'heal') inArea.forEach(t => {
-            t.hp = Math.min(t.maxHp, t.hp + t.maxHp * 0.5);
-            const f = t.el.querySelector('.lb-thpfill');   // keep the HP bar in sync (was only updated on damage)
-            if (f) f.style.width = (t.hp / t.maxHp * 100) + '%';
-        });
+        if (id === 'heal') {
+            // Healing Rain: a persistent zone — cast AHEAD of the push, not in panic
+            healZones.push({ x, y, until: performance.now() + 8000 });
+            const z = document.createElement('div');
+            z.className = 'lb-healzone';
+            z.style.left = x + '%'; z.style.top = y + '%';
+            fxLayer.appendChild(z);
+            setTimeout(() => z.remove(), 8000);
+        }
         if (id === 'bolt') {
+            // Chain Lightning: full hit, then arcs to the 2 nearest structures; stuns defenses
             try { Audio.attack(); screenShake(6, 250); } catch(e) {}
-            damageStructure(boltTarget, 300);
-            lbBoom(fxLayer, x, y);
+            const hit = (s, dmg) => {
+                damageStructure(s, dmg);
+                if (s.kind === 'def') s.stunUntil = performance.now() + 2500;
+                lbBoom(fxLayer, s.x, s.y);
+            };
+            hit(boltTarget, 300);
+            const others = aliveStructs().filter(s => s !== boltTarget && !s.mobile)
+                .map(s => ({ s, d: Math.hypot(s.x - boltTarget.x, (s.y - boltTarget.y) * 1.4) }))
+                .sort((a, b) => a.d - b.d).slice(0, 2);
+            others.forEach((o, i) => {
+                lbShot(fxLayer, boltTarget.x, boltTarget.y, o.s.x, o.s.y);
+                hit(o.s, i === 0 ? 150 : 75);
+            });
+        }
+        if (id === 'banner') {
+            // War Banner: defenses in range must shoot it — buy your snipers 6 seconds
+            const el = document.createElement('div');
+            el.className = 'lb-banner';
+            el.innerHTML = svgIcon('flag');
+            el.style.left = x + '%'; el.style.top = y + '%';
+            fxLayer.appendChild(el);
+            const bn = { x, y, hp: 600, until: performance.now() + 6000, el };
+            banners.push(bn);
+            setTimeout(() => { if (el.parentNode) el.remove(); }, 6000);
         }
         document.getElementById('lb-hint').textContent = 'Pick a unit, tap the zone to deploy.';
     }
@@ -323,25 +400,86 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
     function nearestTarget(x, y, maxDist) {
         let best = null, bd = maxDist || 1e9;
         for (const s of aliveStructs()) {
+            if (s.mobile) continue;   // spells & generic checks ignore guards
             const d = Math.hypot(s.x - x, (s.y - y) * 1.4);
             if (d < bd) { bd = d; best = s; }
         }
         return best;
     }
+    // Role-based target selection with caching (re-pick only when the target dies)
+    function pickTarget(t) {
+        if (t.target && t.target.hp > 0) return t.target;
+        const role = TROOP_ROLES[t.type] || 'line';
+        const alive = aliveStructs();
+        if (!alive.length) return null;
+        let pool = alive;
+        if (role === 'sniper') {
+            const defs = alive.filter(s => s.kind === 'def' && !s.mobile);
+            if (defs.length) pool = defs;
+        } else if (role === 'siege') {
+            // biggest building, town hall weighted; never distracted by defenses/guards
+            const blds = alive.filter(s => s.kind === 'bld');
+            if (blds.length) {
+                let best = null, bs = -1;
+                for (const s of blds) { const sc = s.maxHp * (s.th ? 1.5 : 1); if (sc > bs) { bs = sc; best = s; } }
+                t.target = best; return best;
+            }
+            pool = alive.filter(s => !s.mobile);
+            if (!pool.length) pool = alive;
+        } else if (role === 'raider') {
+            const res = alive.filter(s => s.kind === 'bld' && RESOURCE_BLD[s.type]);
+            if (res.length) pool = res;
+        }
+        let best = null, bd = 1e9;
+        for (const s of pool) {
+            const d = Math.hypot(s.x - t.x, (s.y - t.y) * 1.4);
+            if (d < bd) { bd = d; best = s; }
+        }
+        t.target = best;
+        return best;
+    }
+    let guardsSpawned = false, raiderRazes = 0;
     function damageStructure(s, dmg, attacker) {
         if (s.hp <= 0) return;
         s.hp -= dmg;
+        // Guards muster when the Town Hall is bloodied
+        if (s.th && !guardsSpawned && s.hp < s.maxHp * 0.5) spawnGuards();
         const f = s.el && s.el.querySelector('.lb-bhpfill');
         if (f) { f.style.width = Math.max(0, (s.hp / s.maxHp) * 100) + '%'; if (s.hp / s.maxHp < 0.4) f.classList.add('low'); }
         if (s.hp <= 0) {
-            destroyedHP += s.maxHp;
-            if (attacker && !attacker.dead) attacker.battleKills++;   // last hit claims the kill
+            // Guards don't count toward destruction % — stars stay honest
+            if (!s.mobile) destroyedHP += s.maxHp;
+            if (attacker && !attacker.dead) {
+                attacker.battleKills++;   // last hit claims the kill
+                // Raider bonus: cavalry razing resource buildings fattens the loot
+                if (attacker.type === 'cavalry' && s.kind === 'bld' && RESOURCE_BLD[s.type]) raiderRazes++;
+            }
             if (s.th) thDown = true;
-            if (s.el) { s.el.classList.add('lb-destroyed'); }
+            if (s.el) { s.el.classList.add(s.mobile ? 'lb-tdead' : 'lb-destroyed'); if (s.mobile) setTimeout(() => s.el.remove(), 600); }
             lbBoom(fxLayer, s.x, s.y);
             try { Audio.attack(); screenShake(4, 200); } catch(e) {}
             updateHUD();
         }
+    }
+    function spawnGuards() {
+        guardsSpawned = true;
+        const lvl = spec.level || 1;
+        const n = 2 + Math.floor(lvl / 4);
+        const hpScale = 1 + lvl * 0.25;
+        for (let i = 0; i < n; i++) {
+            const el = document.createElement('div');
+            el.className = 'lb-troop lb-guard';
+            el.innerHTML = `<div class="lb-bhp"><div class="lb-bhpfill" style="background:#ef4444"></div></div>
+                <div class="lb-tspr">${(typeof topUnitSVG === 'function') ? topUnitSVG('warrior', true) : ''}</div>`;
+            const gx = 44 + i * (12 / Math.max(1, n - 1)), gy = 20;
+            el.style.left = gx + '%'; el.style.top = gy + '%';
+            troopLayer.appendChild(el);
+            structs.push({ kind: 'def', type: 'guard', mobile: true, x: gx, y: gy,
+                hp: Math.round(220 * hpScale), maxHp: Math.round(220 * hpScale),
+                speed: 11, range: 4.5, dmg: Math.round(16 * (1 + lvl * 0.1)), cd: 0.8, cdLeft: 0, el });
+        }
+        flashHint('⚔️ The garrison sallies out — guards defend the Town Hall!');
+        try { Audio.attack(); } catch (e) {}
     }
     function updateHUD() {
         const destr = Math.min(1, destroyedHP / totalHP);
@@ -365,15 +503,29 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
         const dt = Math.min(0.05, (now - last) / 1000);
         last = now;
 
+        const now2 = performance.now();
+        // healing rain zones: steady regen for troops standing in the rain
+        for (const z of healZones) {
+            if (now2 > z.until) continue;
+            for (const t of troops) {
+                if (t.dead || t.hp >= t.maxHp) continue;
+                if (Math.hypot(t.x - z.x, (t.y - z.y) * 1.4) < 14) {
+                    t.hp = Math.min(t.maxHp, t.hp + t.maxHp * 0.12 * dt);
+                    const f = t.el.querySelector('.lb-thpfill');
+                    if (f) f.style.width = (t.hp / t.maxHp * 100) + '%';
+                }
+            }
+        }
         // troops
         for (const t of troops) {
             if (t.dead) continue;
-            const target = nearestTarget(t.x, t.y);
+            const target = pickTarget(t);
             if (!target) continue;
             const dx = target.x - t.x, dy = target.y - t.y;
             const dist = Math.hypot(dx, dy * 1.4);
+            const raged = now2 < t.rageUntil;
             if (dist > t.range) {
-                const sp = t.speed * dt;
+                const sp = t.speed * (raged ? 1.3 : 1) * dt;   // rage also quickens the step
                 t.x += (dx / dist) * sp; t.y += (dy / dist) * sp;
                 t.el.style.left = t.x + '%'; t.el.style.top = t.y + '%';
                 // trap trigger
@@ -388,30 +540,105 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
             } else {
                 t.atkCd -= dt;
                 if (t.atkCd <= 0) {
-                    t.atkCd = 0.5;
-                    const raged = performance.now() < t.rageUntil;
+                    const isCata = t.type === 'catapult';
+                    t.atkCd = isCata ? 1.4 : 0.5;   // catapults: big, slow hits
                     const deadeye = (t.trait === 'deadeye' && target.kind === 'def') ? 1.25 : 1;
-                    damageStructure(target, Math.round(t.atk * (raged ? 1.6 : 1) * deadeye), t);
+                    const flank = (t.flankUntil && now2 < t.flankUntil) ? 1.15 : 1;      // beach-landing surge
+                    const vsGuard = (t.type === 'pikeman' && target.mobile) ? 2 : 1;     // pikes skewer sallies
+                    const dmg = Math.round(t.atk * (raged ? 1.6 : 1) * deadeye * flank * vsGuard * (isCata ? 2.8 : 1));
+                    damageStructure(target, dmg, t);
+                    if (isCata) {
+                        // splash: 40% to structures near the impact
+                        for (const s of aliveStructs()) {
+                            if (s === target || s.mobile) continue;
+                            if (Math.hypot(s.x - target.x, (s.y - target.y) * 1.4) < 8) damageStructure(s, Math.round(dmg * 0.4), t);
+                        }
+                    }
                     if (isRangedT(t.type)) lbShot(fxLayer, t.x, t.y, target.x, target.y);
                     else lbSlash(fxLayer, target.x, target.y);
                 }
             }
         }
-        // defenses fire
+        // defenses fire (guards handled separately below)
         for (const d of structs) {
-            if (d.kind !== 'def' || d.hp <= 0) continue;
+            if (d.kind !== 'def' || d.hp <= 0 || d.mobile) continue;
+            if (d.stunUntil && now2 < d.stunUntil) continue;   // chain lightning stun
             d.cdLeft -= dt;
             if (d.cdLeft <= 0) {
-                let best = null, bd = d.range;
-                for (const t of troops) {
-                    if (t.dead) continue;
-                    const dist = Math.hypot(t.x - d.x, (t.y - d.y) * 1.4);
-                    if (dist < bd) { bd = dist; best = t; }
+                // War Banner decoy: any active banner in range MUST be shot first
+                let banner = null;
+                for (const bn of banners) {
+                    if (bn.hp > 0 && now2 < bn.until && Math.hypot(bn.x - d.x, (bn.y - d.y) * 1.4) < d.range) { banner = bn; break; }
                 }
-                if (best) {
+                if (banner) {
                     d.cdLeft = d.cd;
-                    lbShot(fxLayer, d.x, d.y, best.x, best.y, true);
-                    hurtTroop(best, d.dmg);
+                    lbShot(fxLayer, d.x, d.y, banner.x, banner.y, true);
+                    banner.hp -= d.dmg;
+                    if (banner.hp <= 0 && banner.el) { lbBoom(fxLayer, banner.x, banner.y); banner.el.remove(); }
+                    continue;
+                }
+                if (d.type === 'mortar') {
+                    // Mortar: lob at the biggest cluster outside its dead zone; splash on landing
+                    let best = null, bestScore = -1;
+                    for (const t of troops) {
+                        if (t.dead) continue;
+                        const dist = Math.hypot(t.x - d.x, (t.y - d.y) * 1.4);
+                        if (dist > d.range || dist < d.minRange) continue;
+                        let neighbors = 0;
+                        for (const o of troops) { if (!o.dead && Math.hypot(o.x - t.x, (o.y - t.y) * 1.4) < 8) neighbors++; }
+                        if (neighbors > bestScore) { bestScore = neighbors; best = t; }
+                    }
+                    if (best) {
+                        d.cdLeft = d.cd;
+                        const lx = best.x, ly = best.y;   // dumb lead: shells land where you WERE
+                        lbShot(fxLayer, d.x, d.y, lx, ly, true);
+                        setTimeout(() => {
+                            if (!running) return;
+                            lbBoom(fxLayer, lx, ly);
+                            try { screenShake(5, 200); } catch (e) {}
+                            for (const t2 of troops) {
+                                if (!t2.dead && Math.hypot(t2.x - lx, (t2.y - ly) * 1.4) < 7) hurtTroop(t2, d.dmg);
+                            }
+                        }, 900);
+                    }
+                } else {
+                    // Towers & cannons: tanks taunt — they get locked first
+                    let best = null, bd = 1e9;
+                    for (const t of troops) {
+                        if (t.dead) continue;
+                        const dist = Math.hypot(t.x - d.x, (t.y - d.y) * 1.4);
+                        if (dist > d.range) continue;
+                        const score = dist - ((TROOP_ROLES[t.type] === 'tank') ? 10 : 0);
+                        if (score < bd) { bd = score; best = t; }
+                    }
+                    if (best) {
+                        d.cdLeft = d.cd;
+                        lbShot(fxLayer, d.x, d.y, best.x, best.y, true);
+                        hurtTroop(best, d.dmg);
+                    }
+                }
+            }
+        }
+        // guards: chase the nearest attacker and melee
+        for (const g of structs) {
+            if (!g.mobile || g.hp <= 0) continue;
+            let best = null, bd = 1e9;
+            for (const t of troops) {
+                if (t.dead) continue;
+                const dist = Math.hypot(t.x - g.x, (t.y - g.y) * 1.4);
+                if (dist < bd) { bd = dist; best = t; }
+            }
+            if (!best) continue;
+            if (bd > g.range) {
+                const sp = g.speed * dt;
+                g.x += (best.x - g.x) / bd * sp; g.y += (best.y - g.y) / bd * sp;
+                if (g.el) { g.el.style.left = g.x + '%'; g.el.style.top = g.y + '%'; }
+            } else {
+                g.cdLeft -= dt;
+                if (g.cdLeft <= 0) {
+                    g.cdLeft = g.cd;
+                    lbSlash(fxLayer, best.x, best.y);
+                    hurtTroop(best, g.dmg);
                 }
             }
         }
@@ -463,7 +690,17 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
         timeLeft--;
         document.getElementById('lb-timer').textContent = timeLeft;
         const allDead = troops.length > 0 && troops.every(t => t.dead) && Object.values(tray).every(l => l.length === 0);
-        const allGone = aliveStructs().length === 0;
+        // guards don't hold the battle open — only real structures count
+        const allGone = aliveStructs().filter(s => !s.mobile).length === 0;
+        if (timeLeft <= 0 && !allGone && !allDead && !overtimeUsed && Math.min(1, destroyedHP / totalHP) >= 0.45) {
+            // OVERTIME: one clutch push when you're close
+            overtimeUsed = true;
+            timeLeft = 10;
+            document.getElementById('lb-timer').textContent = timeLeft;
+            flashHint('⚡ PUSH! +10 seconds!');
+            try { Audio.achievement(); screenShake(4, 250); } catch (e) {}
+            return;
+        }
         if (timeLeft <= 0 || allGone || allDead) endBattle();
     }, 1000);
 
@@ -507,7 +744,7 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
             overlay.style.opacity = '0';
             setTimeout(() => {
                 overlay.remove();
-                onDone({ stars, destruction: destr, killedIds, lossCounts, victory: stars >= 1 });
+                onDone({ stars, destruction: destr, killedIds, lossCounts, victory: stars >= 1, raiderRazes });
                 // announce promotions after the result lands, staggered
                 promotions.forEach((msg, i) => setTimeout(() => {
                     toast(`⚔️ ${msg}`, 'success');

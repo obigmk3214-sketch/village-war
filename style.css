@@ -3770,3 +3770,27 @@ h2 .nav-ic .vw-ic, .exp-title .vw-ic, .codex-h .vw-ic { width: 1.05em; height: 1
 .lb-chip-pips i { width: 4px; height: 4px; border-radius: 50%; background: #fbbf24; display: block; }
 /* Memorial graveyard on the island */
 .memorial-g:hover { filter: brightness(1.25) drop-shadow(0 0 6px rgba(251,191,36,0.5)); }
+
+/* ============================================================
+   BATTLE DEPTH: beach landings, spells, guards
+   ============================================================ */
+/* Flanking coves — west & east landing strips */
+.lb-dz-west, .lb-dz-east { left: 0; right: auto; top: 0; bottom: 0; height: auto; width: 12%;
+    background: linear-gradient(90deg, rgba(96,165,250,0.16), rgba(96,165,250,0.08) 60%, transparent);
+    border-top: none; border-right: 2px dashed rgba(96,165,250,0.6); }
+.lb-dz-east { left: auto; right: 0;
+    background: linear-gradient(270deg, rgba(96,165,250,0.16), rgba(96,165,250,0.08) 60%, transparent);
+    border-right: none; border-left: 2px dashed rgba(96,165,250,0.6); }
+/* Healing Rain zone */
+.lb-healzone { position: absolute; width: 26%; height: 20%; transform: translate(-50%, -50%);
+    border-radius: 50%; pointer-events: none; z-index: 3;
+    background: radial-gradient(ellipse, rgba(74,222,128,0.28), rgba(74,222,128,0.10) 60%, transparent 75%);
+    border: 1.5px dashed rgba(74,222,128,0.55); animation: dzPulse 1.2s ease-in-out infinite; }
+/* War Banner decoy */
+.lb-banner { position: absolute; transform: translate(-50%, -85%); z-index: 5; pointer-events: none;
+    color: #60a5fa; filter: drop-shadow(0 0 6px rgba(96,165,250,0.9)); animation: bannerWave 0.8s ease-in-out infinite; }
+.lb-banner svg { width: 30px; height: 30px; }
+@keyframes bannerWave { 0%,100% { transform: translate(-50%,-85%) rotate(-4deg); } 50% { transform: translate(-50%,-85%) rotate(5deg); } }
+/* Garrison guards */
+.lb-guard { z-index: 5; filter: drop-shadow(0 0 4px rgba(239,68,68,0.55)); }
+.lb-guard .lb-bhp { width: 26px; }

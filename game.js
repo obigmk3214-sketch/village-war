@@ -1883,6 +1883,12 @@ function launchRaid(type, index) {
         trophyReward = 0;
     } else {
         target = playerTargets[index];
+        // Player villages fight in the live battle too — same veteran pipeline.
+        if (!tutorialActive && typeof runLiveRaid === 'function') {
+            runLiveRaid({ name: target.name, level: target.level, troops: target.troops, loot: target.loot,
+                          xp: Math.floor(target.level * 15), kind: 'player', trophyReward: target.trophies });
+            return;
+        }
         defTroops = { ...target.troops };
         defDef = target.defense;
         loot = { ...target.loot };
