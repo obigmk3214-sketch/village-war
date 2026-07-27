@@ -566,6 +566,9 @@ function spendResources(cost) {
     for (const [r, amt] of Object.entries(cost)) {
         state.resources[r] -= amt;
     }
+    // Feed the "Spend 1000 coins" daily quest (metric was never tracked anywhere,
+    // so that quest could never be completed).
+    if (cost.coins > 0 && typeof track === 'function') track('coinsSpent', cost.coins);
 }
 
 function addResources(loot) {
@@ -1246,8 +1249,14 @@ function updateStorageCaps() {
             bonus += BUILDING_DEFS[b.type].storageBonus * b.level;
         }
     }
+    // Quartermaster talent: +5% caps per rank. Applied here (not as a one-time
+    // mutation in buyTalent) because this function recomputes caps from scratch
+    // on every build/upgrade completion and on load — a one-time bump would be
+    // wiped almost immediately, wasting the talent point.
+    let qm = 1;
+    try { if (typeof talentRank === 'function') qm = 1 + 0.05 * talentRank('quartermaster'); } catch (e) {}
     for (const r of Object.keys(state.maxResources)) {
-        state.maxResources[r] = baseStorage + bonus;
+        state.maxResources[r] = Math.round((baseStorage + bonus) * qm);
     }
 }
 
@@ -1577,7 +1586,14 @@ function simulateBattle(attackerTroops, defenderTroops, defenderDefense, isPlaye
         rounds++;
     }
 
-    const victory = atkHP > 0 || (atkHP <= 0 && defHP <= 0 && atkATK > defATK);
+    // Decide the outcome. A 50-round cap can leave BOTH armies alive (large, evenly
+    // matched forces); that's a stalemate, not a free attacker win — resolve it by
+    // who holds the greater share of their starting HP, and let the defender hold ties.
+    let victory;
+    if (defHP <= 0 && atkHP > 0) victory = true;                        // defender wiped out
+    else if (atkHP <= 0 && defHP <= 0) victory = atkATK > defATK;       // mutual destruction → higher dps wins
+    else if (atkHP <= 0) victory = false;                              // attacker wiped out
+    else victory = (atkHP / totalAtkHP) > (defHP / totalDefHP);        // round-cap stalemate
     const atkSurvival = Math.max(0, atkHP / totalAtkHP);
     const defSurvival = Math.max(0, defHP / totalDefHP);
 
@@ -2625,8 +2641,11 @@ function track(metric, amount = 1) {
     // Quest progress
     for (const q of state.quests.list) {
         if (q.metric === metric && !q.claimed) {
-            state.quests.progress[q.id] = (state.quests.progress[q.id] || 0) + amount;
-            if (state.quests.progress[q.id] >= q.goal) {
+            const before = state.quests.progress[q.id] || 0;
+            state.quests.progress[q.id] = before + amount;
+            // Only announce on the transition to ready — otherwise every further
+            // action past the goal (4th raid win, 11th troop…) re-chimes until claimed.
+            if (before < q.goal && state.quests.progress[q.id] >= q.goal) {
                 if (typeof Audio !== 'undefined') Audio.achievement();
                 toast(`Quest ready: ${q.text}!`, 'success');
             }

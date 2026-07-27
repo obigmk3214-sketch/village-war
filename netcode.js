@@ -142,7 +142,7 @@ function openOnlineHub() {
         const lbRows = (lb.rows || []).map((r, i) => `
             <div class="olb-row ${r.name === me ? 'you' : ''}">
                 <span class="olb-rank">${i + 1}</span>
-                <span class="olb-name">${r.name}${r.clan ? ` <i class="olb-clan">[${r.clan}]</i>` : ''}</span>
+                <span class="olb-name">${escapeHTMLNet(r.name)}${r.clan ? ` <i class="olb-clan">[${escapeHTMLNet(r.clan)}]</i>` : ''}</span>
                 <span class="olb-tr">${formatNum(r.trophies)} ${svgIcon('trophy')}</span>
             </div>`).join('') || '<p class="exp-hint">No players yet — you could be #1!</p>';
         expModal(`
@@ -170,11 +170,11 @@ function renderOnlineClan(data) {
             </div>
             <div id="clan-browse"></div>`;
     }
-    const chat = (data.chat || []).map(m => `<div class="chat-line"><b>${m.author}:</b> ${escapeHTMLNet(m.msg)}</div>`).join('')
+    const chat = (data.chat || []).map(m => `<div class="chat-line"><b>${escapeHTMLNet(m.author)}:</b> ${escapeHTMLNet(m.msg)}</div>`).join('')
         || '<div class="chat-line" style="opacity:.6">No messages yet — say hello!</div>';
     const members = (data.members || []).map(m => `<div class="clan-mem"><span>${m.name}</span><span>${formatNum(m.trophies)} ${svgIcon('trophy')} · Lv${m.level}</span></div>`).join('');
     return `
-        <div class="clan-head"><b>${data.clan.name}</b> · ${data.members.length} member(s)
+        <div class="clan-head"><b>${escapeHTMLNet(data.clan.name)}</b> · ${data.members.length} member(s)
             <button class="btn btn-small" onclick="onlineLeaveClan()">Leave</button></div>
         <div class="clan-members">${members}</div>
         <div class="clan-chat" id="online-clan-chat">${chat}</div>
@@ -203,7 +203,7 @@ function onlineBrowseClans() {
         if (!host) return;
         host.innerHTML = (j.clans || []).map(c => `
             <div class="clan-browse-row">
-                <span>${c.name} · ${c.members} member(s) · ${formatNum(c.trophies)} ${svgIcon('trophy')}</span>
+                <span>${escapeHTMLNet(c.name)} · ${c.members} member(s) · ${formatNum(c.trophies)} ${svgIcon('trophy')}</span>
                 <button class="btn btn-small btn-primary" onclick="onlineJoinClan(${c.id})">Join</button>
             </div>`).join('') || '<p class="exp-hint">No clans yet.</p>';
     });

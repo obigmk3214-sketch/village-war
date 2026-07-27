@@ -459,7 +459,19 @@ function useItem(id) {
     state.exp.items[id]--;
     if (id === 'build') {
         let n = 0;
-        (state.buildings || []).forEach(b => { if (b.constructing) { b.constructing = false; n++; } if (b.upgrading) { b.level = b.upgrading.to; b.upgrading = null; n++; } });
+        (state.buildings || []).forEach(b => {
+            if (b.constructing) { b.constructing = false; n++; }
+            if (b.upgrading) {
+                b.level = b.upgrading.to;
+                // Recompute HP the same way the normal completion path does — otherwise
+                // a potion-finished building keeps its old (lower) HP until re-upgraded.
+                if (typeof BUILDING_DEFS !== 'undefined' && BUILDING_DEFS[b.type]) {
+                    b.hp = Math.floor(BUILDING_DEFS[b.type].baseHP * Math.pow(1.3, b.level - 1));
+                }
+                b.upgrading = null; n++;
+            }
+        });
+        if (typeof updateStorageCaps === 'function') updateStorageCaps();
         toast(n ? `Finished ${n} job(s)!` : 'Nothing was building.', 'success');
         if (typeof renderGrid === 'function') renderGrid();
     } else if (id === 'train') {
@@ -574,7 +586,7 @@ const TALENTS = {
     industry:  { name: 'Industry',     icon: '', max: 5, desc: '+coins/gold trickle per tick', tier: 0 },
     forester:  { name: 'Forestry',     icon: svgIcon('tree'), max: 5, desc: '+wood/iron trickle per tick', tier: 0 },
     mason:     { name: 'Master Mason', icon: '', max: 3, desc: 'Each rank: instant +1000 coins now', tier: 0 },
-    quartermaster: { name: 'Quartermaster', icon: svgIcon('crate'), max: 3, desc: 'Each rank: +5% storage caps now', tier: 1 },
+    quartermaster: { name: 'Quartermaster', icon: svgIcon('crate'), max: 3, desc: 'Each rank: +5% storage caps', tier: 1 },
     warlord:   { name: 'Warlord',      icon: svgIcon('dagger'), max: 3, desc: 'Each rank: instant +2 trophies & +1 troop', tier: 1 },
     alchemist: { name: 'Alchemist',    icon: '', max: 2, desc: 'Each rank: +1 Builder & +1 Resource potion now', tier: 2 },
     financier: { name: 'Financier',    icon: '', max: 2, desc: 'Each rank: instant +25', tier: 2 }
@@ -612,7 +624,7 @@ function buyTalent(id) {
     state.exp.talents[id] = talentRank(id) + 1;
     // immediate effects
     if (id === 'mason') expGainRes({ coins: 1000 });
-    if (id === 'quartermaster') { for (const k in state.maxResources) state.maxResources[k] = Math.round(state.maxResources[k] * 1.05); }
+    if (id === 'quartermaster') { if (typeof updateStorageCaps === 'function') updateStorageCaps(); }
     if (id === 'warlord') { state.trophies += 2; const tt = ['warrior', 'archer', 'cavalry'][Math.floor(Math.random() * 3)]; state.troops[tt] = (state.troops[tt] || 0) + 1; }
     if (id === 'alchemist') { state.exp.items.build++; state.exp.items.resource++; }
     if (id === 'financier') addGems(25);
@@ -886,7 +898,7 @@ function openFriends() {
                     <div class="friend-info"><div class="friend-nm">${f.name}</div><div class="friend-meta">${svgIcon('castle')} TH${f.th} · ${svgIcon('trophy')} ${f.trophies}</div></div>
                     <div class="friend-acts">
                         <button class="btn btn-primary" ${ready ? '' : 'disabled'} onclick="giftFriend(${i})">${ready ? ' Gift' : 'Sent'}</button>
-                        <button class="btn" onclick="visitFriend(${i})">Visit</button>
+                        <button class="btn" ${Date.now() >= (f.visitReadyAt || 0) ? '' : 'disabled'} onclick="visitFriend(${i})">${Date.now() >= (f.visitReadyAt || 0) ? 'Visit' : 'Visited'}</button>
                     </div>
                 </div>`;
             }).join('')}
@@ -906,9 +918,13 @@ function giftFriend(i) {
 function visitFriend(i) {
     ensureExp();
     const f = state.exp.friends[i];
+    // Daily cooldown per friend — without it, spam-clicking Visit farmed unlimited
+    // Season Pass XP and unlocked every tier's rewards for free.
+    if (Date.now() < (f.visitReadyAt || 0)) { toast(`You've already visited ${f.name} today.`, 'info'); return; }
+    f.visitReadyAt = Date.now() + DAY_MS;
     addPassXp(5);
     toast(`You visited ${f.name}'s village. +5 pass XP`, 'info');
-    saveGame();
+    saveGame(); openFriends();
 }
 
 // =====================================================================

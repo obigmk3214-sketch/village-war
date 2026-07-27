@@ -41,8 +41,23 @@ function enter3D() {
     if (btn) btn.classList.add('active');
 }
 
-function exit3D() {
+// Release the WebGL context + window listeners from the current scene. Called
+// before every rebuild and on exit so repeated 3D toggles / land purchases /
+// building placements don't leak: browsers cap active WebGL contexts (~16) and
+// the 3D view would otherwise go black, while orphaned pointer handlers would
+// pile up unbounded and keep mutating stale cameras.
+function t3Teardown() {
     cancelAnimationFrame(T3.raf);
+    if (T3.onPointerMove) { window.removeEventListener('pointermove', T3.onPointerMove); T3.onPointerMove = null; }
+    if (T3.onPointerUp) { window.removeEventListener('pointerup', T3.onPointerUp); T3.onPointerUp = null; }
+    if (T3.renderer) {
+        try { T3.renderer.dispose(); if (T3.renderer.forceContextLoss) T3.renderer.forceContextLoss(); } catch (e) {}
+        T3.renderer = null;
+    }
+}
+
+function exit3D() {
+    t3Teardown();
     if (T3.pump) { clearInterval(T3.pump); T3.pump = 0; }
     const host = document.getElementById('t3-host');
     if (host) host.style.display = 'none';
@@ -66,7 +81,7 @@ function t3Rebuild() {
 }
 
 function build3DScene(host) {
-    cancelAnimationFrame(T3.raf);
+    t3Teardown();
     host.innerHTML = '';
     const W = host.clientWidth || 900, H = Math.max(420, Math.round(W * 0.62));
     host.style.height = H + 'px';
@@ -82,6 +97,7 @@ function build3DScene(host) {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     host.appendChild(renderer.domElement);
+    T3.renderer = renderer;
 
     // ---- Lighting: warm sun + cool sky bounce + soft shadows ----
     const hemi = new THREE.HemisphereLight(0xeaf6ff, 0x3a5a2a, 0.62);
@@ -215,15 +231,18 @@ function build3DScene(host) {
     let drag = null;
     renderer.domElement.style.touchAction = 'none';
     renderer.domElement.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, th: T3.theta, ph: T3.phi, moved: false }; });
-    window.addEventListener('pointermove', e => {
+    // Stored on T3 so t3Teardown() can remove them on the next rebuild / exit.
+    T3.onPointerMove = e => {
         if (!drag) return;
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
         T3.theta = drag.th + dx * 0.008;
         T3.phi = Math.max(0.35, Math.min(1.35, drag.ph + dy * 0.006));
         placeCam();
-    });
-    window.addEventListener('pointerup', () => { setTimeout(() => { if (drag) drag = null; }, 0); });
+    };
+    T3.onPointerUp = () => { setTimeout(() => { if (drag) drag = null; }, 0); };
+    window.addEventListener('pointermove', T3.onPointerMove);
+    window.addEventListener('pointerup', T3.onPointerUp);
     renderer.domElement.addEventListener('wheel', e => {
         e.preventDefault();
         T3.dist = Math.max(10, Math.min(46, T3.dist * (e.deltaY > 0 ? 1.08 : 0.92)));

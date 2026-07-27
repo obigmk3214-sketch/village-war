@@ -185,11 +185,17 @@ const flowerSVG = (gx, gy, variant) => {
 // Each returns SVG fragment positioned at given grid coord.
 // Anchor: bottom-center of building sits at iso(gx, gy).
 
-function buildingTile(gx, gy, type, level) {
+function buildingTile(gx, gy, type, level, pos) {
     const { x, y } = iso(gx, gy);
     const fn = BUILDING_RENDERERS[type];
     if (!fn) return placeholderBuilding(x, y, type, level);
-    return `<g class="bld bld-${type}" data-pos="${gx + gy * ISO.GW}" style="cursor:pointer">
+    // `pos` is the building's integer grid index. It must be passed explicitly
+    // for 2x2 buildings (rendered at fractional coords like gx+0.5) — deriving it
+    // from gx/gy there yields a fractional value that parseInt() mangles, which
+    // used to make the Town Hall / Fortress / Barracks unclickable. Fall back to
+    // the derived value only for plain 1x1 renders.
+    if (pos == null) pos = gx + gy * ISO.GW;
+    return `<g class="bld bld-${type}" data-pos="${pos}" style="cursor:pointer">
         ${fn(x, y, level)}
         <g class="bld-badge" transform="translate(${x + 10}, ${y - 4})">
             <rect x="0" y="0" width="22" height="13" rx="6" fill="#1a1a2e" stroke="#fbbf24" stroke-width="1"/>
@@ -464,6 +470,33 @@ const BUILDING_RENDERERS = {
         <rect x="${x - 32}" y="${y + 4}" width="10" height="9" fill="#a87d4a" stroke="#5a3818" stroke-width="0.5"/>
         <line x1="${x - 32}" y1="${y + 8.5}" x2="${x - 22}" y2="${y + 8.5}" stroke="#5a3818" stroke-width="0.4"/>
         <line x1="${x - 27}" y1="${y + 4}" x2="${x - 27}" y2="${y + 13}" stroke="#5a3818" stroke-width="0.4"/>
+    `,
+
+    researchlab: (x, y, lvl) => `
+        ${SHADOW(x, y, 40)}
+        <!-- iso body -->
+        <polygon points="${x-38},${y-8} ${x},${y-26} ${x+38},${y-8} ${x+38},${y+2} ${x},${y+22} ${x-38},${y+2}" fill="#2a4a72" stroke="#0e1e33" stroke-width="0.8"/>
+        <polygon points="${x-38},${y-8} ${x-38},${y+2} ${x},${y+22} ${x},${y-26}" fill="rgba(0,0,0,0.25)"/>
+        <!-- glowing rune windows -->
+        ${[-24, -8, 8, 24].map(dx => `<rect x="${x + dx - 2.5}" y="${y - 18}" width="5" height="12" rx="1.5" fill="#0e1e33" stroke="#0a1420" stroke-width="0.4"/><rect x="${x + dx - 1.5}" y="${y - 17}" width="3" height="10" rx="1" fill="#7fd8ff"><animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/></rect>`).join('')}
+        <!-- door -->
+        <path d="M ${x - 6} ${y - 2} L ${x - 6} ${y - 12} Q ${x} ${y - 16} ${x + 6} ${y - 12} L ${x + 6} ${y - 2} Z" fill="#0e1e33" stroke="#0a1420" stroke-width="0.5"/>
+        <!-- observatory drum -->
+        <rect x="${x - 16}" y="${y - 40}" width="32" height="16" rx="2" fill="#1e3a5a" stroke="#0e1e33" stroke-width="0.8"/>
+        <rect x="${x - 16}" y="${y - 40}" width="10" height="16" rx="2" fill="rgba(0,0,0,0.22)"/>
+        <!-- dome -->
+        <path d="M ${x - 18} ${y - 40} A 18 16 0 0 1 ${x + 18} ${y - 40} Z" fill="#5fb0f0" stroke="#0e1e33" stroke-width="0.9"/>
+        <path d="M ${x - 18} ${y - 40} A 18 16 0 0 1 ${x} ${y - 56} L ${x} ${y - 40} Z" fill="rgba(255,255,255,0.25)"/>
+        <ellipse cx="${x - 6}" cy="${y - 50}" rx="4" ry="3" fill="rgba(255,255,255,0.5)"/>
+        <!-- dome slit + finial -->
+        <line x1="${x}" y1="${y - 40}" x2="${x}" y2="${y - 55}" stroke="#0e1e33" stroke-width="1.2"/>
+        <line x1="${x}" y1="${y - 56}" x2="${x}" y2="${y - 64}" stroke="#7a5410" stroke-width="1"/>
+        <circle cx="${x}" cy="${y - 65}" r="2.5" fill="#fbbf24" stroke="#7a5410" stroke-width="0.6"/>
+        <!-- arcane sparkles -->
+        <g class="sparkle-fx">
+            <circle cx="${x + 14}" cy="${y - 48}" r="1.8" fill="#7fd8ff"/>
+            <polygon points="${x-16},${y-30} ${x-14},${y-26} ${x-16},${y-22} ${x-18},${y-26}" fill="#bfeaff" opacity="0.9" style="animation-delay:.6s"/>
+        </g>
     `,
 
     barracks: (x, y, lvl) => `
@@ -883,9 +916,9 @@ function renderIsoWorld() {
             if (is2x2) {
                 // render at center of 2x2 footprint, scaled up
                 const c = iso(e.gx + 0.5, e.gy + 0.5);
-                entSVG += `<g transform="translate(${c.x},${c.y}) scale(1.5) translate(${-c.x},${-c.y})">${buildingTile(e.gx + 0.5, e.gy + 0.5, e.type, e.level)}</g>`;
+                entSVG += `<g transform="translate(${c.x},${c.y}) scale(1.5) translate(${-c.x},${-c.y})">${buildingTile(e.gx + 0.5, e.gy + 0.5, e.type, e.level, e.pos)}</g>`;
             } else {
-                entSVG += buildingTile(e.gx, e.gy, e.type, e.level);
+                entSVG += buildingTile(e.gx, e.gy, e.type, e.level, e.pos);
             }
             // construction / upgrade badge with countdown
             const bb = state.buildings.find(b => b.pos === e.pos);

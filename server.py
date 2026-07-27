@@ -147,8 +147,18 @@ def api_save(body):
         if not u:
             return 401, {"error": "Not logged in."}
         state = body.get("state") or {}
-        trophies = int(state.get("trophies") or 0)
-        level = int(state.get("level") or 1)
+        # The leaderboard ranks on these two columns, and the save blob is
+        # client-supplied, so clamp them to sane bounds. This won't stop a
+        # determined cheater (a truly authoritative save would re-simulate), but it
+        # blocks the trivial "POST trophies: 99999999" leaderboard takeover.
+        try:
+            trophies = max(0, min(1_000_000, int(state.get("trophies") or 0)))
+        except (TypeError, ValueError):
+            trophies = 0
+        try:
+            level = max(1, min(500, int(state.get("level") or 1)))
+        except (TypeError, ValueError):
+            level = 1
         c.execute("UPDATE users SET state=?, trophies=?, level=?, updated=? WHERE id=?",
                   (json.dumps(state), trophies, level, time.time(), u["id"]))
         return 200, {"ok": True}
@@ -190,6 +200,10 @@ def api_clan_create(body):
         name = (body.get("name") or "").strip()
         if not (3 <= len(name) <= 20):
             return 400, {"error": "Clan name must be 3-20 chars."}
+        # Restrict charset (like account names) so a clan name can't smuggle HTML
+        # into other players' leaderboards / clan browser.
+        if not name.replace("_", "").replace(" ", "").replace("-", "").isalnum():
+            return 400, {"error": "Clan name: letters, numbers, spaces, - and _ only."}
         if c.execute("SELECT 1 FROM clans WHERE name=?", (name,)).fetchone():
             return 409, {"error": "Clan name taken."}
         c.execute("INSERT INTO clans(name,owner_id,created) VALUES(?,?,?)", (name, u["id"], time.time()))

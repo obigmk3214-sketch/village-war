@@ -264,16 +264,26 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
 
     function castSpell(id, x, y) {
         if (spells[id] <= 0) return;
+        // Lightning only lands on a structure — don't silently waste the charge
+        // when the player taps empty ground with none in range.
+        let boltTarget = null;
+        if (id === 'bolt') {
+            boltTarget = nearestTarget(x, y, 16);
+            if (!boltTarget) { flashHint('No building in range — aim the bolt at a structure!'); return; }
+        }
         spells[id]--; armedSpell = null; updateSpellUI();
         lbRing(fxLayer, x, y, id === 'rage' ? '#f97316' : id === 'heal' ? '#4ade80' : '#fde047');
         try { Audio.whoosh(); } catch(e) {}
         const inArea = troops.filter(t => !t.dead && Math.hypot(t.x - x, (t.y - y) * 1.4) < 18);
         if (id === 'rage') { const until = performance.now() + 8000; inArea.forEach(t => t.rageUntil = until); }
-        if (id === 'heal') inArea.forEach(t => { t.hp = Math.min(t.maxHp, t.hp + t.maxHp * 0.5); });
+        if (id === 'heal') inArea.forEach(t => {
+            t.hp = Math.min(t.maxHp, t.hp + t.maxHp * 0.5);
+            const f = t.el.querySelector('.lb-thpfill');   // keep the HP bar in sync (was only updated on damage)
+            if (f) f.style.width = (t.hp / t.maxHp * 100) + '%';
+        });
         if (id === 'bolt') {
             try { Audio.attack(); screenShake(6, 250); } catch(e) {}
-            const hitB = nearestTarget(x, y, 16);
-            if (hitB) damageStructure(hitB, 300);
+            damageStructure(boltTarget, 300);
             lbBoom(fxLayer, x, y);
         }
         document.getElementById('lb-hint').textContent = 'Pick a unit, tap the zone to deploy.';
@@ -404,6 +414,11 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
     requestAnimationFrame(rafTick);
     const pumpIv = setInterval(() => {
         if (!running) return;
+        // Only step from the pump when the tab is actually hidden (rAF is frozen).
+        // Gating on document.hidden — not just an elapsed-time threshold — prevents
+        // the pump from firing alongside a live-but-janky rAF frame and briefly
+        // double-advancing the sim on a visible tab.
+        if (!document.hidden) return;
         const now = performance.now();
         if (now - last > 120) loop(now); // rAF stalled (hidden tab) → keep sim alive
     }, 80);
