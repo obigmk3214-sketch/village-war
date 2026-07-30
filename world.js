@@ -472,6 +472,40 @@ const BUILDING_RENDERERS = {
         <line x1="${x - 27}" y1="${y + 4}" x2="${x - 27}" y2="${y + 13}" stroke="#5a3818" stroke-width="0.4"/>
     `,
 
+    harbor: (x, y, lvl) => `
+        ${SHADOW(x, y, 42)}
+        <!-- stone quay -->
+        <polygon points="${x-36},${y-6} ${x},${y-22} ${x+36},${y-6} ${x+36},${y+2} ${x},${y+18} ${x-36},${y+2}" fill="#8d857a" stroke="#3a342c" stroke-width="0.8"/>
+        <polygon points="${x-36},${y-6} ${x-36},${y+2} ${x},${y+18} ${x},${y-22}" fill="rgba(0,0,0,0.18)"/>
+        ${[0, 5].map(dy => `<line x1="${x - 36}" y1="${y - 6 + dy}" x2="${x + 36}" y2="${y - 6 + dy}" stroke="#3a342c" stroke-width="0.35" opacity="0.5"/>`).join('')}
+        <!-- warehouse -->
+        <polygon points="${x-30},${y-12} ${x-8},${y-20} ${x-8},${y-2} ${x-30},${y+6}" fill="#a87d4a" stroke="#3a2010" stroke-width="0.7"/>
+        <polygon points="${x-32},${y-12} ${x-6},${y-21} ${x-19},${y-32}" fill="#5a3818" stroke="#1a0808" stroke-width="0.6"/>
+        <rect x="${x - 24}" y="${y - 10}" width="7" height="10" fill="#3a2010" stroke="#1a0808" stroke-width="0.4"/>
+        <!-- wooden pier running into the sea -->
+        <polygon points="${x+2},${y+2} ${x+12},${y-2} ${x+40},${y+10} ${x+30},${y+15}" fill="#7a4818" stroke="#3a2010" stroke-width="0.7"/>
+        ${[8, 16, 24].map(dx => `<line x1="${x + dx}" y1="${y + dx * 0.28}" x2="${x + dx + 4}" y2="${y + dx * 0.28 - 2}" stroke="#3a2010" stroke-width="0.5"/>`).join('')}
+        <line x1="${x + 36}" y1="${y + 9}" x2="${x + 36}" y2="${y + 16}" stroke="#3a2010" stroke-width="1.4"/>
+        <!-- moored trade boat with sail -->
+        <path d="M ${x + 26} ${y + 22} Q ${x + 36} ${y + 27} ${x + 46} ${y + 22} L ${x + 43} ${y + 17} L ${x + 29} ${y + 17} Z" fill="#5a3818" stroke="#1a0808" stroke-width="0.7"/>
+        <line x1="${x + 36}" y1="${y + 17}" x2="${x + 36}" y2="${y + 4}" stroke="#3a2010" stroke-width="1"/>
+        <path d="M ${x + 36} ${y + 5} Q ${x + 45} ${y + 9} ${x + 36} ${y + 14} Z" fill="#f0ead8" stroke="#a89868" stroke-width="0.5"/>
+        <!-- crane -->
+        <line x1="${x + 8}" y1="${y - 4}" x2="${x + 8}" y2="${y - 22}" stroke="#3a2010" stroke-width="1.6"/>
+        <line x1="${x + 8}" y1="${y - 22}" x2="${x + 20}" y2="${y - 14}" stroke="#3a2010" stroke-width="1.3"/>
+        <line x1="${x + 20}" y1="${y - 14}" x2="${x + 20}" y2="${y - 6}" stroke="#5a4828" stroke-width="0.6"/>
+        <rect x="${x + 17.5}" y="${y - 6}" width="5" height="4.5" fill="#a87d4a" stroke="#5a3818" stroke-width="0.5"/>
+        <!-- cargo crates on the quay -->
+        <rect x="${x - 4}" y="${y + 4}" width="8" height="7" fill="#a87d4a" stroke="#5a3818" stroke-width="0.5"/>
+        <rect x="${x + 3}" y="${y + 7}" width="6" height="5.5" fill="#c49a5a" stroke="#5a3818" stroke-width="0.5"/>
+        <line x1="${x - 4}" y1="${y + 7.5}" x2="${x + 4}" y2="${y + 7.5}" stroke="#5a3818" stroke-width="0.4"/>
+        <!-- gulls -->
+        <g class="sparkle-fx">
+            <path d="M ${x - 12} ${y - 38} q 2 -2 4 0 q 2 -2 4 0" stroke="#e8e8f0" stroke-width="0.8" fill="none"/>
+            <path d="M ${x + 26} ${y - 30} q 1.6 -1.6 3.2 0 q 1.6 -1.6 3.2 0" stroke="#e8e8f0" stroke-width="0.7" fill="none" style="animation-delay:.7s"/>
+        </g>
+    `,
+
     researchlab: (x, y, lvl) => `
         ${SHADOW(x, y, 40)}
         <!-- iso body -->

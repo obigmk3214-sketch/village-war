@@ -23,6 +23,8 @@ const ICON_PATHS = {
     // ---- Economy ----
     cart: `<circle cx="9.5" cy="20" r="1.4" fill="currentColor" stroke="none"/><circle cx="17" cy="20" r="1.4" fill="currentColor" stroke="none"/>
         <path d="M3 4h2l2.2 11.2a1.4 1.4 0 0 0 1.4 1.1h8.2a1.4 1.4 0 0 0 1.4-1.1L21 7.5H6.2"/>`,
+    boat: `<path d="M4 16h16l-2 4H6Z" fill="currentColor" fill-opacity="0.18"/><path d="M4 16h16l-2 4H6Z"/>
+        <path d="M12 3v13"/><path d="M12 4c4 1.5 6 4.5 6 8H12Z" fill="currentColor" fill-opacity="0.18"/><path d="M12 4c4 1.5 6 4.5 6 8H12Z"/>`,
     scale: `<path d="M12 4v15M7 19h10M12 5 5 8m7-3 7 3"/><path d="M5 8 2.7 13h4.6Z" fill="currentColor" fill-opacity="0.16"/>
         <path d="M19 8 16.7 13h4.6Z" fill="currentColor" fill-opacity="0.16"/><path d="M5 8 2.7 13h4.6Z"/><path d="M19 8 16.7 13h4.6Z"/>`,
     bank: `<path d="M3.5 9 12 4l8.5 5Z" fill="currentColor" fill-opacity="0.16"/><path d="M3.5 9 12 4l8.5 5"/>

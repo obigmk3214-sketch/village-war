@@ -87,13 +87,6 @@ function addPassXp(n) {
 const MORE_CARDS = [
     { id: 'wheel',     icon: 'wheel',      name: 'Lucky Wheel',    desc: 'Free daily spin for prizes', cat: 'rewards' },
     { id: 'crates',    icon: 'crate',      name: 'Mystery Crates',  desc: 'Open crates for loot', cat: 'rewards' },
-    { id: 'challenges',icon: 'challenges', name: 'Daily Challenges', desc: '3 tasks, fresh each day', cat: 'rewards' },
-    { id: 'pass',      icon: 'pass',       name: 'Season Pass',     desc: 'Tiered seasonal rewards', cat: 'rewards' },
-    { id: 'gemmine',   icon: 'gem',        name: 'Gem Mine',        desc: 'Passive gem trickle', cat: 'rewards' },
-
-    { id: 'trader',    icon: 'cart',       name: 'Black Market',    desc: 'Rotating daily deals', cat: 'economy' },
-    { id: 'market',    icon: 'scale',      name: 'Marketplace',     desc: 'Trade resources', cat: 'economy' },
-    { id: 'bank',      icon: 'bank',       name: 'Royal Bank',      desc: 'Earn interest on coins', cat: 'economy' },
     { id: 'boost',     icon: 'bolt',       name: 'Production Boost', desc: '2× all output', cat: 'economy' },
     { id: 'items',     icon: 'flask',      name: 'Magic Potions',   desc: 'Boost builds, troops & loot', cat: 'economy' },
 
@@ -103,11 +96,6 @@ const MORE_CARDS = [
     { id: 'collection',icon: 'book',       name: 'Collection',      desc: 'Troop & hero codex', cat: 'progression' },
     { id: 'profile',   icon: 'profile',    name: 'Profile & Stats', desc: 'Your lifetime record', cat: 'progression' },
 
-    { id: 'boss',      icon: 'dragon',     name: 'Boss Raid',       desc: 'Fight a mighty warlord', cat: 'combat' },
-    { id: 'clanwar',   icon: 'swords',     name: 'Clan Wars',       desc: 'War vs a rival clan', cat: 'combat' },
-    { id: 'tournament',icon: 'trophy',     name: 'Tournament',      desc: '8-player bracket', cat: 'combat' },
-    { id: 'friends',   icon: 'friends',    name: 'Friends',         desc: 'Gift & visit allies', cat: 'combat' },
-
     { id: 'online',    icon: 'cloud',      name: 'Online',          desc: 'Accounts, cloud saves & real clans', cat: 'system' },
     { id: 'settings',  icon: 'gear',       name: 'Settings',        desc: 'Sound, saves & options', cat: 'system' },
     { id: 'credits',   icon: 'book',       name: 'Credits',         desc: 'Music & art attributions', cat: 'system' }
@@ -116,7 +104,6 @@ const MORE_SECTIONS = [
     { cat: 'rewards',     icon: 'gift',    title: 'Rewards & Loot',  blurb: 'Free prizes, crates & seasonal tracks' },
     { cat: 'economy',     icon: 'coins',   title: 'Economy & Trade', blurb: 'Grow, trade & boost your resources' },
     { cat: 'progression', icon: 'chart',   title: 'Progression',     blurb: 'Perks, territory & your record' },
-    { cat: 'combat',      icon: 'swords',  title: 'Combat & Social', blurb: 'Wars, bosses, brackets & allies' },
     { cat: 'system',      icon: 'sliders', title: 'System',          blurb: 'Game options & saves' }
 ];
 const MORE_OPENERS = {
@@ -546,11 +533,10 @@ function grantPassReward(r) {
     else if (k === 'gems') addGems(v);
     else expGainRes({ [k]: v });
 }
-function openPass() {
+function passTrackHTML() {
     ensureExp();
     const p = state.exp.pass;
-    expModal(`
-        <h3 class="exp-title">${svgIcon('medal')}️ Season Pass <span class="pass-tier">Tier ${p.tier + 1}/${PASS_TIERS.length}</span></h3>
+    return `
         <p class="exp-hint">Earn pass XP from battles, spins & crates. ${p.gold ? '<b style="color:#fbbf24">Gold Pass active</b>' : `<button class="link-btn" onclick="buyGoldPass()">Unlock Gold Pass (120${svgIcon('gem')})</button>`}</p>
         <div class="pass-xpbar"><div class="pass-xpfill" style="width:${p.tier >= PASS_TIERS.length - 1 ? 100 : p.xp}%"></div><span>${p.tier >= PASS_TIERS.length - 1 ? 'MAX' : p.xp + '/100 XP'}</span></div>
         <div class="pass-track">
@@ -563,10 +549,17 @@ function openPass() {
                     <button class="pass-rw gold ${gc ? 'claimed' : ''}" ${unlocked && p.gold && !gc ? '' : 'disabled'} onclick="claimPass(${i},'gold')">${gc ? '' : ' ' + passRewardLabel(t.gold)}</button>
                 </div>`;
             }).join('')}
-        </div>
+        </div>`;
+}
+function openPass() {
+    ensureExp();
+    const p = state.exp.pass;
+    expModal(`
+        <h3 class="exp-title">${svgIcon('medal')}️ Season Pass <span class="pass-tier">Tier ${p.tier + 1}/${PASS_TIERS.length}</span></h3>
+        ${passTrackHTML()}
         <div class="exp-actions"><button class="btn" onclick="closeExpModal()">Close</button></div>`);
 }
-function buyGoldPass() { ensureExp(); if (!spendGems(120)) return; state.exp.pass.gold = true; toast('️ Gold Pass unlocked!', 'success'); saveGame(); openPass(); }
+function buyGoldPass() { ensureExp(); if (!spendGems(120)) return; state.exp.pass.gold = true; toast('️ Gold Pass unlocked!', 'success'); saveGame(); journalRefresh(openPass); }
 function claimPass(i, track) {
     ensureExp();
     const p = state.exp.pass;
@@ -576,7 +569,7 @@ function claimPass(i, track) {
     grantPassReward(PASS_TIERS[i][track]);
     p.claimed[track].push(i);
     toast('️ Reward claimed!', 'success');
-    saveGame(); updateResources(); openPass();
+    saveGame(); updateResources(); journalRefresh(openPass);
 }
 
 // =====================================================================
@@ -659,22 +652,58 @@ function challengeProgress(id, amt) {
     state.exp.challenges.forEach(c => { if (c.id === id && !c.claimed && c.prog < c.goal) { c.prog = Math.min(c.goal, c.prog + (amt || 1)); changed = true; } });
     if (changed) saveGame();
 }
+// =====================================================================
+// THE HARBOR — one dockside home for the four economy services that
+// used to be four lookalike modals buried in the More hub.
+// =====================================================================
+function openHarbor() {
+    ensureExp();
+    const b = (typeof getBuilding === 'function') ? getBuilding('harbor') : null;
+    const lvl = b ? b.level : 1;
+    const tiles = [
+        { fn: 'openMarket', icon: 'scale', name: 'Marketplace', desc: 'Trade one resource for another' },
+        { fn: 'openTrader', icon: 'cart',  name: 'Trade Ship',  desc: "Today's rotating deals" },
+        { fn: 'openBank',   icon: 'bank',  name: 'Royal Vault', desc: 'Deposit coins, earn interest' },
+        { fn: 'openGemMine',icon: 'gem',   name: 'Gem Sluice',  desc: 'A slow trickle of gems' }
+    ];
+    expModal(`
+        <h3 class="exp-title">${svgIcon('boat')} The Harbor <span class="pass-tier">Lv ${lvl}</span></h3>
+        <p class="exp-hint">Ships from every kingdom dock here. All your trade under one roof.</p>
+        <div class="harbor-grid">
+            ${tiles.map(t => `
+                <button class="harbor-tile" onclick="${t.fn}()">
+                    <span class="harbor-ico">${svgIcon(t.icon)}</span>
+                    <span class="harbor-name">${t.name}</span>
+                    <span class="harbor-desc">${t.desc}</span>
+                </button>`).join('')}
+        </div>
+        <div class="exp-actions"><button class="btn" onclick="closeExpModal()">Close</button></div>`);
+}
+
+function journalRefresh(fallback) {
+    // If the player is in the Journal tab, refresh it in place; otherwise reopen the modal.
+    if (document.querySelector('#view-quests.active') && typeof renderQuestsView === 'function') renderQuestsView();
+    else if (typeof fallback === 'function') fallback();
+}
+function challengeRowsHTML() {
+    ensureExp();
+    if (typeof refreshDailies === 'function') refreshDailies();
+    return state.exp.challenges.map((c, i) => {
+        const done = c.prog >= c.goal;
+        return `<div class="chal-row ${done ? 'done' : ''}">
+            <div class="chal-info"><div class="chal-text">${c.text}</div>
+                <div class="chal-bar"><div class="chal-fill" style="width:${Math.round(c.prog / c.goal * 100)}%"></div></div>
+                <div class="chal-meta">${c.prog}/${c.goal} · reward ${passRewardLabel(c.reward)}</div></div>
+            <button class="btn btn-primary" ${done && !c.claimed ? '' : 'disabled'} onclick="claimChallenge(${i})">${c.claimed ? '' : 'Claim'}</button>
+        </div>`;
+    }).join('');
+}
 function openChallenges() {
     ensureExp();
     expModal(`
         <h3 class="exp-title">${svgIcon('check')} Daily Challenges</h3>
         <p class="exp-hint">Fresh tasks every day. Complete them as you play.</p>
-        <div class="chal-list">
-            ${state.exp.challenges.map((c, i) => {
-                const done = c.prog >= c.goal;
-                return `<div class="chal-row ${done ? 'done' : ''}">
-                    <div class="chal-info"><div class="chal-text">${c.text}</div>
-                        <div class="chal-bar"><div class="chal-fill" style="width:${Math.round(c.prog / c.goal * 100)}%"></div></div>
-                        <div class="chal-meta">${c.prog}/${c.goal} · reward ${passRewardLabel(c.reward)}</div></div>
-                    <button class="btn btn-primary" ${done && !c.claimed ? '' : 'disabled'} onclick="claimChallenge(${i})">${c.claimed ? '' : 'Claim'}</button>
-                </div>`;
-            }).join('')}
-        </div>
+        <div class="chal-list">${challengeRowsHTML()}</div>
         <div class="exp-actions"><button class="btn" onclick="closeExpModal()">Close</button></div>`);
 }
 function claimChallenge(i) {
@@ -683,7 +712,7 @@ function claimChallenge(i) {
     if (!c || c.claimed || c.prog < c.goal) return;
     grantPassReward(c.reward); c.claimed = true; addPassXp(20);
     toast('Challenge reward claimed!', 'success');
-    saveGame(); updateResources(); openChallenges();
+    saveGame(); updateResources(); journalRefresh(openChallenges);
 }
 
 // =====================================================================

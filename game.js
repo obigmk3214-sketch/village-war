@@ -76,6 +76,16 @@ const BUILDING_DEFS = {
         storageBonus: 800,
         reqTH: 2
     },
+    harbor: {
+        name: 'Harbor', icon: svgIcon('boat'), category: 'resource',
+        desc: 'Trade ships dock here: the Marketplace, Black Market deals, the Royal Bank vault and the gem sluice — all in one place.',
+        maxLevel: 5, unique: true,
+        baseCost: { coins: 800, wood: 400 },
+        costMult: 1.9,
+        baseHP: 600,
+        production: null,
+        reqTH: 3
+    },
     barracks: {
         name: 'Barracks', icon: svgIcon('swords'), category: 'military',
         desc: 'Train warriors and archers. Build more to grow your army!',
@@ -540,12 +550,18 @@ function loadGame() {
 // UTILITY
 // ============================================================
 
+let _lastToast = { msg: '', at: 0 };
 function toast(msg, type = 'info') {
+    // De-dup: the same message twice within 1.5s reads as spam, not feedback.
+    const now = Date.now();
+    if (msg === _lastToast.msg && now - _lastToast.at < 1500) return;
+    _lastToast = { msg, at: now };
     const c = document.getElementById('toast-container');
     const t = document.createElement('div');
     t.className = `toast ${type}`;
     t.textContent = msg;
     c.appendChild(t);
+    while (c.children.length > 4) c.firstChild.remove();   // never stack a wall of toasts
     setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 3000);
 }
 
@@ -1280,7 +1296,10 @@ function showBuildingInfo(building) {
         const thBlockers = building.type === 'townhall' ? townHallUpgradeBlockers(building.level) : [];
         const buildLocked = thBlockers.length > 0;
         const locked = levelLocked || buildLocked;
+        const serviceBtn = building.type === 'harbor'
+            ? `<button class="btn btn-gold btn-glow" style="width:100%" onclick="openHarbor()">${svgIcon('boat')} Enter the Harbor</button>` : '';
         upgradeDiv.innerHTML = `
+            ${serviceBtn}
             <div style="margin-top:0.5rem">
                 <p style="font-size:0.8rem;margin-bottom:4px">Upgrade to Lv${nextLvl}:</p>
                 <div class="card-cost">${costHTML(cost)}</div>
@@ -1296,7 +1315,9 @@ function showBuildingInfo(building) {
             </div>
         `;
     } else {
-        upgradeDiv.innerHTML = '<p style="color:var(--gold);margin-top:0.5rem">MAX LEVEL</p><button class="btn btn-danger" style="margin-top:8px" onclick="demolishBuilding(' + building.pos + ')">Demolish</button>';
+        const svcMax = building.type === 'harbor'
+            ? `<button class="btn btn-gold btn-glow" style="width:100%" onclick="openHarbor()">${svgIcon('boat')} Enter the Harbor</button>` : '';
+        upgradeDiv.innerHTML = svcMax + '<p style="color:var(--gold);margin-top:0.5rem">MAX LEVEL</p><button class="btn btn-danger" style="margin-top:8px" onclick="demolishBuilding(' + building.pos + ')">Demolish</button>';
     }
 }
 
@@ -1805,11 +1826,22 @@ function renderRaidView() {
     const targets = document.getElementById('raid-targets');
     targets.innerHTML = '';
 
+    // Boss Raid lives with the other fights now (was buried in the More hub)
+    const bossReady = !(state.exp && Date.now() - (state.exp.bossDoneAt || 0) < 86400000);
+    const bossBanner = `
+        <button class="boss-banner ${bossReady ? '' : 'done'}" onclick="openBossRaid()">
+            <span class="boss-banner-ico">${svgIcon('dragon')}</span>
+            <span class="boss-banner-txt"><b>Boss Raid — Warlord Grimfang</b>
+            <small>${bossReady ? 'Huge loot, gems & a crate · once a day' : 'Defeated! He returns tomorrow.'}</small></span>
+            <span class="boss-banner-cta">${bossReady ? 'FIGHT' : '✓'}</span>
+        </button>`;
+
     if (state.raidCooldown > Date.now()) {
         const secs = Math.ceil((state.raidCooldown - Date.now()) / 1000);
-        targets.innerHTML = `<div class="club-card"><p> Raid cooldown: ${secs}s remaining</p></div>`;
+        targets.innerHTML = bossBanner + `<div class="club-card"><p> Raid cooldown: ${secs}s remaining</p></div>`;
         return;
     }
+    targets.insertAdjacentHTML('beforeend', bossBanner);
 
     if (currentRaidTab === 'cpu') {
         for (let i = 0; i < CPU_CAMPS.length; i++) {
@@ -2109,6 +2141,22 @@ function cpuAttack() {
 // CLUB SYSTEM
 // ============================================================
 
+// War Room + Allies — clan-flavored features live WITH the clan tab now,
+// not scattered across the More hub.
+function clubExtrasHTML() {
+    return `
+        <h3 class="hero-section-title" style="margin-top:18px">War Room</h3>
+        <div class="harbor-grid">
+            <button class="harbor-tile" onclick="openClanWar()"><span class="harbor-ico">${svgIcon('swords')}</span><span class="harbor-name">Clan War</span><span class="harbor-desc">Best-of-5 against a rival clan</span></button>
+            <button class="harbor-tile" onclick="openTournament()"><span class="harbor-ico">${svgIcon('trophy')}</span><span class="harbor-name">Tournament</span><span class="harbor-desc">Daily 8-fighter bracket</span></button>
+        </div>
+        <h3 class="hero-section-title">Allies</h3>
+        <div class="harbor-grid">
+            <button class="harbor-tile" onclick="openFriends()"><span class="harbor-ico">${svgIcon('friends')}</span><span class="harbor-name">Friends</span><span class="harbor-desc">Daily gifts & visits</span></button>
+            <button class="harbor-tile" onclick="openOnline()"><span class="harbor-ico">${svgIcon('cloud')}</span><span class="harbor-name">Go Online</span><span class="harbor-desc">Real clans, chat & leaderboard</span></button>
+        </div>`;
+}
+
 function renderClubView() {
     const content = document.getElementById('club-content');
 
@@ -2125,6 +2173,7 @@ function renderClubView() {
                 <div id="available-clubs"></div>
             </div>
         `;
+        content.insertAdjacentHTML('beforeend', clubExtrasHTML());
         renderAvailableClubs();
         return;
     }
@@ -2174,6 +2223,7 @@ function renderClubView() {
             `).join('')}
         </div>
         <button class="btn btn-danger" style="margin-top:0.5rem" onclick="leaveClub()">Leave Club</button>
+        ${clubExtrasHTML()}
     `;
 }
 
@@ -2607,7 +2657,57 @@ function renderBattleLog() {
 // UI & NAVIGATION
 // ============================================================
 
+// ============================================================
+// FEATURE GATING — the game reveals itself as your Town Hall grows.
+// Professional pacing: a new player sees 4 tabs, not 11.
+// ============================================================
+const FEATURE_GATES = {
+    village: 1, build: 1, army: 1, raid: 1, log: 1,
+    heroes: 2, research: 2, quests: 2,
+    world: 3, more: 3,
+    club: 4
+};
+function featureUnlocked(view) {
+    return getTHLevel() >= (FEATURE_GATES[view] || 1);
+}
+let _gateTH = null;
+function updateNavGates() {
+    const th = getTHLevel();
+    if (_gateTH != null && th > _gateTH) announceUnlocks(_gateTH, th);
+    _gateTH = th;
+    document.querySelectorAll('.nav-btn').forEach(b => {
+        const v = b.dataset.view;
+        const need = FEATURE_GATES[v] || 1;
+        const locked = th < need;
+        b.classList.toggle('nav-locked', locked);
+        let tag = b.querySelector('.nav-lock');
+        if (locked && !tag) {
+            tag = document.createElement('span');
+            tag.className = 'nav-lock';
+            tag.innerHTML = svgIcon('lock');
+            b.appendChild(tag);
+            b.title = `Unlocks at Town Hall ${need}`;
+        } else if (!locked && tag) {
+            tag.remove();
+            b.title = '';
+        }
+    });
+}
+function announceUnlocks(prevTH, newTH) {
+    const names = { heroes: 'Heroes', research: 'Research', quests: 'the Journal', world: 'the World map', more: 'the Guild Hall extras', club: 'Clubs' };
+    for (const [view, need] of Object.entries(FEATURE_GATES)) {
+        if (need > prevTH && need <= newTH && names[view]) {
+            toast(`🔓 Unlocked: ${names[view]}!`, 'success');
+            try { Audio.achievement(); } catch (e) {}
+        }
+    }
+}
+
 function switchView(view) {
+    if (!featureUnlocked(view)) {
+        toast(`Unlocks at Town Hall ${FEATURE_GATES[view]} — keep building!`, 'info');
+        return;
+    }
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(`view-${view}`).classList.add('active');
@@ -2918,11 +3018,21 @@ function renderQuestsView() {
         `;
     }).join('');
 
+    // The Journal: every goal & reward track on ONE surface —
+    // daily quests + challenges (Today), the Season Pass, and Milestones.
+    const streak = (state.daily && state.daily.streak) || 1;
+    const chalRows = (typeof challengeRowsHTML === 'function') ? challengeRowsHTML() : '';
+    const passHTML = (typeof passTrackHTML === 'function') ? passTrackHTML() : '';
+    const passTier = (state.exp && state.exp.pass) ? state.exp.pass.tier + 1 : 1;
     el.innerHTML = `
-        <h2> Quests & Achievements</h2>
-        <h3 class="hero-section-title">Daily Quests <span style="font-size:0.7rem;color:var(--text2);font-weight:normal">(resets at midnight)</span></h3>
+        <h2>${svgIcon('scroll')} Journal</h2>
+        <p class="exp-hint" style="margin-top:-6px">🔥 Login streak: <b>${streak} day${streak === 1 ? '' : 's'}</b> · everything you can earn today, in one place.</p>
+        <h3 class="hero-section-title">Today <span style="font-size:0.7rem;color:var(--text2);font-weight:normal">(resets at midnight)</span></h3>
         <div class="quests-grid">${qList}</div>
-        <h3 class="hero-section-title">Achievements (${earnedCount}/${ACHIEVEMENTS.length})</h3>
+        ${chalRows ? `<div class="chal-list" style="margin-top:10px">${chalRows}</div>` : ''}
+        <h3 class="hero-section-title">Season Pass <span style="font-size:0.7rem;color:var(--text2);font-weight:normal">Tier ${passTier}/${typeof PASS_TIERS !== 'undefined' ? PASS_TIERS.length : 10}</span></h3>
+        ${passHTML}
+        <h3 class="hero-section-title">Milestones (${earnedCount}/${ACHIEVEMENTS.length})</h3>
         <div class="ach-grid">${aList}</div>
     `;
 }
@@ -2933,6 +3043,7 @@ function renderQuestsView() {
 
 function updateNotificationBadges() {
     ensureQuestState();
+    updateNavGates();   // keep tab locks in sync with Town Hall level
     // Quests ready to claim
     const questsReady = state.quests.list.filter(q => !q.claimed && (state.quests.progress[q.id] || 0) >= q.goal).length;
     setBadge('quests', questsReady);

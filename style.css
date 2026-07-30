@@ -3794,3 +3794,35 @@ h2 .nav-ic .vw-ic, .exp-title .vw-ic, .codex-h .vw-ic { width: 1.05em; height: 1
 /* Garrison guards */
 .lb-guard { z-index: 5; filter: drop-shadow(0 0 4px rgba(239,68,68,0.55)); }
 .lb-guard .lb-bhp { width: 26px; }
+
+/* ============================================================
+   PROFESSIONAL FEEL: feature gates, view transitions
+   ============================================================ */
+.nav-btn.nav-locked { opacity: 0.38; filter: saturate(0.3); position: relative; }
+.nav-btn.nav-locked:hover { opacity: 0.55; }
+.nav-lock { position: absolute; right: 6px; top: 6px; width: 12px; height: 12px; color: #fbbf24; }
+.nav-lock svg { width: 12px; height: 12px; }
+/* Views ease in instead of popping */
+.view.active { animation: viewIn 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes viewIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+/* Harbor hub */
+.harbor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+.harbor-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+    padding: 14px; border-radius: 12px; border: 1px solid var(--border); cursor: pointer;
+    background: linear-gradient(160deg, rgba(42,74,114,0.35), rgba(14,23,38,0.6)); color: var(--text);
+    transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s; text-align: left; }
+.harbor-tile:hover { transform: translateY(-2px); border-color: #f4c44d; box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
+.harbor-ico svg { width: 26px; height: 26px; color: #7fd8ff; }
+.harbor-name { font-weight: 800; font-size: 0.92rem; }
+.harbor-desc { font-size: 0.72rem; color: var(--text2); }
+/* Boss banner in the Raid view */
+.boss-banner { display: flex; align-items: center; gap: 14px; width: 100%; margin-bottom: 14px;
+    padding: 14px 18px; border-radius: 14px; cursor: pointer; text-align: left; color: var(--text);
+    background: linear-gradient(120deg, rgba(160,40,24,0.45), rgba(90,8,8,0.5) 60%, rgba(14,23,38,0.7));
+    border: 1.5px solid #a02818; box-shadow: 0 0 18px rgba(160,40,24,0.25); transition: transform 0.12s, box-shadow 0.12s; }
+.boss-banner:hover { transform: translateY(-1px); box-shadow: 0 4px 22px rgba(160,40,24,0.4); }
+.boss-banner.done { filter: saturate(0.4); opacity: 0.75; }
+.boss-banner-ico svg { width: 34px; height: 34px; color: #ff8a5c; }
+.boss-banner-txt { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.boss-banner-txt small { color: var(--text2); font-size: 0.72rem; }
+.boss-banner-cta { font-weight: 900; color: #fbbf24; letter-spacing: 0.06em; }

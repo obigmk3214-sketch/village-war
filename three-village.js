@@ -376,6 +376,13 @@ function t3BuildingModel(type, level) {
             add(new THREE.BoxGeometry(1.0, 0.8, 1.0), M(0x1e3a5a), 0, 0.4, 0);
             add(new THREE.SphereGeometry(0.34, 10, 8), M(0x5fb0f0), 0, 1.05, 0);
             break;
+        case 'harbor':
+            add(new THREE.BoxGeometry(1.1, 0.5, 0.8), M(0x8d857a), -0.15, 0.25, 0);      // quay
+            add(new THREE.BoxGeometry(0.55, 0.45, 0.55), M(0xa87d4a), -0.3, 0.72, 0);    // warehouse
+            add(new THREE.ConeGeometry(0.42, 0.35, 4), M(0x5a3818), -0.3, 1.1, 0, Math.PI / 4);
+            add(new THREE.BoxGeometry(0.9, 0.08, 0.34), M(0x7a4818), 0.5, 0.3, 0.15);    // pier
+            add(new THREE.CylinderGeometry(0.035, 0.035, 0.7, 6), M(0x3a2010), 0.35, 0.65, 0.15); // crane mast
+            break;
         case 'fortress':
             add(new THREE.BoxGeometry(1.35, 1.0, 1.35), M(0x5e5448), 0, 0.5, 0);
             add(new THREE.CylinderGeometry(0.24, 0.27, 1.5, 8), M(0x4e4438), -0.55, 0.75, -0.55);
