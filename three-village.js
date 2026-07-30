@@ -87,8 +87,20 @@ function build3DScene(host) {
     host.style.height = H + 'px';
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87bfff);
-    scene.fog = new THREE.Fog(0x87bfff, 60, 140);
+    // Golden-hour gradient sky (canvas texture) instead of a flat blue fill
+    {
+        const c = document.createElement('canvas'); c.width = 4; c.height = 256;
+        const g = c.getContext('2d');
+        const grad = g.createLinearGradient(0, 0, 0, 256);
+        grad.addColorStop(0, '#5e93d8');
+        grad.addColorStop(0.55, '#9cc4ea');
+        grad.addColorStop(0.8, '#f2d9ae');
+        grad.addColorStop(1, '#f7c98a');
+        g.fillStyle = grad; g.fillRect(0, 0, 4, 256);
+        const skyTex = new THREE.CanvasTexture(c);
+        scene.background = skyTex;
+    }
+    scene.fog = new THREE.Fog(0xcfe0ef, 60, 150);
 
     const camera = new THREE.PerspectiveCamera(48, W / H, 0.1, 300);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -115,6 +127,25 @@ function build3DScene(host) {
     const fill = new THREE.DirectionalLight(0xbfd6ff, 0.18);
     fill.position.set(-14, 10, -10);
     scene.add(fill);
+
+    // ---- Drifting low-poly clouds ----
+    const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.82, emissive: 0x668, emissiveIntensity: 0.12 });
+    const clouds = [];
+    for (let i = 0; i < 4; i++) {
+        const cl = new THREE.Group();
+        const puffs = 3 + (i % 2);
+        for (let p = 0; p < puffs; p++) {
+            const s = 1.2 + ((i * 3 + p * 7) % 10) / 7;
+            const m = new THREE.Mesh(new THREE.SphereGeometry(s, 7, 6), cloudMat);
+            m.position.set(p * 1.6 - puffs * 0.8, (p % 2) * 0.4, ((p * 5) % 3) * 0.5);
+            m.scale.y = 0.55;
+            cl.add(m);
+        }
+        cl.position.set(-30 + i * 18, 16 + (i % 2) * 4, -18 + (i * 11) % 26);
+        scene.add(cl);
+        clouds.push(cl);
+    }
+    T3.clouds = clouds;
 
     // ---- Water ----
     const waterGeo = new THREE.PlaneGeometry(240, 240, 24, 24);
@@ -282,6 +313,12 @@ function build3DScene(host) {
             wpos.setZ(i, wBase[i] + Math.sin(t * 1.4 + i * 0.7) * 0.07);
         }
         wpos.needsUpdate = true;
+        // clouds drift slowly across the island and wrap around
+        if (T3.clouds) for (let i = 0; i < T3.clouds.length; i++) {
+            const cl = T3.clouds[i];
+            cl.position.x += 0.006 + i * 0.0015;
+            if (cl.position.x > 42) cl.position.x = -42;
+        }
         renderer.render(scene, camera);
         lastRender = now;
     }

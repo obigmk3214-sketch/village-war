@@ -2164,7 +2164,8 @@ function renderClubView() {
         content.innerHTML = `
             <div class="club-card">
                 <h3>Join or Create a Club</h3>
-                <p style="color:var(--text2);margin-bottom:1rem">Clubs compete in groups of 4 for amazing rewards!</p>
+                <p style="color:var(--text2);margin-bottom:1rem">Local clubs compete against AI rivals in groups of 4 — a training league for the real thing.
+                    For live clans with real players, use <b>Go Online</b> below.</p>
                 <div style="margin-bottom:1rem">
                     <input id="club-name-input" placeholder="Enter club name..." style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);width:200px">
                     <button class="btn btn-gold" onclick="createClub()">Create Club ( 500)</button>
@@ -3041,9 +3042,81 @@ function renderQuestsView() {
 // NOTIFICATION BADGES
 // ============================================================
 
+// ============================================================
+// OBJECTIVE ADVISOR — a quiet "Next:" chip on the village view
+// that always knows your best next move. First matching rule wins.
+// ============================================================
+function nextObjective() {
+    ensureSoldiers();
+    const th = getBuilding('townhall');
+    const thLvl = th ? th.level : 1;
+    const idleBuilder = (typeof freeBuilders === 'function') ? freeBuilders() > 0 : true;
+    // 1. No troops at all → recruit
+    if (!state.soldiers.length) return { text: 'Recruit your first troops', view: 'army' };
+    // 2. Nothing deployed to the army formation → deploy
+    if (state.soldiers.length && getDeployed('army').length === 0)
+        return { text: 'Deploy soldiers to your Army formation', view: 'army' };
+    // 3. Town Hall upgrade available and affordable → the big one
+    if (th && th.level < BUILDING_DEFS.townhall.maxLevel && !th.upgrading) {
+        const cost = getBuildingCost('townhall', th.level + 1);
+        const lvlOK = state.level >= thUpgradeReqLevel('townhall', th.level + 1);
+        const blockers = townHallUpgradeBlockers(th.level);
+        if (lvlOK && !blockers.length && canAfford(cost) && idleBuilder)
+            return { text: `Upgrade the Town Hall to Lv${th.level + 1}!`, view: 'village' };
+    }
+    // 4. A production building type you can build but haven't → build it
+    for (const t of ['goldmine', 'lumbermill', 'farm', 'ironmine', 'coinmint', 'harbor', 'researchlab']) {
+        const def = BUILDING_DEFS[t];
+        if (!def || (def.reqTH || 1) > thLvl) continue;
+        if (!state.buildings.some(b => b.type === t) && canAfford(getBuildingCost(t, 1)) && idleBuilder)
+            return { text: `Build a ${def.name}`, view: 'build' };
+    }
+    // 5. Storage nearly full → spend or expand
+    const nearCap = Object.keys(state.resources).filter(r => (state.resources[r] || 0) >= 0.92 * (state.maxResources[r] || 1));
+    if (nearCap.length >= 2) return { text: 'Storage almost full — upgrade or spend!', view: 'build' };
+    // 6. Raid ready → go fight
+    if (state.raidCooldown <= Date.now() && getDeployed('army').length > 0)
+        return { text: 'Your army is ready — raid a camp!', view: 'raid' };
+    // 7. Idle builder + any affordable upgrade → keep builders busy
+    if (idleBuilder) {
+        for (const b of state.buildings) {
+            const def = BUILDING_DEFS[b.type];
+            if (b.level < def.maxLevel && !b.upgrading && !b.constructing && canAfford(getBuildingCost(b.type, b.level + 1)))
+                return { text: `Builders are idle — upgrade your ${def.name}`, view: 'village' };
+        }
+    }
+    // 8. Journal has claimables
+    const ready = state.quests.list.some(q => !q.claimed && (state.quests.progress[q.id] || 0) >= q.goal);
+    if (ready && featureUnlocked('quests')) return { text: 'Journal rewards are ready to claim!', view: 'quests' };
+    return null;
+}
+function updateAdvisor() {
+    const host = document.getElementById('view-village');
+    if (!host) return;
+    let chip = document.getElementById('advisor-chip');
+    const obj = (state.tutorialDone || state.tutorialSeen) ? nextObjective() : null;
+    if (!obj) { if (chip) chip.remove(); return; }
+    if (!chip) {
+        chip = document.createElement('button');
+        chip.id = 'advisor-chip';
+        chip.style.cssText = 'position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:30;'
+            + 'display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;cursor:pointer;'
+            + 'background:linear-gradient(160deg,rgba(20,30,48,0.92),rgba(14,23,38,0.95));color:#e8e2d0;'
+            + 'border:1px solid rgba(244,196,77,0.55);box-shadow:0 4px 14px rgba(0,0,0,0.4);'
+            + 'font-size:0.8rem;font-weight:700;backdrop-filter:blur(4px)';
+        host.appendChild(chip);
+    }
+    if (chip.dataset.text !== obj.text) {
+        chip.dataset.text = obj.text;
+        chip.innerHTML = `<span style="color:#f4c44d">Next:</span> ${obj.text}`;
+        chip.onclick = () => { switchView(obj.view); };
+    }
+}
+
 function updateNotificationBadges() {
     ensureQuestState();
     updateNavGates();   // keep tab locks in sync with Town Hall level
+    try { updateAdvisor(); } catch (e) {}
     // Quests ready to claim
     const questsReady = state.quests.list.filter(q => !q.claimed && (state.quests.progress[q.id] || 0) >= q.goal).length;
     setBadge('quests', questsReady);
@@ -4106,6 +4179,7 @@ function setupSplash() {
         try {
             Audio.fanfare();
             Audio.enableMusic();
+            Audio.startAmbient && Audio.startAmbient();   // soft surf + distant gulls under everything
             updateMusicButtonUI(true);
         } catch (e) {}
         splash.classList.add('splash-fade');

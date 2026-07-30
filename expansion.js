@@ -936,7 +936,8 @@ function openFriends() {
     ensureExp();
     expModal(`
         <h3 class="exp-title">${svgIcon('handshake')} Friends</h3>
-        <p class="exp-hint">Send daily gifts to receive rewards back. Visiting earns a little XP.</p>
+        <p class="exp-hint">Your practice neighbors — send daily gifts, get rewards back, visits earn pass XP.
+            <br><span style="opacity:.8">For <b>real</b> allies and clan chat, head to ${typeof svgIcon === 'function' ? svgIcon('cloud') : ''} <button class="link-btn" onclick="closeExpModal();openOnline()">Online</button>.</span></p>
         <div class="friend-list">
             ${state.exp.friends.map((f, i) => {
                 const ready = Date.now() >= f.giftReadyAt;

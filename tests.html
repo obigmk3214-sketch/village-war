@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Village War — Test Suite</title>
+<style>
+  body { background: #141c2b; color: #e8e2d0; font-family: ui-monospace, Menlo, monospace; font-size: 13px; margin: 20px; }
+  h1 { font-size: 16px; font-family: Inter, system-ui, sans-serif; }
+  .pass { color: #4ade80; } .fail { color: #f87171; font-weight: bold; }
+  #summary { font-size: 15px; margin: 12px 0; font-weight: bold; }
+  iframe { width: 10px; height: 10px; opacity: 0; position: absolute; pointer-events: none; }
+</style>
+</head>
+<body>
+<h1>⚔️ Village War — Automated Test Suite</h1>
+<div id="summary">Booting game…</div>
+<div id="results"></div>
+<iframe id="game" src="index.html"></iframe>
+
+<script>
+// Unlock the gate for the iframe (same origin) and remember the player's real save
+const GATE_KEY = 'vw_gate_ok';
+const SAVE_KEY = 'villagewar_save';
+const realSave = localStorage.getItem(SAVE_KEY);
+const realGate = localStorage.getItem(GATE_KEY);
+
+const results = [];
+function report(name, ok, detail) {
+  results.push({ name, ok, detail });
+  const el = document.createElement('div');
+  el.className = ok ? 'pass' : 'fail';
+  el.textContent = `${ok ? '✓' : '✗'} ${name}${detail ? ' — ' + detail : ''}`;
+  document.getElementById('results').appendChild(el);
+}
+function t(name, fn) {
+  try { fn(); report(name, true); }
+  catch (e) { report(name, false, e.message); }
+}
+function eq(a, b, msg) { if (a !== b) throw new Error(`${msg || 'expected'} ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); }
+function ok(v, msg) { if (!v) throw new Error(msg || 'expected truthy'); }
+
+window.addEventListener('load', () => setTimeout(run, 2500));
+
+function run() {
+  const W = document.getElementById('game').contentWindow;
+  if (!W || typeof W.state === 'undefined') {
+    // game.js state isn't a window global — reach it via a probe
+  }
+  const G = W; // functions are global in the frame
+  const state = G.state || (G.eval ? G.eval('state') : null);
+  if (!state) { document.getElementById('summary').textContent = 'FATAL: could not reach game state'; return; }
+  const snapshot = JSON.stringify(state);
+
+  // ---------- core economy ----------
+  t('resources initialized and non-negative', () => {
+    for (const [k, v] of Object.entries(state.resources)) ok(v >= 0, k + ' negative');
+  });
+  t('canAfford / spendResources round-trip', () => {
+    state.resources.coins = 500;
+    ok(G.eval('canAfford({coins: 400})'), 'should afford 400');
+    ok(!G.eval('canAfford({coins: 600})'), 'should not afford 600');
+    G.eval('spendResources({coins: 100})');
+    eq(state.resources.coins, 400, 'coins after spend');
+  });
+  t('addResources respects storage caps', () => {
+    G.eval('updateStorageCaps()');
+    const cap = state.maxResources.coins;
+    state.resources.coins = cap - 10;
+    G.eval('addResources({coins: 9999})');
+    eq(state.resources.coins, cap, 'coins capped');
+  });
+  t('quartermaster talent persists through cap recompute', () => {
+    G.eval('ensureExp()');
+    state.exp.talents.quartermaster = 2;
+    G.eval('updateStorageCaps()');
+    const withQM = state.maxResources.coins;
+    state.exp.talents.quartermaster = 0;
+    G.eval('updateStorageCaps()');
+    ok(withQM === Math.round(state.maxResources.coins * 1.1), '+10% at rank 2');
+  });
+  t('building cost scales with level', () => {
+    const c1 = G.eval('getBuildingCost("goldmine", 1).coins');
+    const c3 = G.eval('getBuildingCost("goldmine", 3).coins');
+    ok(c3 > c1 * 1.5, `lv3 (${c3}) should cost well over lv1 (${c1})`);
+  });
+
+  // ---------- veterans & memorial ----------
+  t('addSoldier assigns name/kills/raids fields', () => {
+    G.eval('ensureSoldiers()');
+    const s = G.eval('addSoldier("warrior", "reserve")');
+    ok(s.name && s.name.includes(' '), 'has a two-part name');
+    eq(s.kills, 0); eq(s.raids, 0);
+  });
+  t('rank thresholds: 0/1/3/7/15 raids', () => {
+    const r = n => G.eval(`rankOf({raids:${n}}).name`);
+    eq(r(0), 'Recruit'); eq(r(1), 'Regular'); eq(r(3), 'Veteran'); eq(r(7), 'Elite'); eq(r(15), 'Legend');
+  });
+  t('veteran stat multiplier caps at +24%', () => {
+    eq(G.eval('vetStatMult({raids: 99})'), 1.24);
+  });
+  t('recordFallen buries soldiers and drops morale', () => {
+    G.eval('ensureMorale()');
+    state.morale = 70;
+    const s = G.eval('addSoldier("warrior", "army")');
+    const before = state.memorial.length;
+    G.eval(`removeSoldiers([${s.id}], "Test Battle")`);
+    eq(state.memorial.length, before + 1, 'memorial grew');
+    ok(state.morale < 70, 'morale dropped');
+    eq(state.memorial[0].fellTo, 'Test Battle');
+  });
+  t('funeral costs food and restores morale', () => {
+    state.resources.food = 1000;
+    state.morale = 50;
+    G.eval('holdFuneral()');
+    ok(state.resources.food < 1000, 'food spent');
+    ok(state.morale > 50, 'morale restored');
+  });
+
+  // ---------- battle resolution ----------
+  t('overwhelming attacker wins, weak attacker loses', () => {
+    ok(G.eval('simulateBattle({warrior: 30}, {warrior: 1}, 0, true).victory'), 'should win');
+    ok(!G.eval('simulateBattle({warrior: 1}, {warrior: 40}, 100, true).victory'), 'should lose');
+  });
+  t('equal-forces stalemate is NOT an automatic win', () => {
+    let wins = 0;
+    for (let i = 0; i < 12; i++) if (G.eval('simulateBattle({shieldbearer: 50}, {shieldbearer: 50}, 0, true).victory')) wins++;
+    ok(wins < 12, 'attacker should not win every mirror stalemate');
+  });
+
+  // ---------- quests & gates ----------
+  t('coinsSpent quest metric tracks', () => {
+    G.eval('ensureQuestState()');
+    G.eval('state.quests.list = [{id:"spendK", text:"t", goal:1000, metric:"coinsSpent", reward:{}, claimed:false}]; state.quests.progress = {}');
+    state.resources.coins = 5000;
+    G.eval('spendResources({coins: 1000})');
+    eq(state.quests.progress.spendK, 1000);
+  });
+  t('feature gates lock by Town Hall level', () => {
+    const th = state.buildings.find(b => b.type === 'townhall');
+    const real = th.level;
+    th.level = 1;
+    ok(!G.eval('featureUnlocked("club")'), 'club locked at TH1');
+    ok(G.eval('featureUnlocked("raid")'), 'raid open at TH1');
+    th.level = 4;
+    ok(G.eval('featureUnlocked("club")'), 'club open at TH4');
+    th.level = real;
+  });
+  t('objective advisor returns a sane objective', () => {
+    const obj = G.eval('nextObjective()');
+    ok(obj === null || (typeof obj.text === 'string' && typeof obj.view === 'string'), 'shape ok');
+  });
+
+  // ---------- persistence ----------
+  t('save/load round-trip preserves core state', () => {
+    G.eval('saveGame()');
+    const before = JSON.stringify({ r: state.resources, n: state.soldiers.length, m: state.memorial.length });
+    G.eval('loadGame()');
+    const after = JSON.stringify({ r: state.resources, n: state.soldiers.length, m: state.memorial.length });
+    eq(after, before);
+  });
+
+  // restore the player's real save so tests never clobber progress
+  try {
+    if (realSave != null) localStorage.setItem(SAVE_KEY, realSave); else localStorage.removeItem(SAVE_KEY);
+    if (realGate != null) localStorage.setItem(GATE_KEY, realGate);
+  } catch (e) {}
+
+  const passed = results.filter(r => r.ok).length;
+  const failed = results.length - passed;
+  document.getElementById('summary').innerHTML =
+    `<span class="${failed ? 'fail' : 'pass'}">${passed}/${results.length} passed${failed ? ' · ' + failed + ' FAILED' : ' ✓'}</span>`;
+  window.__testResults = { passed, failed, results };
+}
+</script>
+</body>
+</html>

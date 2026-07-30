@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Village War — Art Review</title>
+<style>
+  body { background: #1a2332; color: #e8e2d0; font-family: Inter, system-ui, sans-serif; margin: 20px; }
+  h1 { font-size: 20px; } h2 { font-size: 15px; margin: 26px 0 8px; color: #f4c44d; border-bottom: 1px solid #34435c; padding-bottom: 4px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .cell { background: linear-gradient(180deg, #2c3a52, #232e42); border: 1px solid #34435c; border-radius: 10px; padding: 6px; text-align: center; }
+  .cell .lbl { font-size: 10px; color: #9fb0c8; margin-top: 3px; }
+  .stage { background: radial-gradient(circle at 50% 30%, #79b95c, #578a41); border-radius: 6px; }
+  .stage.sea { background: radial-gradient(circle at 50% 30%, #58a1d8, #2f6fa8); }
+  .stage.dark { background: #26303f; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<h1>⚔️ Village War — Art Review <span id="stamp" style="font-size:11px;color:#9fb0c8"></span></h1>
+<div id="out">Loading art…</div>
+
+<script>
+// ---- minimal stubs so game art files load standalone ----
+window.VW_API_BASE = ''; window.VW_GATE = { enabled: false };
+var state = { buildings: [], soldiers: [], memorial: [], resources: {}, maxResources: {} };
+function toast(){} function saveGame(){} function formatNum(n){ return String(n); }
+</script>
+<script src="icons.js"></script>
+<script src="assets.js"></script>
+<script src="characters.js"></script>
+<script>
+// world.js needs iso()/ISO sometimes; provide safe fallbacks if missing after load
+</script>
+<script src="world.js"></script>
+<script>
+(function render() {
+  const out = document.getElementById('out');
+  document.getElementById('stamp').textContent = new Date().toLocaleTimeString();
+  let html = '';
+
+  // ---------- Buildings at level tiers ----------
+  html += '<h2>Isometric Buildings — levels 1 / 4 / 7 / 10</h2>';
+  const B = (typeof BUILDING_RENDERERS !== 'undefined') ? BUILDING_RENDERERS : {};
+  for (const [type, fn] of Object.entries(B)) {
+    html += `<div class="row" style="margin-bottom:6px">`;
+    for (const lvl of [1, 4, 7, 10]) {
+      let frag = '';
+      try { frag = fn(70, 84, lvl); } catch (e) { frag = `<text x="10" y="40" fill="red" font-size="9">${e.message}</text>`; }
+      html += `<div class="cell"><div class="stage"><svg width="140" height="112" viewBox="0 0 140 112">${frag}</svg></div><div class="lbl">${type} · lv${lvl}</div></div>`;
+    }
+    html += `</div>`;
+  }
+
+  // ---------- Side-view troop sprites ----------
+  html += '<h2>Troop Sprites (menus / formation)</h2><div class="row">';
+  const troopTypes = ['warrior','archer','shieldbearer','cavalry','siege','knight','crossbowman','paladin','catapult','pikeman'];
+  for (const t of troopTypes) {
+    let s = '';
+    try { s = (typeof charSprite === 'function') ? charSprite(t) : 'n/a'; } catch (e) { s = e.message; }
+    html += `<div class="cell"><div class="stage" style="padding:6px">${s.replace('<svg ', '<svg width="64" height="76" ')}</div><div class="lbl">${t}</div></div>`;
+  }
+  html += '</div>';
+
+  // ---------- Top-down battle tokens ----------
+  html += '<h2>Battle Tokens (top-down) — friendly & hostile</h2><div class="row">';
+  for (const t of troopTypes) {
+    for (const hostile of [false, true]) {
+      let s = '';
+      try { s = (typeof topUnitSVG === 'function') ? topUnitSVG(t, hostile) : 'n/a'; } catch (e) { s = e.message; }
+      html += `<div class="cell"><div class="stage ${hostile ? 'dark' : ''}" style="padding:4px">${s.replace('<svg ', '<svg width="44" height="44" ')}</div><div class="lbl">${t}${hostile ? ' ⚔' : ''}</div></div>`;
+    }
+  }
+  html += '</div>';
+
+  // ---------- Building icons (battle scene) ----------
+  html += '<h2>Building Icons (battle scene & panels)</h2><div class="row">';
+  const iconTypes = ['townhall','goldmine','ironmine','lumbermill','farm','coinmint','storage','harbor','researchlab','barracks','stable','fortress','wall','archertower','cannon','mortar'];
+  for (const t of iconTypes) {
+    let s = '';
+    try { s = (typeof buildingIcon === 'function') ? (buildingIcon(t) || '<i>none</i>') : 'n/a'; } catch (e) { s = e.message; }
+    html += `<div class="cell"><div class="stage" style="padding:4px">${String(s).replace('<svg ', '<svg width="56" height="56" ')}</div><div class="lbl">${t}</div></div>`;
+  }
+  html += '</div>';
+
+  // ---------- Hero portraits & enemies ----------
+  html += '<h2>Heroes & Enemies</h2><div class="row">';
+  if (typeof HERO_DEFS !== 'undefined') {
+    for (const id of Object.keys(HERO_DEFS)) {
+      let s = '';
+      try { s = (typeof heroPortraitHTML === 'function') ? heroPortraitHTML(id) : 'n/a'; } catch (e) { s = e.message; }
+      html += `<div class="cell"><div class="stage dark" style="padding:4px">${s}</div><div class="lbl">${id}</div></div>`;
+    }
+  }
+  for (let i = 0; i < 6; i++) {
+    let s = '';
+    try { s = (typeof enemySpriteByIndex === 'function') ? enemySpriteByIndex(i) : ''; } catch (e) { s = e.message; }
+    if (s) html += `<div class="cell"><div class="stage dark" style="padding:4px">${String(s).replace('<svg ', '<svg width="56" height="64" ')}</div><div class="lbl">enemy ${i}</div></div>`;
+  }
+  html += '</div>';
+
+  out.innerHTML = html;
+})();
+</script>
+</body>
+</html>

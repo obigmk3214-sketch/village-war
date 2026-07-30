@@ -68,36 +68,39 @@ const Audio = (() => {
     const BASE = 'music/';
     // `vibe` groups similar-sounding tracks so the queue never plays two of the
     // same vibe back-to-back (keeps the rotation feeling varied).
+    // `trim` = per-track loudness normalization (linear gain), measured by decoding
+    // every file in-browser and computing RMS: all tracks now sit at ~-15.5 dB RMS
+    // so no piece jumps out louder or falls into the background.
     const PLAYLIST = [
         // Calm — village / exploration
-        { title: 'Enchanted Journey',   mood: 'calm', vibe: 'soft',   url: BASE + 'kml-enchanted.m4a' },
-        { title: 'Rogue Meadow',        mood: 'calm', vibe: 'soft',   url: BASE + 'rogue-meadow.m4a' },
-        { title: 'Teller of the Tales', mood: 'calm', vibe: 'soft',   url: BASE + 'kml-teller.m4a' },
-        { title: 'Skye Cuillin',        mood: 'calm', vibe: 'soft',   url: BASE + 'kml-skye.m4a' },
-        { title: 'Thatched Villagers',  mood: 'calm', vibe: 'soft',   url: BASE + 'kml-thatched.m4a' },
+        { title: 'Enchanted Journey',   mood: 'calm', vibe: 'soft',   url: BASE + 'kml-enchanted.m4a', trim: 0.876 },
+        { title: 'Rogue Meadow',        mood: 'calm', vibe: 'soft',   url: BASE + 'rogue-meadow.m4a', trim: 0.972 },
+        { title: 'Teller of the Tales', mood: 'calm', vibe: 'soft',   url: BASE + 'kml-teller.m4a', trim: 1.09 },
+        { title: 'Skye Cuillin',        mood: 'calm', vibe: 'soft',   url: BASE + 'kml-skye.m4a', trim: 0.981 },
+        { title: 'Thatched Villagers',  mood: 'calm', vibe: 'soft',   url: BASE + 'kml-thatched.m4a', trim: 0.953 },
         // Calm — lively tavern / folk
-        { title: 'Dancing at the Inn',  mood: 'calm', vibe: 'lively', url: BASE + 'tavern-dance.m4a' },
-        { title: 'Fiddles McGinty',     mood: 'calm', vibe: 'lively', url: BASE + 'kml-fiddles.m4a' },
-        { title: 'The Path of the Goblin King', mood: 'calm', vibe: 'lively', url: BASE + 'kml-goblinking.m4a' },
-        { title: 'Master of the Feast', mood: 'calm', vibe: 'lively', url: BASE + 'kml-feast.m4a' },
-        { title: 'Wizardtorium',        mood: 'calm', vibe: 'lively', url: BASE + 'kml-wizardtorium.m4a' },
+        { title: 'Dancing at the Inn',  mood: 'calm', vibe: 'lively', url: BASE + 'tavern-dance.m4a', trim: 1.033 },
+        { title: 'Fiddles McGinty',     mood: 'calm', vibe: 'lively', url: BASE + 'kml-fiddles.m4a', trim: 1.073 },
+        { title: 'The Path of the Goblin King', mood: 'calm', vibe: 'lively', url: BASE + 'kml-goblinking.m4a', trim: 0.914 },
+        { title: 'Master of the Feast', mood: 'calm', vibe: 'lively', url: BASE + 'kml-feast.m4a', trim: 1.056 },
+        { title: 'Wizardtorium',        mood: 'calm', vibe: 'lively', url: BASE + 'kml-wizardtorium.m4a', trim: 0.971 },
         // Calm — grand / stately
-        { title: 'The Britons',         mood: 'calm', vibe: 'grand',  url: BASE + 'the-britons.m4a' },
-        { title: 'Angevin',             mood: 'calm', vibe: 'grand',  url: BASE + 'kml-angevin.m4a' },
-        { title: 'Minstrel Guild',      mood: 'calm', vibe: 'grand',  url: BASE + 'kml-minstrel.m4a' },
+        { title: 'The Britons',         mood: 'calm', vibe: 'grand',  url: BASE + 'the-britons.m4a', trim: 1.04 },
+        { title: 'Angevin',             mood: 'calm', vibe: 'grand',  url: BASE + 'kml-angevin.m4a', trim: 0.888 },
+        { title: 'Minstrel Guild',      mood: 'calm', vibe: 'grand',  url: BASE + 'kml-minstrel.m4a', trim: 1.01 },
         // Epic — battle
-        { title: 'Beyond New Horizons', mood: 'epic', vibe: 'epicA',  url: BASE + 'epic-horizons.m4a' },
-        { title: 'Clash Defiant',       mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-clash.m4a' },
-        { title: 'Heroic Age',          mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-heroic.m4a' },
-        { title: 'Toward the Mountains',mood: 'epic', vibe: 'epicB',  url: BASE + 'mountains.m4a' },
-        { title: 'Anguish',             mood: 'epic', vibe: 'epicB',  url: BASE + 'kml-anguish.m4a' }
+        { title: 'Beyond New Horizons', mood: 'epic', vibe: 'epicA',  url: BASE + 'epic-horizons.m4a', trim: 0.92 },
+        { title: 'Clash Defiant',       mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-clash.m4a', trim: 0.992 },
+        { title: 'Heroic Age',          mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-heroic.m4a', trim: 0.813 },
+        { title: 'Toward the Mountains',mood: 'epic', vibe: 'epicB',  url: BASE + 'mountains.m4a', trim: 0.978 },
+        { title: 'Anguish',             mood: 'epic', vibe: 'epicB',  url: BASE + 'kml-anguish.m4a', trim: 0.9 }
     ];
     const CALM = PLAYLIST.map((t, i) => i).filter(i => PLAYLIST[i].mood === 'calm');
     const EPIC = PLAYLIST.map((t, i) => i).filter(i => PLAYLIST[i].mood === 'epic');
     let lastPlayedIdx = -1;
 
     const MUSIC_VOL = 0.55;
-    const CROSSFADE_SEC = 3.5;                 // overlap length between tracks
+    const CROSSFADE_SEC = 5.5;                 // overlap length between tracks
     const CROSSFADE_MS = CROSSFADE_SEC * 1000;
     let musicAudio = null;
     let musicChainIn = null, musicChainBuilt = false;  // evolving-variety Web Audio graph
@@ -270,7 +273,7 @@ const Audio = (() => {
         musicAudio = a; musicTrackIdx = idx; lastPlayedIdx = idx;
         const pr = a.play();
         if (pr && pr.catch) pr.catch(() => retryOnGesture(a));
-        fadeTo(a, MUSIC_VOL, CROSSFADE_MS);
+        fadeTo(a, MUSIC_VOL * (PLAYLIST[idx].trim || 1), CROSSFADE_MS);
         if (old && old !== a) fadeTo(old, 0, CROSSFADE_MS, () => { try { old.pause(); old.src = ''; if (old._srcNode) old._srcNode.disconnect(); } catch (e) {} });
         if (onTrackChange) onTrackChange(PLAYLIST[idx].title, idx);
     }
@@ -283,6 +286,63 @@ const Audio = (() => {
     }
     function nextTrack() { if (musicPlaying && !usingFallback) playNext(); }
     function prevTrack() { if (musicPlaying && !usingFallback) { qpos = (qpos - 2 + queue.length) % queue.length; playNext(); } }
+
+    // ============================================================
+    // AMBIENT BED — the island soundscape: soft surf that swells and
+    // recedes, with a rare distant gull. Sits far under the music
+    // (-30 dB-ish) so it's felt more than heard. Muted with SFX.
+    // ============================================================
+    let ambientOn = false, ambientNodes = null, gullTimer = null;
+    function startAmbient() {
+        if (ambientOn) return;
+        const c = init(); if (!c) return;
+        ambientOn = true;
+        // pink-ish noise → lowpass → slow swell LFO = waves on the shore
+        const len = c.sampleRate * 4;
+        const buf = c.createBuffer(1, len, c.sampleRate);
+        const d = buf.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0;
+        for (let i = 0; i < len; i++) {
+            const w = Math.random() * 2 - 1;
+            b0 = 0.997 * b0 + 0.029 * w; b1 = 0.985 * b1 + 0.032 * w; b2 = 0.950 * b2 + 0.048 * w;
+            d[i] = (b0 + b1 + b2) * 0.6;
+        }
+        const src = c.createBufferSource();
+        src.buffer = buf; src.loop = true;
+        const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420; lp.Q.value = 0.4;
+        const g = c.createGain(); g.gain.value = 0.028;
+        const swell = c.createOscillator(); swell.type = 'sine'; swell.frequency.value = 0.09;   // ~11s wave period
+        const swellG = c.createGain(); swellG.gain.value = 0.016;
+        swell.connect(swellG).connect(g.gain);
+        src.connect(lp).connect(g).connect(c.destination);
+        src.start(); swell.start();
+        ambientNodes = { src, swell, g };
+        // a far-off gull every 18-45s (two falling chirps)
+        const gull = () => {
+            if (!ambientOn) return;
+            if (!sfxMuted && !document.hidden) {
+                const t0 = c.currentTime + 0.05;
+                for (let k = 0; k < 2; k++) {
+                    const o = c.createOscillator(), og = c.createGain();
+                    o.type = 'sine';
+                    o.frequency.setValueAtTime(1180 - k * 90, t0 + k * 0.28);
+                    o.frequency.exponentialRampToValueAtTime(760, t0 + k * 0.28 + 0.22);
+                    og.gain.setValueAtTime(0, t0 + k * 0.28);
+                    og.gain.linearRampToValueAtTime(0.014, t0 + k * 0.28 + 0.04);
+                    og.gain.exponentialRampToValueAtTime(0.0001, t0 + k * 0.28 + 0.26);
+                    o.connect(og).connect(c.destination);
+                    o.start(t0 + k * 0.28); o.stop(t0 + k * 0.28 + 0.3);
+                }
+            }
+            gullTimer = setTimeout(gull, 18000 + Math.random() * 27000);
+        };
+        gullTimer = setTimeout(gull, 8000);
+    }
+    function stopAmbient() {
+        ambientOn = false;
+        if (gullTimer) { clearTimeout(gullTimer); gullTimer = null; }
+        if (ambientNodes) { try { ambientNodes.src.stop(); ambientNodes.swell.stop(); } catch (e) {} ambientNodes = null; }
+    }
 
     function startMusic() {
         if (musicPlaying) return;
@@ -327,6 +387,7 @@ const Audio = (() => {
         getCurrentTrack,
         onTrackChange: (cb) => { onTrackChange = cb; if (typeof ProcMusic !== 'undefined') ProcMusic.onChange(cb); },
         setBattleMusic: (on) => { setMusicMode(on ? 'epic' : 'calm'); },
+        startAmbient, stopAmbient,
         preloadMusic: () => { try { preloadFirst(); } catch (e) {} },
         fanfare: () => {},   // entry is now the real recorded theme (no synth flourish)
         enableMusic: () => { musicEnabled = true; startMusic(); return true; },
