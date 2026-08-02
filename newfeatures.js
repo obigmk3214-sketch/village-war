@@ -465,6 +465,99 @@ function toggleNotifications() {
 }
 
 // ---------- WORLD VIEW ----------
+// ============================================================
+// ILLUSTRATED CAMPAIGN MAP — the 24 missions as a voyage across
+// four themed isles on one cohesive sea, instead of a card list.
+// ============================================================
+function campaignMapSVG() {
+    const thLevel = getCampaignTHLevel();
+    // serpentine node positions: 4 rows x 6, alternating direction
+    const XS = [95, 258, 421, 584, 747, 910];
+    const ROWY = [78, 188, 298, 404];
+    const pts = CAMPAIGN_MISSIONS.map((m, i) => {
+        const row = Math.floor(i / 6);
+        const col = row % 2 === 0 ? i % 6 : 5 - (i % 6);
+        return { x: XS[col], y: ROWY[row] + (((i * 53) % 25) - 12) };
+    });
+    // smooth path through the nodes
+    let path = `M ${pts[0].x} ${pts[0].y}`;
+    for (let i = 1; i < pts.length; i++) {
+        const p = pts[i - 1], q = pts[i];
+        path += ` Q ${p.x + (q.x - p.x) * 0.2} ${p.y + (q.y - p.y) * 0.9}, ${(p.x + q.x) / 2} ${(p.y + q.y) / 2} T ${q.x} ${q.y}`;
+    }
+    // four themed isles, one per act (drawn under their row of nodes)
+    const isles = [
+        { y: 78,  fill: '#7cb95c', dark: '#5c9542', name: 'The Green Shires',  deco: 'meadow' },
+        { y: 188, fill: '#4e7d3a', dark: '#3a6129', name: 'The Darkwood',      deco: 'forest' },
+        { y: 298, fill: '#9a8f7c', dark: '#7a705e', name: 'The Iron Hills',    deco: 'hills'  },
+        { y: 404, fill: '#d7e2ea', dark: '#aebfcc', name: 'The Frozen Marches',deco: 'snow'   }
+    ];
+    const isleSVG = isles.map((il, a) => {
+        const y = il.y;
+        let deco = '';
+        if (il.deco === 'meadow') deco = `<circle cx="180" cy="${y - 30}" r="3" fill="#e5c94e"/><circle cx="700" cy="${y + 28}" r="3" fill="#e57bb0"/><circle cx="840" cy="${y - 26}" r="2.5" fill="#e5c94e"/>`;
+        if (il.deco === 'forest') deco = [200, 480, 760].map(x => `<path d="M ${x} ${y - 22} L ${x - 9} ${y - 2} L ${x + 9} ${y - 2} Z" fill="#2c4a22" stroke="#1c3016" stroke-width="1"/><rect x="${x - 2}" y="${y - 2}" width="4" height="7" fill="#4a3014"/>`).join('');
+        if (il.deco === 'hills') deco = [260, 620].map(x => `<path d="M ${x} ${y - 30} L ${x - 20} ${y + 2} L ${x + 20} ${y + 2} Z" fill="#6f6553" stroke="#55492f" stroke-width="1"/><path d="M ${x} ${y - 30} L ${x - 7} ${y - 18} L ${x + 4} ${y - 16} Z" fill="#e8e2d0"/>`).join('');
+        if (il.deco === 'snow') deco = [300, 680].map(x => `<path d="M ${x} ${y - 26} L ${x - 16} ${y + 2} L ${x + 16} ${y + 2} Z" fill="#eef4f8" stroke="#9fb4c4" stroke-width="1"/>`).join('');
+        return `
+            <ellipse cx="500" cy="${y}" rx="470" ry="52" fill="#e8d29a"/>
+            <ellipse cx="500" cy="${y}" rx="458" ry="46" fill="${il.fill}"/>
+            <ellipse cx="500" cy="${y + 10}" rx="458" ry="38" fill="${il.dark}" opacity="0.35"/>
+            ${deco}
+            <text x="22" y="${y - 30}" font-size="13" font-weight="800" fill="rgba(20,26,20,0.55)" font-family="Cinzel, serif">${['I','II','III','IV'][a]}. ${il.name}</text>`;
+    }).join('');
+    // mission nodes
+    const BOSS = { 11: true, 17: true, 23: true };
+    let cur = -1;   // first playable incomplete mission
+    for (let i = 0; i < CAMPAIGN_MISSIONS.length; i++) {
+        if (missionUnlocked(i) && (state.campaign.stars[i] || 0) === 0) { cur = i; break; }
+    }
+    const nodes = CAMPAIGN_MISSIONS.map((m, i) => {
+        const { x, y } = pts[i];
+        const stars = state.campaign.stars[i] || 0;
+        const unlocked = missionUnlocked(i);
+        const r = BOSS[i] ? 24 : 16;
+        const fill = stars > 0 ? '#f4c44d' : unlocked ? '#f0e6d2' : '#5b6673';
+        const ring = stars > 0 ? '#a8861d' : unlocked ? '#8a5a2b' : '#3c4450';
+        const starRow = stars > 0 ? [0, 1, 2].map(s => {
+            const sx = x - 12 + s * 12, sy = y + r + 9;
+            return `<path d="M ${sx} ${sy - 4} l 1.3 2.6 2.9 .3 -2.2 2 .7 2.9 -2.7 -1.5 -2.7 1.5 .7 -2.9 -2.2 -2 2.9 -.3 Z"
+                fill="${s < stars ? '#ffd84d' : 'rgba(30,30,40,0.35)'}" stroke="#7a5410" stroke-width="0.8"/>`;
+        }).join('') : '';
+        return `<g onclick="startCampaignMission(${i})" style="cursor:pointer">
+            <title>${m.name} — Lv${m.level}${BOSS[i] ? ' · BOSS' : ''}${unlocked ? '' : ' (locked)'}</title>
+            ${i === cur ? `<circle cx="${x}" cy="${y}" r="${r + 7}" fill="none" stroke="#ffd84d" stroke-width="2.5"><animate attributeName="r" values="${r + 4};${r + 10};${r + 4}" dur="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.9;0.25;0.9" dur="1.6s" repeatCount="indefinite"/></circle>` : ''}
+            <circle cx="${x}" cy="${y + 2.5}" r="${r}" fill="rgba(10,14,20,0.4)"/>
+            <circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="${ring}" stroke-width="2.5"/>
+            <circle cx="${x - r * 0.3}" cy="${y - r * 0.35}" r="${r * 0.45}" fill="rgba(255,255,255,0.28)"/>
+            ${BOSS[i]
+                ? `<path d="M ${x - 9} ${y - 5} L ${x + 9} ${y + 6} M ${x + 9} ${y - 5} L ${x - 9} ${y + 6}" stroke="${unlocked || stars ? '#7a2020' : '#2c333d'}" stroke-width="3.4" stroke-linecap="round"/><circle cx="${x}" cy="${y - 12}" r="3.2" fill="#b3402e"/>`
+                : `<text x="${x}" y="${y + 4.5}" text-anchor="middle" font-size="13" font-weight="900" fill="${unlocked || stars ? '#3a2a10' : '#252b34'}" font-family="Inter, sans-serif">${i + 1}</text>`}
+            ${!unlocked ? `<path d="M ${x - 4} ${y + r - 3} v-3 a4 4 0 0 1 8 0 v3 Z M ${x - 5.5} ${y + r - 3} h11 v7 h-11 Z" fill="#20262e" opacity="0.9"/>` : ''}
+            ${starRow}
+        </g>`;
+    }).join('');
+    const flag = cur >= 0 ? `<g transform="translate(${pts[cur].x + 20},${pts[cur].y - 34})" pointer-events="none">
+        <line x1="0" y1="0" x2="0" y2="22" stroke="#3a2010" stroke-width="2"/>
+        <path class="flag-wave" d="M 0 0 Q 8 3 16 0 Q 12 6 16 10 Q 8 8 0 10 Z" fill="#b3402e" stroke="#5a0808" stroke-width="0.8"/>
+    </g>` : '';
+    return `
+    <svg viewBox="0 0 1000 460" style="width:100%;height:auto;border-radius:14px;display:block" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="cmSea" cx="50%" cy="40%" r="85%">
+                <stop offset="0%" stop-color="#2e6fae"/><stop offset="100%" stop-color="#1e4f86"/>
+            </radialGradient>
+        </defs>
+        <rect x="0" y="0" width="1000" height="460" fill="url(#cmSea)"/>
+        ${[0, 1, 2].map(i => `<ellipse cx="500" cy="${120 + i * 130}" rx="${480 + i * 6}" ry="70" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="2"/>`).join('')}
+        ${isleSVG}
+        <path d="${path}" fill="none" stroke="rgba(20,14,6,0.35)" stroke-width="7" stroke-linecap="round"/>
+        <path d="${path}" fill="none" stroke="#e6cf9c" stroke-width="4" stroke-dasharray="10 8" stroke-linecap="round"/>
+        ${nodes}
+        ${flag}
+    </svg>`;
+}
+
 function renderWorldView() {
     ensureMeta();
     const el = document.getElementById('view-world');
@@ -474,22 +567,6 @@ function renderWorldView() {
     const rows = leaderboardRows();
     const shieldLeft = Math.max(0, state.shieldUntil - Date.now());
     const thLevel = getCampaignTHLevel();
-    const missions = CAMPAIGN_MISSIONS.map((m, i) => {
-        const stars = state.campaign.stars[i] || 0;
-        const unlocked = missionUnlocked(i);
-        const prevDone = i === 0 || (state.campaign.stars[i - 1] || 0) >= 1;
-        const thGated = prevDone && !unlocked;   // previous done, but Town Hall too low
-        const reqTH = missionReqTH(i);
-        return `<div class="mission-node ${unlocked ? '' : 'locked'} ${thGated ? 'th-gated' : ''} ${stars > 0 ? 'done' : ''}" onclick="startCampaignMission(${i})">
-            <div class="mission-num">${i + 1}</div>
-            <div class="mission-name">${m.name}</div>
-            <div class="mission-stars">${svgIcon('star').repeat(stars)}${svgIcon('starOutline').repeat(3 - stars)}</div>
-            ${thGated
-                ? `<div class="mission-req">${svgIcon('lock')} Town Hall Lv${reqTH}</div>`
-                : `<div class="mission-lv">Lv${m.level}</div>`}
-            ${unlocked ? '' : '<div class="mission-lock"></div>'}
-        </div>`;
-    }).join('');
 
     el.innerHTML = `
         <h2>${svgIcon('globe')} World</h2>
@@ -510,7 +587,7 @@ function renderWorldView() {
 
         <h3 class="hero-section-title">${svgIcon('swords')}️ Campaign</h3>
         <p class="campaign-note">${svgIcon('castle')} You can clear <b>2 missions per Town Hall level</b>. You're at Town Hall <b>Lv${thLevel}</b> — upgrade it to unlock more.</p>
-        <div class="mission-map">${missions}</div>
+        ${campaignMapSVG()}
 
         <h3 class="hero-section-title">${svgIcon('castle')} Clan Hall</h3>
         <div class="world-card">

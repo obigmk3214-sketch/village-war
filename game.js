@@ -1020,6 +1020,20 @@ function renderGrid() {
             openMemorial();
         });
     });
+    // Working boats: trade ship → Harbor deals, patrol boat → review the patrol
+    grid.querySelectorAll('.trade-ship').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (typeof openHarbor === 'function') openHarbor();
+        });
+    });
+    grid.querySelectorAll('.patrol-boat').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            switchView('army');
+            if (typeof switchFormation === 'function') switchFormation('patrol');
+        });
+    });
 
     setupCameraControls(grid);
     setupBuildingTooltips(grid);
@@ -4172,6 +4186,16 @@ function setupSplash() {
         if (text && pct < 100) text.textContent = pct < 30 ? 'Loading kingdom…' : pct < 70 ? 'Recruiting villagers…' : 'Sharpening swords…';
         if (text && pct >= 100) text.textContent = 'Ready!';
     }, 220);
+
+    // Every button in the game gives a soft tactile tick (delegated once here).
+    if (!window._sfxClickWired) {
+        window._sfxClickWired = true;
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.btn, .nav-btn, .cat-btn, .raid-tab, .formation-tab, .harbor-tile, .lb-chip, .lb-spell, .more-card, .close-btn')) {
+                try { Audio.click(); } catch (err) {}
+            }
+        }, true);
+    }
 
     playBtn.onclick = () => {
         // Entering the game — play the quick fanfare theme and turn music ON.

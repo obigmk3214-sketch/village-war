@@ -209,23 +209,32 @@ function placeholderBuilding(x, y, type, lvl) {
 }
 
 // Reusable SVG fragments
-const SHADOW = (x, y, w = 36) => `<ellipse cx="${x}" cy="${y + 3}" rx="${w}" ry="${w * 0.18}" fill="rgba(0,0,0,0.45)"/>`;
-const FLAG = (x, y, color = '#dc2626') => `
-    <line x1="${x}" y1="${y}" x2="${x}" y2="${y - 18}" stroke="#3a2010" stroke-width="1.2"/>
-    <path class="flag-wave" d="M ${x} ${y - 18} Q ${x + 5} ${y - 16} ${x + 10} ${y - 18} Q ${x + 8} ${y - 14} ${x + 10} ${y - 12} Q ${x + 5} ${y - 14} ${x} ${y - 12} Z" fill="${color}" stroke="#3a0808" stroke-width="0.4"/>
+const SHADOW = (x, y, w = 36) => `
+    <ellipse cx="${x + w * 0.06}" cy="${y + 4}" rx="${w * 1.1}" ry="${w * 0.22}" fill="rgba(30,20,10,0.16)"/>
+    <ellipse cx="${x}" cy="${y + 3}" rx="${w}" ry="${w * 0.17}" fill="rgba(30,20,10,0.32)"/>
+`;
+const FLAG = (x, y, color = '#b3402e') => `
+    <line x1="${x}" y1="${y}" x2="${x}" y2="${y - 19}" stroke="#2a1a0e" stroke-width="1.4"/>
+    <line x1="${x - 0.45}" y1="${y - 1}" x2="${x - 0.45}" y2="${y - 18}" stroke="rgba(255,255,255,0.35)" stroke-width="0.45"/>
+    <circle cx="${x}" cy="${y - 19.5}" r="1.3" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.5"/>
+    <path class="flag-wave" d="M ${x + 0.5} ${y - 18} Q ${x + 6.5} ${y - 19.6} ${x + 12.5} ${y - 17.6} L ${x + 9} ${y - 14.6} L ${x + 12.5} ${y - 11.6} Q ${x + 6.5} ${y - 9.6} ${x + 0.5} ${y - 11.2} Z" fill="${color}" stroke="#2a1a0e" stroke-width="0.6"/>
+    <path class="flag-wave" d="M ${x + 0.5} ${y - 18} Q ${x + 6.5} ${y - 19.6} ${x + 12.5} ${y - 17.6} L ${x + 9} ${y - 14.6} L ${x + 4.5} ${y - 15.4} L ${x + 0.5} ${y - 14.6} Z" fill="rgba(255,255,255,0.22)"/>
 `;
 const SMOKE = (x, y) => `
-    <circle class="smoke-puff" cx="${x}" cy="${y}" r="3" fill="rgba(200,200,200,0.7)"/>
-    <circle class="smoke-puff" cx="${x + 2}" cy="${y - 6}" r="4" fill="rgba(180,180,180,0.5)" style="animation-delay:.5s"/>
-    <circle class="smoke-puff" cx="${x - 1}" cy="${y - 12}" r="5" fill="rgba(160,160,160,0.35)" style="animation-delay:1s"/>
+    <circle class="smoke-puff" cx="${x}" cy="${y}" r="2.6" fill="rgba(238,233,224,0.75)"/>
+    <circle class="smoke-puff" cx="${x + 2.5}" cy="${y - 7}" r="3.6" fill="rgba(228,223,214,0.55)" style="animation-delay:.6s"/>
+    <circle class="smoke-puff" cx="${x - 1.5}" cy="${y - 14}" r="4.6" fill="rgba(218,213,204,0.38)" style="animation-delay:1.2s"/>
+    <circle class="smoke-puff" cx="${x + 1}" cy="${y - 21}" r="5.4" fill="rgba(208,203,196,0.22)" style="animation-delay:1.8s"/>
 `;
 const LIT_WINDOW = (x, y, w = 5, h = 7) => `
-    <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#1a2840" stroke="#0a0418" stroke-width="0.4"/>
-    <rect x="${x + 0.6}" y="${y + 0.6}" width="${w - 1.2}" height="${h - 1.2}" fill="#ffd773" opacity="0.85">
-        <animate attributeName="opacity" values="0.7;1;0.7" dur="3s" repeatCount="indefinite"/>
+    <ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${w * 1.7}" ry="${h * 1.35}" fill="#ffca5f" opacity="0.13"/>
+    <rect x="${x - 0.8}" y="${y - 0.8}" width="${w + 1.6}" height="${h + 1.6}" rx="1" fill="#2a1a0e"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#ffd773">
+        <animate attributeName="fill" values="#ffd773;#ffc247;#ffd773" dur="3.4s" repeatCount="indefinite"/>
     </rect>
-    <line x1="${x + w / 2}" y1="${y}" x2="${x + w / 2}" y2="${y + h}" stroke="#3a2010" stroke-width="0.3"/>
-    <line x1="${x}" y1="${y + h / 2}" x2="${x + w}" y2="${y + h / 2}" stroke="#3a2010" stroke-width="0.3"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h * 0.42}" fill="rgba(255,255,255,0.35)"/>
+    <line x1="${x + w / 2}" y1="${y}" x2="${x + w / 2}" y2="${y + h}" stroke="#2a1a0e" stroke-width="0.5"/>
+    <line x1="${x}" y1="${y + h / 2}" x2="${x + w}" y2="${y + h / 2}" stroke="#2a1a0e" stroke-width="0.5"/>
 `;
 const STONE_WALL = (cx, cy, w, h, color = '#a89e8e', dark = '#5e5448') => {
     const half = w / 2;
@@ -239,446 +248,1032 @@ const STONE_WALL = (cx, cy, w, h, color = '#a89e8e', dark = '#5e5448') => {
 
 const BUILDING_RENDERERS = {
     townhall: (x, y, lvl) => `
-        ${SHADOW(x, y, 44)}
-        <!-- iso base block -->
-        <polygon points="${x-40},${y-8} ${x},${y-28} ${x+40},${y-8} ${x+40},${y+2} ${x},${y+22} ${x-40},${y+2}" fill="#d8c89c" stroke="#5a4520" stroke-width="0.8"/>
-        <polygon points="${x-40},${y-8} ${x},${y-28} ${x+40},${y-8}" fill="#ead9a8"/>
-        <polygon points="${x-40},${y-8} ${x-40},${y+2} ${x},${y+22} ${x},${y-28}" fill="rgba(0,0,0,0.12)"/>
-        <!-- column pillars (front face) -->
-        ${[-26, -10, 6, 22].map(dx => `<rect x="${x + dx - 2}" y="${y - 22}" width="4" height="22" fill="#c0b08a" stroke="#5a4520" stroke-width="0.4"/>`).join('')}
-        <!-- windows -->
-        ${LIT_WINDOW(x - 22, y - 18, 6, 9)}
-        ${LIT_WINDOW(x + 14, y - 18, 6, 9)}
-        <!-- ornate door -->
-        <path d="M ${x - 6} ${y - 4} L ${x - 6} ${y - 16} Q ${x} ${y - 22} ${x + 6} ${y - 16} L ${x + 6} ${y - 4} Z" fill="#5a3818" stroke="#2a1808" stroke-width="0.8"/>
-        <circle cx="${x + 3}" cy="${y - 10}" r="1" fill="#fbbf24"/>
-        <!-- gold roof (multi-tier) -->
-        <polygon points="${x-44},${y-26} ${x+44},${y-26} ${x},${y-58}" fill="#f0c050" stroke="#7a5410" stroke-width="0.8"/>
-        <polygon points="${x-44},${y-26} ${x},${y-58} ${x},${y-26}" fill="rgba(0,0,0,0.18)"/>
-        <!-- roof shingles texture -->
-        ${[-1, -10, -19, -28].map(yo => `<path d="M ${x - 36} ${y + yo - 26} L ${x + 36} ${y + yo - 26}" stroke="#a87820" stroke-width="0.4" opacity="0.6"/>`).join('')}
-        <!-- spire + flag -->
-        <polygon points="${x-3},${y-58} ${x+3},${y-58} ${x},${y-68}" fill="#fbbf24" stroke="#7a5410" stroke-width="0.5"/>
-        <line x1="${x}" y1="${y - 68}" x2="${x}" y2="${y - 84}" stroke="#3a2010" stroke-width="1"/>
-        <circle cx="${x}" cy="${y - 84}" r="1.5" fill="#fbbf24"/>
-        ${FLAG(x, y - 78)}
-        <!-- gold crest on facade -->
-        <circle cx="${x}" cy="${y - 32}" r="5" fill="#f0c050" stroke="#7a5410" stroke-width="0.6"/>
-        <path d="M ${x} ${y - 35} l 1.2 2.5 2.8 0.4 -2 2 0.5 2.8 -2.5 -1.3 -2.5 1.3 0.5 -2.8 -2 -2 2.8 -0.4 Z" fill="#7a5410"/>
-        ${lvl >= 3 ? `<g>${FLAG(x - 36, y - 22, '#3b82f6')}${FLAG(x + 36, y - 22, '#3b82f6')}</g>` : ''}
-        ${lvl >= 5 ? `<rect x="${x - 4}" y="${y - 12}" width="8" height="3" fill="#7a1818" stroke="#3a0808" stroke-width="0.3"/><polygon points="${x-4},${y-12} ${x+4},${y-12} ${x},${y-15}" fill="#dc2626"/>` : ''}
+        ${SHADOW(x, y, 46)}
+        <!-- stone plinth (iso box) -->
+        <polygon points="${x-42},${y-8} ${x},${y-29} ${x+42},${y-8} ${x},${y+13}" fill="#b6bec5" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-42},${y-8} ${x},${y+13} ${x},${y+22} ${x-42},${y+1}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+42},${y-8} ${x},${y+13} ${x},${y+22} ${x+42},${y+1}" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.9"/>
+        <line x1="${x-42}" y1="${y-8}" x2="${x}" y2="${y+13}" stroke="rgba(255,255,255,0.45)" stroke-width="0.8"/>
+        <line x1="${x-34}" y1="${y-1}" x2="${x-10}" y2="${y+11}" stroke="#7d8790" stroke-width="0.5"/>
+        <line x1="${x+10}" y1="${y+12}" x2="${x+34}" y2="${y}" stroke="#565f6a" stroke-width="0.5"/>
+        <!-- plastered great hall -->
+        <polygon points="${x-32},${y-31} ${x},${y-47} ${x+32},${y-31} ${x},${y-15}" fill="#f7efe0" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-32},${y-31} ${x},${y-15} ${x},${y+7} ${x-32},${y-9}" fill="#f0e6d2" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+32},${y-31} ${x},${y-15} ${x},${y+7} ${x+32},${y-9}" fill="#d9cbb0" stroke="#2a1a0e" stroke-width="0.9"/>
+        <!-- timber framing -->
+        <line x1="${x-32}" y1="${y-31}" x2="${x-32}" y2="${y-9}" stroke="#6b4520" stroke-width="1.6"/>
+        <line x1="${x+32}" y1="${y-31}" x2="${x+32}" y2="${y-9}" stroke="#54371a" stroke-width="1.6"/>
+        <line x1="${x}" y1="${y-15}" x2="${x}" y2="${y+7}" stroke="#6b4520" stroke-width="1.6"/>
+        <line x1="${x-32}" y1="${y-9}" x2="${x}" y2="${y+7}" stroke="#6b4520" stroke-width="1.4"/>
+        <line x1="${x}" y1="${y+7}" x2="${x+32}" y2="${y-9}" stroke="#54371a" stroke-width="1.4"/>
+        <line x1="${x-27}" y1="${y-27}" x2="${x-16}" y2="${y-6}" stroke="#6b4520" stroke-width="1" opacity="0.85"/>
+        <line x1="${x+14}" y1="${y-7}" x2="${x+27}" y2="${y-26}" stroke="#54371a" stroke-width="1" opacity="0.85"/>
+        <line x1="${x-32}" y1="${y-31}" x2="${x}" y2="${y-15}" stroke="rgba(255,255,255,0.4)" stroke-width="0.7"/>
+        <!-- lit windows on both faces -->
+        ${LIT_WINDOW(x - 24, y - 25, 6, 8)}
+        ${LIT_WINDOW(x + 17, y - 25, 6, 8)}
+        <!-- grand arched door + stone steps -->
+        <polygon points="${x-14},${y+9} ${x-1},${y+15.5} ${x-1},${y+19} ${x-14},${y+12.5}" fill="#b6bec5" stroke="#2a1a0e" stroke-width="0.6"/>
+        <path d="M ${x - 12} ${y + 9} L ${x - 12} ${y - 6} Q ${x - 6.5} ${y - 13} ${x - 1} ${y - 8} L ${x - 1} ${y + 14.5} Z" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x - 10.5} ${y + 8} L ${x - 10.5} ${y - 5} Q ${x - 6.5} ${y - 10} ${x - 2.5} ${y - 6.5} L ${x - 2.5} ${y + 12.5} Z" fill="#8a5a2b"/>
+        <line x1="${x-6.5}" y1="${y-8.8}" x2="${x-6.5}" y2="${y+10.5}" stroke="#4a2e16" stroke-width="0.5"/>
+        <circle cx="${x - 4}" cy="${y + 2}" r="0.9" fill="#f4c44d"/>
+        <!-- kingdom crest on shaded face -->
+        <path d="M ${x + 12} ${y - 11} l 5 -2.5 l 5 2.5 l 0 5.5 q 0 4.2 -5 6.2 q -5 -2 -5 -6.2 Z" fill="#2c5aa0" stroke="#f4c44d" stroke-width="0.9"/>
+        <path d="M ${x + 17} ${y - 10.8} l 1 2.4 2.6 0.3 -1.9 1.8 0.5 2.6 -2.2 -1.3 -2.2 1.3 0.5 -2.6 -1.9 -1.8 2.6 -0.3 Z" fill="#f4c44d"/>
+        <!-- great gold pyramid roof -->
+        <polygon points="${x-38},${y-30} ${x},${y-62} ${x},${y-11}" fill="#ffd76b" stroke="#2a1a0e" stroke-width="1"/>
+        <polygon points="${x+38},${y-30} ${x},${y-62} ${x},${y-11}" fill="#c2912c" stroke="#2a1a0e" stroke-width="1"/>
+        <path d="M ${x-27} ${y-39} L ${x} ${y-26}" stroke="#e0b23f" stroke-width="0.6"/>
+        <path d="M ${x-17} ${y-48} L ${x} ${y-40}" stroke="#e0b23f" stroke-width="0.6"/>
+        <path d="M ${x-8} ${y-55} L ${x} ${y-51}" stroke="#e0b23f" stroke-width="0.6"/>
+        <path d="M ${x+27} ${y-39} L ${x} ${y-26}" stroke="#9c7322" stroke-width="0.6"/>
+        <path d="M ${x+17} ${y-48} L ${x} ${y-40}" stroke="#9c7322" stroke-width="0.6"/>
+        <line x1="${x}" y1="${y-62}" x2="${x}" y2="${y-11}" stroke="rgba(255,246,214,0.55)" stroke-width="1"/>
+        <!-- finial + royal banner -->
+        <circle cx="${x}" cy="${y - 63.5}" r="2.2" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.7"/>
+        ${FLAG(x, y - 60)}
+        ${lvl >= 4 ? `
+            <line x1="${x-38}" y1="${y-30}" x2="${x}" y2="${y-11}" stroke="#f4c44d" stroke-width="1.8"/>
+            <line x1="${x}" y1="${y-11}" x2="${x+38}" y2="${y-30}" stroke="#c2912c" stroke-width="1.8"/>
+            <polygon points="${x-28},${y-27} ${x-20},${y-23} ${x-20},${y-5} ${x-24},${y-9.5} ${x-28},${y-7}" fill="#2c5aa0" stroke="#1d3c6e" stroke-width="0.7"/>
+            <circle cx="${x-24}" cy="${y-17.5}" r="1.9" fill="#f4c44d"/>
+        ` : ''}
+        ${lvl >= 7 ? `
+            <polygon points="${x-45},${y-4} ${x-39},${y-7} ${x-33},${y-4} ${x-33},${y+13} ${x-39},${y+16} ${x-45},${y+13}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.8"/>
+            <polygon points="${x-45},${y-4} ${x-39},${y-7} ${x-39},${y+16} ${x-45},${y+13}" fill="#b6bec5"/>
+            <polygon points="${x-47},${y-5} ${x-31},${y-5} ${x-39},${y-20}" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.8"/>
+            <polygon points="${x+33},${y-4} ${x+39},${y-7} ${x+45},${y-4} ${x+45},${y+13} ${x+39},${y+16} ${x+33},${y+13}" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.8"/>
+            <polygon points="${x+33},${y-4} ${x+39},${y-7} ${x+39},${y+16} ${x+33},${y+13}" fill="#9aa3ab"/>
+            <polygon points="${x+31},${y-5} ${x+47},${y-5} ${x+39},${y-20}" fill="#c2912c" stroke="#2a1a0e" stroke-width="0.8"/>
+            <g class="sparkle-fx">
+                <polygon points="${x-12},${y-52} ${x-10.5},${y-48.5} ${x-12},${y-45} ${x-13.5},${y-48.5}" fill="#fff3c4"/>
+                <polygon points="${x+13},${y-44} ${x+14.5},${y-41} ${x+13},${y-38} ${x+11.5},${y-41}" fill="#fff3c4" style="animation-delay:.6s"/>
+            </g>
+        ` : ''}
     `,
 
     goldmine: (x, y, lvl) => `
-        ${SHADOW(x, y, 38)}
-        <!-- mountain mass -->
-        <polygon points="${x-36},${y+2} ${x-24},${y-30} ${x-8},${y-42} ${x+12},${y-44} ${x+28},${y-32} ${x+36},${y+2} ${x},${y+22}" fill="#8e8074" stroke="#3e3328" stroke-width="0.8"/>
-        <polygon points="${x-36},${y+2} ${x-24},${y-30} ${x-8},${y-42} ${x-12},${y-20} ${x},${y+22}" fill="rgba(0,0,0,0.22)"/>
-        <!-- snow cap -->
-        <polygon points="${x-12},${y-40} ${x+14},${y-42} ${x+6},${y-32} ${x-4},${y-34}" fill="#f0f0f0" stroke="#aaa" stroke-width="0.3"/>
-        <!-- cave entrance -->
-        <path d="M ${x - 14} ${y + 2} L ${x - 14} ${y - 10} Q ${x} ${y - 22} ${x + 14} ${y - 10} L ${x + 14} ${y + 2} Z" fill="#0a0408" stroke="#1a1408" stroke-width="0.6"/>
-        <path d="M ${x - 12} ${y + 1} L ${x - 12} ${y - 10} Q ${x} ${y - 20} ${x + 12} ${y - 10} L ${x + 12} ${y + 1}" fill="#1a0e08"/>
-        <!-- wooden support beams -->
-        <rect x="${x - 16}" y="${y - 12}" width="3" height="14" fill="#5a3818" stroke="#2a1808" stroke-width="0.3"/>
-        <rect x="${x + 13}" y="${y - 12}" width="3" height="14" fill="#5a3818" stroke="#2a1808" stroke-width="0.3"/>
-        <rect x="${x - 18}" y="${y - 14}" width="38" height="3" fill="#5a3818" stroke="#2a1808" stroke-width="0.3"/>
-        <!-- rails -->
-        <line x1="${x - 10}" y1="${y + 2}" x2="${x + 10}" y2="${y + 8}" stroke="#5a4838" stroke-width="1"/>
-        <line x1="${x - 8}" y1="${y + 4}" x2="${x + 12}" y2="${y + 10}" stroke="#5a4838" stroke-width="1"/>
-        ${[-6, -2, 2, 6].map(dx => `<line x1="${x + dx}" y1="${y + 2 + (dx + 6) * 0.3}" x2="${x + dx + 2}" y2="${y + 4 + (dx + 6) * 0.3}" stroke="#3a2818" stroke-width="0.5"/>`).join('')}
-        <!-- mine cart with gold -->
-        <rect x="${x + 4}" y="${y + 2}" width="16" height="8" fill="#5a3818" stroke="#2a1808" stroke-width="0.6"/>
-        <rect x="${x + 5}" y="${y + 1}" width="14" height="3" fill="#f0c050" stroke="#a87820" stroke-width="0.4"/>
-        <circle cx="${x + 6}" cy="${y + 1}" r="1" fill="#ffe080"/>
-        <circle cx="${x + 10}" cy="${y}" r="1.2" fill="#ffe080"/>
-        <circle cx="${x + 14}" cy="${y + 1}" r="1" fill="#ffe080"/>
-        <circle cx="${x + 17}" cy="${y}" r="0.8" fill="#ffe080"/>
-        <circle cx="${x + 6}" cy="${y + 11}" r="1.8" fill="#1a0808" stroke="#000" stroke-width="0.3"/>
-        <circle cx="${x + 18}" cy="${y + 11}" r="1.8" fill="#1a0808" stroke="#000" stroke-width="0.3"/>
-        <!-- gold piles outside -->
-        <ellipse cx="${x - 22}" cy="${y + 4}" rx="6" ry="2" fill="#a87820"/>
-        <ellipse cx="${x - 22}" cy="${y + 2}" rx="5" ry="2" fill="#f0c050" stroke="#a87820" stroke-width="0.4"/>
-        <circle cx="${x - 24}" cy="${y}" r="1" fill="#ffe080"/>
-        <circle cx="${x - 21}" cy="${y + 1}" r="1" fill="#ffe080"/>
-        <!-- sparkles -->
+        ${SHADOW(x, y, 40)}
+        <!-- faceted rock hill -->
+        <path d="M ${x-38} ${y+4} L ${x-28} ${y-20} L ${x-10} ${y-36} L ${x+8} ${y-38} L ${x+26} ${y-26} L ${x+38} ${y+4} L ${x+18} ${y+17} L ${x-18} ${y+17} Z" fill="#857b6e" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x-28} ${y-20} L ${x-10} ${y-36} L ${x+8} ${y-38} L ${x-2} ${y-14} Z" fill="#a89d8b"/>
+        <path d="M ${x-38} ${y+4} L ${x-28} ${y-20} L ${x-2} ${y-14} L ${x-18} ${y+10} Z" fill="#958b7b"/>
+        <path d="M ${x+8} ${y-38} L ${x+26} ${y-26} L ${x+38} ${y+4} L ${x+14} ${y-6} Z" fill="#6a6156"/>
+        <path d="M ${x+14} ${y-6} L ${x+38} ${y+4} L ${x+18} ${y+17} Z" fill="#5d554b"/>
+        <line x1="${x-28}" y1="${y-20}" x2="${x-10}" y2="${y-36}" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+        <line x1="${x-10}" y1="${y-36}" x2="${x+8}" y2="${y-38}" stroke="rgba(255,255,255,0.3)" stroke-width="0.8"/>
+        <!-- gold veins glinting in the rock -->
+        <path d="M ${x-20} ${y-13} q 4 -3 3 -8 q 4 1 6 -5" stroke="#f4c44d" stroke-width="1.1" fill="none" opacity="0.9"/>
+        <path d="M ${x+15} ${y-16} q 3 4 8 4" stroke="#d9a94a" stroke-width="1" fill="none" opacity="0.8"/>
+        <circle cx="${x-11}" cy="${y-26}" r="1.1" fill="#ffd76b"/>
+        <!-- timber portal frame -->
+        <rect x="${x-17}" y="${y-16}" width="4" height="21" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.7"/>
+        <rect x="${x+13}" y="${y-16}" width="4" height="21" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.7"/>
+        <rect x="${x-20}" y="${y-20}" width="40" height="5" rx="1" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.8"/>
+        <rect x="${x-20}" y="${y-20}" width="40" height="1.6" fill="#a8763f"/>
+        <!-- cave mouth with warm glow -->
+        <path d="M ${x-13} ${y+5} L ${x-13} ${y-8} Q ${x} ${y-18} ${x+13} ${y-8} L ${x+13} ${y+5} Z" fill="#160c06" stroke="#2a1a0e" stroke-width="0.8"/>
+        <path d="M ${x-8} ${y+5} L ${x-8} ${y-5} Q ${x} ${y-11} ${x+8} ${y-5} L ${x+8} ${y+5} Z" fill="#3a2008">
+            <animate attributeName="fill" values="#3a2008;#5c3810;#3a2008" dur="2.6s" repeatCount="indefinite"/>
+        </path>
+        <ellipse cx="${x}" cy="${y+1}" rx="4" ry="3" fill="#f4c44d" opacity="0.25">
+            <animate attributeName="opacity" values="0.12;0.4;0.12" dur="2.6s" repeatCount="indefinite"/>
+        </ellipse>
+        <!-- lantern on the lintel -->
+        <line x1="${x+9.5}" y1="${y-15}" x2="${x+9.5}" y2="${y-12}" stroke="#2a1a0e" stroke-width="0.6"/>
+        <rect x="${x+7.9}" y="${y-12}" width="3.2" height="4.2" rx="1" fill="#2a1a0e"/>
+        <rect x="${x+8.6}" y="${y-11.3}" width="1.8" height="2.8" fill="#ffd773">
+            <animate attributeName="opacity" values="0.55;1;0.55" dur="1.8s" repeatCount="indefinite"/>
+        </rect>
+        <!-- rails out of the mine -->
+        <line x1="${x-4}" y1="${y+5}" x2="${x+24}" y2="${y+15}" stroke="#6b7280" stroke-width="1.2"/>
+        <line x1="${x+2}" y1="${y+3}" x2="${x+30}" y2="${y+13}" stroke="#6b7280" stroke-width="1.2"/>
+        ${[1, 8, 15, 22].map(d => `<line x1="${x + d - 3}" y1="${y + 5.5 + d * 0.36}" x2="${x + d + 4}" y2="${y + 3.5 + d * 0.36}" stroke="#6b4520" stroke-width="1.5"/>`).join('')}
+        <!-- ore cart heaped with gold -->
+        <polygon points="${x+14},${y+1} ${x+30},${y+1} ${x+28},${y+9} ${x+16},${y+9}" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.8"/>
+        <polygon points="${x+14},${y+1} ${x+30},${y+1} ${x+29.4},${y+3.5} ${x+14.6},${y+3.5}" fill="#8a5a2b"/>
+        <line x1="${x+19}" y1="${y+3.5}" x2="${x+19.4}" y2="${y+9}" stroke="#4a2e16" stroke-width="0.5"/>
+        <line x1="${x+25}" y1="${y+3.5}" x2="${x+25.2}" y2="${y+9}" stroke="#4a2e16" stroke-width="0.5"/>
+        <circle cx="${x+19}" cy="${y+0.2}" r="2.1" fill="#f4c44d" stroke="#c2912c" stroke-width="0.4"/>
+        <circle cx="${x+24}" cy="${y-0.8}" r="2.3" fill="#ffd76b" stroke="#c2912c" stroke-width="0.4"/>
+        <circle cx="${x+28}" cy="${y+0.4}" r="1.8" fill="#f4c44d" stroke="#c2912c" stroke-width="0.4"/>
+        <circle cx="${x+18.5}" cy="${y+10.8}" r="2.2" fill="#3a3328" stroke="#2a1a0e" stroke-width="0.5"/>
+        <circle cx="${x+26}" cy="${y+10.8}" r="2.2" fill="#3a3328" stroke="#2a1a0e" stroke-width="0.5"/>
+        <circle cx="${x+18.5}" cy="${y+10.8}" r="0.8" fill="#8a8478"/>
+        <circle cx="${x+26}" cy="${y+10.8}" r="0.8" fill="#8a8478"/>
+        <!-- gold pile by the entrance -->
+        <ellipse cx="${x-26}" cy="${y+9}" rx="7.5" ry="2.6" fill="#c2912c" stroke="#2a1a0e" stroke-width="0.6"/>
+        <circle cx="${x-28.5}" cy="${y+6.5}" r="2.5" fill="#f4c44d" stroke="#c2912c" stroke-width="0.4"/>
+        <circle cx="${x-23.5}" cy="${y+7}" r="2.2" fill="#ffd76b" stroke="#c2912c" stroke-width="0.4"/>
+        <circle cx="${x-26}" cy="${y+4.4}" r="2" fill="#f4c44d" stroke="#c2912c" stroke-width="0.4"/>
         <g class="sparkle-fx">
-            <polygon points="${x-8},${y-30} ${x-6},${y-25} ${x-8},${y-20} ${x-10},${y-25}" fill="#ffe080" opacity="0.9"/>
-            <polygon points="${x+16},${y-32} ${x+18},${y-28} ${x+16},${y-24} ${x+14},${y-28}" fill="#ffe080" opacity="0.8" style="animation-delay:.4s"/>
+            <polygon points="${x-26},${y+0.5} ${x-25},${y+2.8} ${x-26},${y+5} ${x-27},${y+2.8}" fill="#fff3c4"/>
+            <polygon points="${x+24},${y-4.5} ${x+25},${y-2.5} ${x+24},${y-0.5} ${x+23},${y-2.5}" fill="#fff3c4" style="animation-delay:.5s"/>
+            <polygon points="${x-13},${y-28} ${x-12},${y-26} ${x-13},${y-24} ${x-14},${y-26}" fill="#ffe9a3" style="animation-delay:1s"/>
         </g>
-        ${lvl >= 3 ? `<polygon points="${x-30},${y-22} ${x-22},${y-30} ${x-16},${y-22}" fill="#9e918a" stroke="#3e3328" stroke-width="0.4"/>` : ''}
+        ${lvl >= 4 ? `
+            <line x1="${x-7}" y1="${y-20}" x2="${x-3}" y2="${y-29}" stroke="#6b4520" stroke-width="1.5"/>
+            <line x1="${x+7}" y1="${y-20}" x2="${x+3}" y2="${y-29}" stroke="#54371a" stroke-width="1.5"/>
+            <circle cx="${x}" cy="${y-29}" r="2.7" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.7"/>
+            <line x1="${x}" y1="${y-29}" x2="${x}" y2="${y-16}" stroke="#4a4438" stroke-width="0.6"/>
+            <rect x="${x-2}" y="${y-16}" width="4" height="3" fill="#c2912c" stroke="#2a1a0e" stroke-width="0.4"/>
+        ` : ''}
+        ${lvl >= 7 ? `
+            <path d="M ${x-4} ${y-30} q 5 -2 6 -7" stroke="#ffd76b" stroke-width="1.5" fill="none">
+                <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite"/>
+            </path>
+            <polygon points="${x-3},${y-38} ${x+9},${y-37} ${x+3},${y-46}" fill="#f4c44d" stroke="#c2912c" stroke-width="0.7"/>
+            <polygon points="${x-3},${y-38} ${x+3},${y-46} ${x+1},${y-39}" fill="#ffe9a3"/>
+        ` : ''}
     `,
 
     ironmine: (x, y, lvl) => `
-        ${SHADOW(x, y, 38)}
-        <polygon points="${x-36},${y+2} ${x-24},${y-30} ${x-8},${y-44} ${x+12},${y-44} ${x+28},${y-32} ${x+36},${y+2} ${x},${y+22}" fill="#6a7080" stroke="#1a1e28" stroke-width="0.8"/>
-        <polygon points="${x-36},${y+2} ${x-24},${y-30} ${x-8},${y-44} ${x-10},${y-20} ${x},${y+22}" fill="rgba(0,0,0,0.3)"/>
-        <polygon points="${x-10},${y-40} ${x+14},${y-42} ${x+4},${y-32} ${x-2},${y-34}" fill="#dadce0"/>
-        <path d="M ${x - 14} ${y + 2} L ${x - 14} ${y - 10} Q ${x} ${y - 22} ${x + 14} ${y - 10} L ${x + 14} ${y + 2} Z" fill="#0a0a14" stroke="#1a1e28" stroke-width="0.6"/>
-        <rect x="${x - 16}" y="${y - 12}" width="3" height="14" fill="#5a3818" stroke="#2a1808" stroke-width="0.3"/>
-        <rect x="${x + 13}" y="${y - 12}" width="3" height="14" fill="#5a3818" stroke="#2a1808" stroke-width="0.3"/>
-        <rect x="${x - 18}" y="${y - 14}" width="38" height="3" fill="#5a3818" stroke="#2a1808" stroke-width="0.3"/>
-        <!-- iron chunks -->
-        <polygon points="${x-26},${y+2} ${x-20},${y-2} ${x-14},${y+4} ${x-22},${y+6}" fill="#cbd5e1" stroke="#475569" stroke-width="0.5"/>
-        <polygon points="${x-22},${y-2} ${x-18},${y-4} ${x-16},${y}" fill="#f1f5f9"/>
-        <polygon points="${x+14},${y+4} ${x+20},${y+2} ${x+24},${y+6} ${x+18},${y+8}" fill="#cbd5e1" stroke="#475569" stroke-width="0.5"/>
-        <polygon points="${x+16},${y+4} ${x+20},${y+3} ${x+22},${y+6}" fill="#f1f5f9"/>
-        <!-- mine cart with iron -->
-        <rect x="${x + 2}" y="${y + 2}" width="16" height="8" fill="#5a3818" stroke="#2a1808" stroke-width="0.6"/>
-        <polygon points="${x + 3},${y + 1} ${x + 17},${y + 1} ${x + 16},${y + 3} ${x + 4},${y + 3}" fill="#94a3b8" stroke="#475569" stroke-width="0.4"/>
-        <circle cx="${x + 4}" cy="${y + 11}" r="1.8" fill="#1a0808" stroke="#000" stroke-width="0.3"/>
-        <circle cx="${x + 16}" cy="${y + 11}" r="1.8" fill="#1a0808" stroke="#000" stroke-width="0.3"/>
-        <!-- pickaxe -->
-        <line x1="${x - 30}" y1="${y - 8}" x2="${x - 22}" y2="${y - 22}" stroke="#5a3818" stroke-width="2"/>
-        <polygon points="${x-24},${y-24} ${x-18},${y-22} ${x-22},${y-26}" fill="#94a3b8" stroke="#475569" stroke-width="0.5"/>
+        ${SHADOW(x, y, 40)}
+        <!-- faceted cold-rock hill -->
+        <path d="M ${x-38} ${y+4} L ${x-26} ${y-22} L ${x-8} ${y-38} L ${x+10} ${y-38} L ${x+27} ${y-24} L ${x+38} ${y+4} L ${x+18} ${y+17} L ${x-18} ${y+17} Z" fill="#79808c" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x-26} ${y-22} L ${x-8} ${y-38} L ${x+10} ${y-38} L ${x} ${y-14} Z" fill="#98a0ac"/>
+        <path d="M ${x-38} ${y+4} L ${x-26} ${y-22} L ${x} ${y-14} L ${x-17} ${y+10} Z" fill="#868d99"/>
+        <path d="M ${x+10} ${y-38} L ${x+27} ${y-24} L ${x+38} ${y+4} L ${x+15} ${y-6} Z" fill="#5c6370"/>
+        <path d="M ${x+15} ${y-6} L ${x+38} ${y+4} L ${x+18} ${y+17} Z" fill="#4f5663"/>
+        <line x1="${x-26}" y1="${y-22}" x2="${x-8}" y2="${y-38}" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+        <!-- snow dusting on the peak -->
+        <polygon points="${x-8},${y-38} ${x+10},${y-38} ${x+5},${y-31} ${x-3},${y-32}" fill="#e8edf2" stroke="#aab4be" stroke-width="0.4"/>
+        <!-- iron ore seams -->
+        <path d="M ${x-19} ${y-11} q 4 -4 2 -9 q 5 0 6 -5" stroke="#c3ccd6" stroke-width="1.1" fill="none" opacity="0.85"/>
+        <circle cx="${x+18}" cy="${y-14}" r="1.4" fill="#c3ccd6"/>
+        <circle cx="${x+22}" cy="${y-10}" r="1" fill="#aab4be"/>
+        <!-- timber portal frame -->
+        <rect x="${x-17}" y="${y-16}" width="4" height="21" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.7"/>
+        <rect x="${x+13}" y="${y-16}" width="4" height="21" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.7"/>
+        <rect x="${x-20}" y="${y-20}" width="40" height="5" rx="1" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.8"/>
+        <rect x="${x-20}" y="${y-20}" width="40" height="1.6" fill="#a8763f"/>
+        <!-- cave mouth, cool depths -->
+        <path d="M ${x-13} ${y+5} L ${x-13} ${y-8} Q ${x} ${y-18} ${x+13} ${y-8} L ${x+13} ${y+5} Z" fill="#0c1016" stroke="#2a1a0e" stroke-width="0.8"/>
+        <path d="M ${x-8} ${y+5} L ${x-8} ${y-5} Q ${x} ${y-11} ${x+8} ${y-5} L ${x+8} ${y+5} Z" fill="#1b2530">
+            <animate attributeName="fill" values="#1b2530;#2c3c4e;#1b2530" dur="3s" repeatCount="indefinite"/>
+        </path>
+        <!-- hanging lantern -->
+        <line x1="${x-9.5}" y1="${y-15}" x2="${x-9.5}" y2="${y-12}" stroke="#2a1a0e" stroke-width="0.6"/>
+        <rect x="${x-11.1}" y="${y-12}" width="3.2" height="4.2" rx="1" fill="#2a1a0e"/>
+        <rect x="${x-10.4}" y="${y-11.3}" width="1.8" height="2.8" fill="#ffd773">
+            <animate attributeName="opacity" values="0.55;1;0.55" dur="2.1s" repeatCount="indefinite"/>
+        </rect>
+        <!-- rails + cart of iron ingots -->
+        <line x1="${x-4}" y1="${y+5}" x2="${x+24}" y2="${y+15}" stroke="#6b7280" stroke-width="1.2"/>
+        <line x1="${x+2}" y1="${y+3}" x2="${x+30}" y2="${y+13}" stroke="#6b7280" stroke-width="1.2"/>
+        ${[1, 8, 15, 22].map(d => `<line x1="${x + d - 3}" y1="${y + 5.5 + d * 0.36}" x2="${x + d + 4}" y2="${y + 3.5 + d * 0.36}" stroke="#6b4520" stroke-width="1.5"/>`).join('')}
+        <polygon points="${x+14},${y+1} ${x+30},${y+1} ${x+28},${y+9} ${x+16},${y+9}" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.8"/>
+        <polygon points="${x+14},${y+1} ${x+30},${y+1} ${x+29.4},${y+3.5} ${x+14.6},${y+3.5}" fill="#8a5a2b"/>
+        <polygon points="${x+16},${y+0.5} ${x+22},${y-1} ${x+28},${y+0.5} ${x+22},${y+2}" fill="#aeb8c4" stroke="#4f5663" stroke-width="0.5"/>
+        <polygon points="${x+18},${y-1.5} ${x+22},${y-3} ${x+26},${y-1.5} ${x+22},${y-0.2}" fill="#cbd5e1" stroke="#4f5663" stroke-width="0.5"/>
+        <circle cx="${x+18.5}" cy="${y+10.8}" r="2.2" fill="#3a3328" stroke="#2a1a0e" stroke-width="0.5"/>
+        <circle cx="${x+26}" cy="${y+10.8}" r="2.2" fill="#3a3328" stroke="#2a1a0e" stroke-width="0.5"/>
+        <circle cx="${x+18.5}" cy="${y+10.8}" r="0.8" fill="#8a8478"/>
+        <circle cx="${x+26}" cy="${y+10.8}" r="0.8" fill="#8a8478"/>
+        <!-- anvil + leaning pickaxe out front -->
+        <polygon points="${x-33},${y+6} ${x-19},${y+6} ${x-21},${y+9} ${x-31},${y+9}" fill="#4f5663" stroke="#2a1a0e" stroke-width="0.6"/>
+        <rect x="${x-29}" y="${y+2.5}" width="6" height="4" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.6"/>
+        <path d="M ${x-30} ${y+2.5} L ${x-19} ${y+2.5} Q ${x-16.5} ${y+3.5} ${x-19} ${y+4.8} L ${x-30} ${y+4.8} Q ${x-32.5} ${y+3.5} ${x-30} ${y+2.5} Z" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.6"/>
+        <line x1="${x-30}" y1="${y+3}" x2="${x-20}" y2="${y+3}" stroke="rgba(255,255,255,0.4)" stroke-width="0.6"/>
+        <line x1="${x-36}" y1="${y+2}" x2="${x-28}" y2="${y-14}" stroke="#8a5a2b" stroke-width="1.8"/>
+        <path d="M ${x-32} ${y-14.5} q 4.5 -4 9 0" stroke="#aeb8c4" stroke-width="2.2" fill="none"/>
+        <!-- clinking sparks -->
+        <g class="sparkle-fx">
+            <polygon points="${x-25},${y-2} ${x-24.2},${y-0.2} ${x-25},${y+1.6} ${x-25.8},${y-0.2}" fill="#dfe7ee"/>
+            <polygon points="${x+3},${y-24} ${x+4},${y-22} ${x+3},${y-20} ${x+2},${y-22}" fill="#dfe7ee" style="animation-delay:.7s"/>
+        </g>
+        ${lvl >= 4 ? `
+            <line x1="${x-7}" y1="${y-20}" x2="${x-3}" y2="${y-29}" stroke="#6b4520" stroke-width="1.5"/>
+            <line x1="${x+7}" y1="${y-20}" x2="${x+3}" y2="${y-29}" stroke="#54371a" stroke-width="1.5"/>
+            <circle cx="${x}" cy="${y-29}" r="2.7" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.7"/>
+            <line x1="${x}" y1="${y-29}" x2="${x}" y2="${y-16}" stroke="#4a4438" stroke-width="0.6"/>
+            <rect x="${x-2}" y="${y-16}" width="4" height="3" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.4"/>
+        ` : ''}
+        ${lvl >= 7 ? `
+            <path d="M ${x-4} ${y-28} q 5 -2 6 -7" stroke="#cbd5e1" stroke-width="1.5" fill="none">
+                <animate attributeName="opacity" values="0.4;1;0.4" dur="2.2s" repeatCount="indefinite"/>
+            </path>
+            <polygon points="${x-2},${y-42} ${x+2},${y-48} ${x+6},${y-42} ${x+2},${y-39}" fill="#cbd5e1" stroke="#4f5663" stroke-width="0.6"/>
+            <polygon points="${x-2},${y-42} ${x+2},${y-48} ${x+2},${y-42}" fill="#eef2f6"/>
+        ` : ''}
     `,
 
     lumbermill: (x, y, lvl) => `
         ${SHADOW(x, y, 42)}
-        <!-- log piles foreground -->
-        <g>
-            <ellipse cx="${x - 32}" cy="${y + 6}" rx="8" ry="2.5" fill="#5a3818"/>
-            <ellipse cx="${x - 32}" cy="${y + 3}" rx="7" ry="3" fill="#a87d4a" stroke="#5a3818" stroke-width="0.5"/>
-            <circle cx="${x - 32}" cy="${y + 3}" r="2.5" fill="#7a5028"/>
-            <circle cx="${x - 32}" cy="${y + 3}" r="1" fill="#5a3818"/>
-        </g>
-        <!-- iso building base -->
-        <polygon points="${x-36},${y-6} ${x},${y-22} ${x+36},${y-6} ${x+36},${y+6} ${x},${y+22} ${x-36},${y+6}" fill="#a87d4a" stroke="#3a2010" stroke-width="0.8"/>
-        <polygon points="${x-36},${y-6} ${x-36},${y+6} ${x},${y+22} ${x},${y-22}" fill="rgba(0,0,0,0.18)"/>
-        <!-- wood plank lines -->
-        ${[2, 8, 14].map(dy => `<line x1="${x - 36}" y1="${y - 6 + dy}" x2="${x + 36}" y2="${y - 6 + dy}" stroke="#5a3818" stroke-width="0.4"/>`).join('')}
-        <!-- thatched roof -->
-        <polygon points="${x-40},${y-6} ${x+40},${y-6} ${x},${y-46}" fill="#c89a40" stroke="#5a3010" stroke-width="0.8"/>
-        <polygon points="${x-40},${y-6} ${x},${y-46} ${x},${y-6}" fill="rgba(0,0,0,0.22)"/>
-        ${[-2, -10, -18, -26, -34].map(dy => `<line x1="${x - 38 + Math.abs(dy) * 0.4}" y1="${y + dy - 6}" x2="${x + 38 - Math.abs(dy) * 0.4}" y2="${y + dy - 6}" stroke="#8a6520" stroke-width="0.4"/>`).join('')}
-        <!-- door -->
-        <rect x="${x + 8}" y="${y - 6}" width="10" height="14" fill="#3a2010" stroke="#1a0808" stroke-width="0.5"/>
-        <circle cx="${x + 16}" cy="${y + 1}" r="0.7" fill="#fbbf24"/>
-        <!-- window -->
-        ${LIT_WINDOW(x - 18, y - 12, 6, 7)}
-        <!-- saw blade (animated) -->
-        <g transform="translate(${x + 22}, ${y - 14})">
-            <circle r="9" fill="#cbd5e1" stroke="#1a1408" stroke-width="0.8"/>
-            <circle r="6" fill="#94a3b8" stroke="#475569" stroke-width="0.4"/>
+        <!-- timber cabin walls (iso box) -->
+        <polygon points="${x-30},${y-15} ${x},${y-30} ${x+30},${y-15} ${x},${y}" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-30},${y-15} ${x},${y} ${x},${y+18} ${x-30},${y+3}" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+30},${y-15} ${x},${y} ${x},${y+18} ${x+30},${y+3}" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.9"/>
+        <!-- log courses -->
+        ${[5, 10, 15].map(d => `
+            <line x1="${x-30}" y1="${y-15+d}" x2="${x}" y2="${y+d}" stroke="#6f4722" stroke-width="0.6"/>
+            <line x1="${x}" y1="${y+d}" x2="${x+30}" y2="${y-15+d}" stroke="#54371a" stroke-width="0.6"/>
+        `).join('')}
+        <line x1="${x-30}" y1="${y-15}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+        <!-- door on lit face + lit window on shaded face -->
+        <path d="M ${x-20} ${y+7} L ${x-20} ${y-5} Q ${x-15.5} ${y-9.5} ${x-11} ${y-9.5+5} L ${x-11} ${y+11.5} Z" fill="#4a2e16" stroke="#2a1a0e" stroke-width="0.8"/>
+        <path d="M ${x-18.6} ${y+6} L ${x-18.6} ${y-4.2} Q ${x-15.5} ${y-7.4} ${x-12.4} ${y-3.2} L ${x-12.4} ${y+9.8} Z" fill="#7a4e24"/>
+        <circle cx="${x-13.8}" cy="${y+2.5}" r="0.8" fill="#f4c44d"/>
+        ${LIT_WINDOW(x + 12, y - 5, 6, 7)}
+        <!-- thatch pyramid roof -->
+        <polygon points="${x-36},${y-15} ${x},${y-46} ${x},${y+2}" fill="#e6bc63" stroke="#2a1a0e" stroke-width="1"/>
+        <polygon points="${x+36},${y-15} ${x},${y-46} ${x},${y+2}" fill="#b98a35" stroke="#2a1a0e" stroke-width="1"/>
+        <path d="M ${x-26} ${y-24} L ${x} ${y-10}" stroke="#c9a047" stroke-width="0.7"/>
+        <path d="M ${x-16} ${y-32} L ${x} ${y-23}" stroke="#c9a047" stroke-width="0.7"/>
+        <path d="M ${x-7} ${y-39} L ${x} ${y-35}" stroke="#c9a047" stroke-width="0.7"/>
+        <path d="M ${x+26} ${y-24} L ${x} ${y-10}" stroke="#9c732c" stroke-width="0.7"/>
+        <path d="M ${x+16} ${y-32} L ${x} ${y-23}" stroke="#9c732c" stroke-width="0.7"/>
+        <line x1="${x}" y1="${y-46}" x2="${x}" y2="${y+2}" stroke="rgba(255,246,214,0.5)" stroke-width="0.9"/>
+        <!-- ragged thatch fringe -->
+        ${[-32, -22, -12].map(d => `<path d="M ${x+d} ${y-15+(-d-30)*-0.5} q 1.5 3 3 0" stroke="#b98a35" stroke-width="0.8" fill="none"/>`).join('')}
+        <!-- stone chimney + hearth smoke -->
+        <rect x="${x-19}" y="${y-42}" width="6" height="15" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.7"/>
+        <rect x="${x-19}" y="${y-42}" width="2.4" height="15" fill="#b6bec5"/>
+        <rect x="${x-20.5}" y="${y-44}" width="9" height="3" rx="1" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.6"/>
+        ${SMOKE(x - 16, y - 48)}
+        <!-- sawing trestle with spinning blade -->
+        <line x1="${x+22}" y1="${y+16}" x2="${x+27}" y2="${y+8}" stroke="#6b4520" stroke-width="1.6"/>
+        <line x1="${x+32}" y1="${y+16}" x2="${x+27}" y2="${y+8}" stroke="#54371a" stroke-width="1.6"/>
+        <rect x="${x+16}" y="${y+5.5}" width="24" height="5" rx="2.5" fill="#a8763f" stroke="#2a1a0e" stroke-width="0.8"/>
+        <rect x="${x+16}" y="${y+5.5}" width="24" height="1.8" rx="0.9" fill="#c99a5e"/>
+        <circle cx="${x+40}" cy="${y+8}" r="2.5" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.6"/>
+        <circle cx="${x+40}" cy="${y+8}" r="1.1" fill="#54371a"/>
+        <g transform="translate(${x + 27}, ${y + 2})">
             <g class="sawblade">
                 ${Array.from({length: 8}, (_, i) => {
                     const a = (i / 8) * Math.PI * 2;
-                    const x1 = Math.cos(a) * 9, y1 = Math.sin(a) * 9;
-                    const x2 = Math.cos(a) * 11, y2 = Math.sin(a) * 11;
-                    return `<polygon points="${x1 - 1},${y1} ${x2},${y2} ${x1 + 1},${y1}" fill="#1a1408"/>`;
+                    const x1 = Math.cos(a) * 6.5, y1 = Math.sin(a) * 6.5;
+                    const x2 = Math.cos(a + 0.22) * 8.5, y2 = Math.sin(a + 0.22) * 8.5;
+                    return `<polygon points="${x1 - 1.2},${y1} ${x2},${y2} ${x1 + 1.2},${y1}" fill="#8b95a0"/>`;
                 }).join('')}
+                <circle r="6.5" fill="#aeb8c4" stroke="#2a1a0e" stroke-width="0.8"/>
+                <circle r="4" fill="#8b95a0" stroke="#4f5663" stroke-width="0.4"/>
+                <circle r="1.4" fill="#2a1a0e"/>
             </g>
-            <circle r="1.5" fill="#1a1408"/>
         </g>
-        <!-- chimney + smoke -->
-        <rect x="${x - 30}" y="${y - 36}" width="4" height="14" fill="#3a2010" stroke="#1a0808" stroke-width="0.3"/>
-        ${SMOKE(x - 28, y - 38)}
-        ${lvl >= 3 ? `<ellipse cx="${x + 32}" cy="${y + 6}" rx="6" ry="2" fill="#5a3818"/><rect x="${x + 26}" y="${y - 2}" width="12" height="4" fill="#a87d4a" stroke="#5a3818" stroke-width="0.4"/><rect x="${x + 26}" y="${y - 6}" width="12" height="4" fill="#a87d4a" stroke="#5a3818" stroke-width="0.4"/>` : ''}
+        <!-- log pile with fresh-cut ends -->
+        <g>
+            <rect x="${x-42}" y="${y+8}" width="20" height="5" rx="2.5" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.7"/>
+            <rect x="${x-40}" y="${y+3}" width="20" height="5" rx="2.5" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.7"/>
+            <rect x="${x-38}" y="${y-2}" width="19" height="5" rx="2.5" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.7"/>
+            <circle cx="${x-40}" cy="${y+10.5}" r="2.4" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.6"/>
+            <circle cx="${x-38}" cy="${y+5.5}" r="2.4" fill="#e0b45c" stroke="#2a1a0e" stroke-width="0.6"/>
+            <circle cx="${x-36}" cy="${y+0.5}" r="2.4" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.6"/>
+            <circle cx="${x-40}" cy="${y+10.5}" r="1" fill="#a8763f"/>
+            <circle cx="${x-38}" cy="${y+5.5}" r="1" fill="#a8763f"/>
+            <circle cx="${x-36}" cy="${y+0.5}" r="1" fill="#a8763f"/>
+        </g>
+        ${lvl >= 4 ? `
+            ${FLAG(x - 34, y - 6, '#2c5aa0')}
+            <rect x="${x+12}" y="${y+12}" width="14" height="4" rx="2" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.6"/>
+            <circle cx="${x+13.5}" cy="${y+14}" r="1.9" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.5"/>
+        ` : ''}
+        ${lvl >= 7 ? `
+            <line x1="${x-36}" y1="${y-15}" x2="${x}" y2="${y+2}" stroke="#f4c44d" stroke-width="1.6"/>
+            <line x1="${x}" y1="${y+2}" x2="${x+36}" y2="${y-15}" stroke="#c2912c" stroke-width="1.6"/>
+            ${LIT_WINDOW(x - 3.2, y - 34, 6.5, 7)}
+        ` : ''}
     `,
 
     farm: (x, y, lvl) => `
         ${SHADOW(x, y, 44)}
-        <!-- crop field (iso parallelogram) -->
-        <polygon points="${x-44},${y+2} ${x-14},${y-12} ${x+30},${y-8} ${x},${y+18}" fill="#7a5028" stroke="#3a2010" stroke-width="0.6"/>
-        <!-- wheat rows -->
-        ${[-12, -8, -4, 0, 4, 8, 12].map(dy => {
-            const sx = x - 44 + Math.abs(dy + 12) * 1.5;
-            const ex = x + 30 - Math.abs(dy + 12) * 0.8;
-            return `<line x1="${sx}" y1="${y + dy * 0.5}" x2="${ex}" y2="${y + dy * 0.5 - 4}" stroke="#e8c850" stroke-width="1.5"/>
-                    <line x1="${sx}" y1="${y + dy * 0.5}" x2="${ex}" y2="${y + dy * 0.5 - 4}" stroke="#a88838" stroke-width="0.4"/>`;
-        }).join('')}
-        <!-- wheat tufts -->
-        ${[[-30, -6], [-18, 4], [-4, -2], [8, 6], [18, -4]].map(([dx, dy]) => `
-            <polygon points="${x+dx-1.5},${y+dy} ${x+dx+1.5},${y+dy} ${x+dx},${y+dy-3}" fill="#fde047" stroke="#a87820" stroke-width="0.3"/>
+        <!-- tilled field (iso diamond) -->
+        <polygon points="${x-44},${y-2} ${x-8},${y-20} ${x+34},${y-6} ${x-2},${y+18}" fill="#7a5230" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-44},${y-2} ${x-8},${y-20} ${x-5},${y-18.8} ${x-41},${y-0.8}" fill="#8d6238"/>
+        <!-- furrow rows of ripe wheat -->
+        ${[0, 1, 2, 3, 4].map(i => `
+            <line x1="${x - 38 + i * 7.4}" y1="${y - 2.5 + i * 3.4}" x2="${x - 5 + i * 7}" y2="${y - 17 + i * 2.6}" stroke="#4f3115" stroke-width="2.6" opacity="0.55"/>
+            <line x1="${x - 38 + i * 7.4}" y1="${y - 3.5 + i * 3.4}" x2="${x - 5 + i * 7}" y2="${y - 18 + i * 2.6}" stroke="#d9a94a" stroke-width="2.2"/>
+            <line x1="${x - 38 + i * 7.4}" y1="${y - 4.3 + i * 3.4}" x2="${x - 5 + i * 7}" y2="${y - 18.8 + i * 2.6}" stroke="#eec86a" stroke-width="1"/>
         `).join('')}
-        <!-- barn (right side) -->
-        <polygon points="${x+10},${y-6} ${x+38},${y-12} ${x+38},${y+2} ${x+10},${y+10}" fill="#a02818" stroke="#5a0808" stroke-width="0.8"/>
-        <polygon points="${x+10},${y-6} ${x+10},${y+10} ${x+38},${y+2} ${x+38},${y-12}" fill="rgba(0,0,0,0.18)"/>
-        <!-- barn roof -->
-        <polygon points="${x+6},${y-8} ${x+42},${y-14} ${x+24},${y-32}" fill="#7a1808" stroke="#3a0808" stroke-width="0.8"/>
-        <polygon points="${x+6},${y-8} ${x+24},${y-32} ${x+24},${y-12}" fill="rgba(0,0,0,0.18)"/>
-        <!-- white trim -->
-        <rect x="${x + 14}" y="${y - 16}" width="20" height="4" fill="#fff" stroke="#5a0808" stroke-width="0.4"/>
-        <line x1="${x + 24}" y1="${y - 16}" x2="${x + 24}" y2="${y - 12}" stroke="#5a0808" stroke-width="0.3"/>
-        <!-- big door -->
-        <path d="M ${x + 18} ${y + 8} L ${x + 18} ${y - 8} L ${x + 30} ${y - 12} L ${x + 30} ${y + 4} Z" fill="#3a2010" stroke="#1a0808" stroke-width="0.5"/>
-        <line x1="${x + 24}" y1="${y - 10}" x2="${x + 24}" y2="${y + 6}" stroke="#1a0808" stroke-width="0.4"/>
-        <!-- star -->
-        <polygon points="${x+24},${y-22} ${x+26},${y-18} ${x+30},${y-18} ${x+27},${y-15} ${x+28},${y-11} ${x+24},${y-13} ${x+20},${y-11} ${x+21},${y-15} ${x+18},${y-18} ${x+22},${y-18}" fill="#fff" stroke="#a02818" stroke-width="0.3"/>
+        <!-- swaying wheat tufts -->
+        ${[[-33, -3], [-22, 4], [-12, -6], [-1, 1], [8, -8], [12, 5]].map(([dx, dy], i) => `
+            <g class="flag-wave" style="animation-delay:${i * 0.3}s">
+                <path d="M ${x + dx} ${y + dy} q -1 -4 0.5 -6.5" stroke="#c9973c" stroke-width="0.9" fill="none"/>
+                <ellipse cx="${x + dx + 0.6}" cy="${y + dy - 7}" rx="1.3" ry="2.4" fill="#eec86a" stroke="#a8791f" stroke-width="0.4"/>
+            </g>
+        `).join('')}
+        <!-- red barn (iso) -->
+        <polygon points="${x+8},${y-24} ${x+24},${y-32} ${x+40},${y-24} ${x+24},${y-16}" fill="#c4523e" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+8},${y-24} ${x+24},${y-16} ${x+24},${y+8} ${x+8},${y}" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+40},${y-24} ${x+24},${y-16} ${x+24},${y+8} ${x+40},${y}" fill="#8c2f20" stroke="#2a1a0e" stroke-width="0.9"/>
+        ${[3, 8, 13, 18].map(d => `
+            <line x1="${x+10}" y1="${y-23+d}" x2="${x+22}" y2="${y-17+d}" stroke="#8c2f20" stroke-width="0.5" opacity="0.7"/>
+            <line x1="${x+26}" y1="${y-17+d}" x2="${x+38}" y2="${y-23+d}" stroke="#6e2317" stroke-width="0.5" opacity="0.7"/>
+        `).join('')}
+        <!-- barn gambrel roof -->
+        <polygon points="${x+4},${y-22} ${x+24},${y-44} ${x+24},${y-14}" fill="#f0e6d2" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+44},${y-22} ${x+24},${y-44} ${x+24},${y-14}" fill="#cbb896" stroke="#2a1a0e" stroke-width="0.9"/>
+        <line x1="${x+24}" y1="${y-44}" x2="${x+24}" y2="${y-14}" stroke="rgba(255,255,255,0.55)" stroke-width="1"/>
+        <path d="M ${x+11} ${y-25} L ${x+24} ${y-19}" stroke="#d9cbb0" stroke-width="0.6"/>
+        <path d="M ${x+16} ${y-32} L ${x+24} ${y-28}" stroke="#d9cbb0" stroke-width="0.6"/>
+        <path d="M ${x+37} ${y-25} L ${x+24} ${y-19}" stroke="#b5a184" stroke-width="0.6"/>
+        <!-- white-trim barn door + hayloft -->
+        <path d="M ${x+11} ${y-3} L ${x+11} ${y-15} L ${x+21} ${y-10} L ${x+21} ${y+2} Z" fill="#4a2e16" stroke="#f0e6d2" stroke-width="1"/>
+        <line x1="${x+11}" y1="${y-15}" x2="${x+21}" y2="${y+2}" stroke="#f0e6d2" stroke-width="0.8"/>
+        <line x1="${x+11}" y1="${y-3}" x2="${x+21}" y2="${y-10}" stroke="#f0e6d2" stroke-width="0.8"/>
+        <circle cx="${x+31.5}" cy="${y-9}" r="3.4" fill="#4a2e16" stroke="#f0e6d2" stroke-width="1"/>
+        <circle cx="${x+31.5}" cy="${y-9}" r="1.4" fill="#eec86a"/>
+        <!-- fence with gate, front depth plane -->
+        ${[[-42, 2], [-33, 6.5], [-24, 11], [-15, 15.5]].map(([dx, dy]) => `
+            <line x1="${x + dx}" y1="${y + dy}" x2="${x + dx}" y2="${y + dy - 8}" stroke="#8a5a2b" stroke-width="1.6"/>
+            <line x1="${x + dx - 0.5}" y1="${y + dy - 8}" x2="${x + dx - 0.5}" y2="${y + dy - 4}" stroke="#a8763f" stroke-width="0.6"/>
+        `).join('')}
+        <line x1="${x-42}" y1="${y-3.5}" x2="${x-15}" y2="${y+10}" stroke="#8a5a2b" stroke-width="1.3"/>
+        <line x1="${x-42}" y1="${y-0.5}" x2="${x-15}" y2="${y+13}" stroke="#6b4520" stroke-width="1.3"/>
         <!-- scarecrow -->
-        ${lvl >= 2 ? `
-            <line x1="${x - 26}" y1="${y + 2}" x2="${x - 26}" y2="${y - 10}" stroke="#5a3818" stroke-width="1"/>
-            <line x1="${x - 30}" y1="${y - 6}" x2="${x - 22}" y2="${y - 6}" stroke="#5a3818" stroke-width="1"/>
-            <circle cx="${x - 26}" cy="${y - 12}" r="2.5" fill="#e8a06a" stroke="#5a3818" stroke-width="0.4"/>
-            <polygon points="${x-30},${y-13} ${x-22},${y-13} ${x-26},${y-17}" fill="#a87820" stroke="#5a3818" stroke-width="0.3"/>
-        ` : ''}
-        <!-- sheep -->
+        <line x1="${x - 26}" y1="${y - 8}" x2="${x - 26}" y2="${y - 24}" stroke="#6b4520" stroke-width="1.4"/>
+        <line x1="${x - 32}" y1="${y - 19}" x2="${x - 20}" y2="${y - 19}" stroke="#6b4520" stroke-width="1.2"/>
+        <rect x="${x-29}" y="${y-20.5}" width="6" height="6" rx="1.5" fill="#2c5aa0" stroke="#1d3c6e" stroke-width="0.5"/>
+        <circle cx="${x - 26}" cy="${y - 24}" r="2.6" fill="#eec86a" stroke="#2a1a0e" stroke-width="0.5"/>
+        <polygon points="${x-31},${y-25.5} ${x-21},${y-25.5} ${x-26},${y-30}" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.5"/>
+        <!-- crow that hops on the scarecrow -->
+        <g class="smoke-puff" style="animation-delay:.8s">
+            <ellipse cx="${x-32.5}" cy="${y-20.5}" rx="1.8" ry="1.2" fill="#2a1a0e"/>
+            <circle cx="${x-34}" cy="${y-21.6}" r="0.9" fill="#2a1a0e"/>
+            <polygon points="${x-34.8},${y-21.6} ${x-36},${y-21.3} ${x-34.8},${y-21}" fill="#d9a94a"/>
+        </g>
         ${lvl >= 4 ? `
-            <ellipse cx="${x - 14}" cy="${y - 6}" rx="5" ry="3.5" fill="#fff" stroke="#5a5848" stroke-width="0.5"/>
-            <circle cx="${x - 18}" cy="${y - 8}" r="2" fill="#fff" stroke="#5a5848" stroke-width="0.4"/>
-            <circle cx="${x - 19}" cy="${y - 9}" r="0.4" fill="#000"/>
+            <ellipse cx="${x - 7}" cy="${y + 12}" rx="5" ry="3.4" fill="#f5f2ea" stroke="#2a1a0e" stroke-width="0.6"/>
+            <ellipse cx="${x - 6}" cy="${y + 10.5}" rx="3.4" ry="2" fill="#fff" opacity="0.8"/>
+            <circle cx="${x - 11.5}" cy="${y + 10}" r="2" fill="#3a3328" stroke="#2a1a0e" stroke-width="0.4"/>
+            <circle cx="${x - 12.2}" cy="${y + 9.6}" r="0.4" fill="#fff"/>
+            <line x1="${x - 9}" y1="${y + 15}" x2="${x - 9}" y2="${y + 17}" stroke="#2a1a0e" stroke-width="0.8"/>
+            <line x1="${x - 5}" y1="${y + 15}" x2="${x - 5}" y2="${y + 17}" stroke="#2a1a0e" stroke-width="0.8"/>
+        ` : ''}
+        ${lvl >= 7 ? `
+            <line x1="${x+24}" y1="${y-44}" x2="${x+24}" y2="${y-52}" stroke="#6b4520" stroke-width="1.4"/>
+            <g class="sawblade">
+                <g transform="translate(${x+24},${y-52})">
+                    ${[0, 90, 180, 270].map(a => `<polygon points="0,0 ${Math.cos(a * Math.PI / 180) * 9 - Math.sin(a * Math.PI / 180) * 2},${Math.sin(a * Math.PI / 180) * 9 * 0.6 + Math.cos(a * Math.PI / 180) * 2 * 0.6} ${Math.cos(a * Math.PI / 180) * 10 + Math.sin(a * Math.PI / 180) * 2},${Math.sin(a * Math.PI / 180) * 10 * 0.6 - Math.cos(a * Math.PI / 180) * 2 * 0.6}" fill="#f0e6d2" stroke="#2a1a0e" stroke-width="0.5"/>`).join('')}
+                    <circle r="1.6" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.5"/>
+                </g>
+            </g>
         ` : ''}
     `,
 
     coinmint: (x, y, lvl) => `
         ${SHADOW(x, y, 42)}
-        <polygon points="${x-40},${y-8} ${x},${y-26} ${x+40},${y-8} ${x+40},${y+2} ${x},${y+22} ${x-40},${y+2}" fill="#f0ead8" stroke="#5a4818" stroke-width="0.8"/>
-        <polygon points="${x-40},${y-8} ${x-40},${y+2} ${x},${y+22} ${x},${y-26}" fill="rgba(0,0,0,0.15)"/>
-        ${[-30, -18, -6, 6, 18, 30].map(dx => `<rect x="${x + dx - 2}" y="${y - 20}" width="4" height="20" fill="#dad0a8" stroke="#5a4818" stroke-width="0.4"/>`).join('')}
-        <!-- pediment -->
-        <polygon points="${x-44},${y-26} ${x+44},${y-26} ${x},${y-52}" fill="#e8b94a" stroke="#5a3a08" stroke-width="0.8"/>
-        <polygon points="${x-44},${y-26} ${x},${y-52} ${x},${y-26}" fill="rgba(0,0,0,0.18)"/>
-        <!-- giant coin -->
-        <circle cx="${x}" cy="${y - 36}" r="9" fill="#f0c050" stroke="#7a5410" stroke-width="1"/>
-        <circle cx="${x}" cy="${y - 36}" r="7" fill="none" stroke="#7a5410" stroke-width="0.4"/>
-        <text x="${x}" y="${y - 32}" text-anchor="middle" font-size="11" font-weight="900" fill="#7a5410" font-family="Inter">$</text>
-        <circle cx="${x - 2}" cy="${y - 39}" r="2" fill="rgba(255,255,255,0.5)"/>
-        <!-- door -->
-        <path d="M ${x - 6} ${y - 4} L ${x - 6} ${y - 14} Q ${x} ${y - 18} ${x + 6} ${y - 14} L ${x + 6} ${y - 4} Z" fill="#3a2010" stroke="#1a0808" stroke-width="0.5"/>
-        <!-- coin piles -->
-        <ellipse cx="${x - 26}" cy="${y + 4}" rx="5" ry="1.5" fill="#a87820"/>
-        <circle cx="${x - 28}" cy="${y + 2}" r="2" fill="#f0c050" stroke="#a87820"/>
-        <circle cx="${x - 24}" cy="${y + 1}" r="2" fill="#f0c050" stroke="#a87820"/>
-        <circle cx="${x - 26}" cy="${y - 1}" r="2" fill="#f0c050" stroke="#a87820"/>
-        <!-- sparkles -->
-        <g class="sparkle-fx">
-            <polygon points="${x-14},${y-30} ${x-12},${y-26} ${x-14},${y-22} ${x-16},${y-26}" fill="#fff" opacity="0.9"/>
-            <polygon points="${x+14},${y-30} ${x+16},${y-26} ${x+14},${y-22} ${x+12},${y-26}" fill="#fff" opacity="0.9" style="animation-delay:.5s"/>
+        <!-- marble stylobate steps -->
+        <polygon points="${x-40},${y-4} ${x},${y-24} ${x+40},${y-4} ${x},${y+16}" fill="#e9e2d0" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-40},${y-4} ${x},${y+16} ${x},${y+22} ${x-40},${y+2}" fill="#d9cbb0" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+40},${y-4} ${x},${y+16} ${x},${y+22} ${x+40},${y+2}" fill="#b8a88c" stroke="#2a1a0e" stroke-width="0.9"/>
+        <line x1="${x-40}" y1="${y-4}" x2="${x}" y2="${y+16}" stroke="rgba(255,255,255,0.5)" stroke-width="0.8"/>
+        <!-- marble hall (iso box, flat top) -->
+        <polygon points="${x-32},${y-22} ${x},${y-38} ${x+32},${y-22} ${x},${y-6}" fill="#f7f1e3" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-32},${y-22} ${x},${y-6} ${x},${y+10} ${x-32},${y-6}" fill="#f0e6d2" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+32},${y-22} ${x},${y-6} ${x},${y+10} ${x+32},${y-6}" fill="#d3c5a8" stroke="#2a1a0e" stroke-width="0.9"/>
+        <line x1="${x-32}" y1="${y-22}" x2="${x}" y2="${y-6}" stroke="rgba(255,255,255,0.55)" stroke-width="0.9"/>
+        <!-- gilded pilasters on both faces -->
+        ${[[-27, 0], [-17, 0], [15, 0], [25, 0]].map(([dx]) => {
+            const lit = dx < 0;
+            const topY = y - 22 + Math.abs(dx) * 0.5 - 16;
+            return `
+            <polygon points="${x+dx-1.8},${topY} ${x+dx+1.8},${topY+1.8}, ${x+dx+1.8},${topY+18} ${x+dx-1.8},${topY+16.2}" fill="${lit ? '#e9dcbf' : '#c4b494'}" stroke="#2a1a0e" stroke-width="0.6"/>
+            <rect x="${x+dx-2.6}" y="${topY-1.6}" width="5.2" height="2.6" rx="0.7" fill="${lit ? '#f4c44d' : '#c2912c'}" stroke="#2a1a0e" stroke-width="0.5"/>
+            <rect x="${x+dx-2.6}" y="${topY+16.4}" width="5.2" height="2.6" rx="0.7" fill="${lit ? '#d9a94a' : '#a8791f'}" stroke="#2a1a0e" stroke-width="0.5"/>`;
+        }).join('')}
+        <!-- bronze vault door with gold dial -->
+        <path d="M ${x-10} ${y-1.5} L ${x-10} ${y-13} Q ${x-5.5} ${y-18} ${x-1} ${y-8.5} L ${x-1} ${y+3} Z" fill="#4a2e16" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x-8.6} ${y-2.6} L ${x-8.6} ${y-12} Q ${x-5.5} ${y-15.4} ${x-2.4} ${y-8.9} L ${x-2.4} ${y+1.4} Z" fill="#6e4a24"/>
+        <circle cx="${x-5.5}" cy="${y-6.5}" r="2.1" fill="none" stroke="#f4c44d" stroke-width="0.8"/>
+        <circle cx="${x-5.5}" cy="${y-6.5}" r="0.7" fill="#f4c44d"/>
+        <!-- coin crest on the shaded face -->
+        <circle cx="${x+20}" cy="${y-8}" r="4.6" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.7"/>
+        <circle cx="${x+20}" cy="${y-8}" r="3.2" fill="none" stroke="#a8791f" stroke-width="0.6"/>
+        <circle cx="${x+18.6}" cy="${y-9.6}" r="1.1" fill="rgba(255,255,255,0.6)"/>
+        <!-- gold cornice band -->
+        <polygon points="${x-34},${y-22} ${x},${y-39} ${x+34},${y-22} ${x},${y-5}" fill="none" stroke="#c2912c" stroke-width="2.2"/>
+        <polygon points="${x-34},${y-22} ${x},${y-39} ${x},${y-36} ${x-30},${y-21}" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.5"/>
+        <!-- great gold dome -->
+        <ellipse cx="${x}" cy="${y-22}" rx="17" ry="8" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.8"/>
+        <path d="M ${x-16} ${y-23} A 16 15 0 0 1 ${x+16} ${y-23} Q ${x+8} ${y-18.5} ${x} ${y-18} Q ${x-8} ${y-18.5} ${x-16} ${y-23} Z" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x-16} ${y-23} A 16 15 0 0 1 ${x-2} ${y-37.8} Q ${x-9} ${y-32} ${x-12} ${y-26.5} Z" fill="#ffd76b"/>
+        <path d="M ${x+16} ${y-23} A 16 15 0 0 0 ${x+6} ${y-36.5} Q ${x+10} ${y-30} ${x+12} ${y-25.5} Z" fill="#c2912c"/>
+        <ellipse cx="${x-6}" cy="${y-32}" rx="3" ry="2" fill="rgba(255,255,255,0.5)"/>
+        <!-- finial + spinning coin -->
+        <line x1="${x}" y1="${y-37.5}" x2="${x}" y2="${y-42}" stroke="#a8791f" stroke-width="1.2"/>
+        <g>
+            <ellipse cx="${x}" cy="${y - 48}" rx="6" ry="6" fill="#c2912c" stroke="#2a1a0e" stroke-width="0.9">
+                <animate attributeName="rx" values="6;1.5;6" dur="2.6s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="${x}" cy="${y - 48}" rx="4.6" ry="4.6" fill="#f4c44d" stroke="#a8791f" stroke-width="0.6">
+                <animate attributeName="rx" values="4.6;1;4.6" dur="2.6s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="${x-1.4}" cy="${y-49.6}" rx="1.4" ry="1.2" fill="rgba(255,255,255,0.55)">
+                <animate attributeName="rx" values="1.4;0.4;1.4" dur="2.6s" repeatCount="indefinite"/>
+            </ellipse>
         </g>
+        <!-- overflowing coin piles at the steps -->
+        <ellipse cx="${x - 27}" cy="${y + 10}" rx="8" ry="2.8" fill="#c2912c" stroke="#2a1a0e" stroke-width="0.6"/>
+        ${[[-30, 7], [-25, 7.5], [-27.5, 5], [-23, 5.5]].map(([dx, dy]) => `<ellipse cx="${x + dx}" cy="${y + dy}" rx="2.3" ry="1.7" fill="#f4c44d" stroke="#a8791f" stroke-width="0.4"/>`).join('')}
+        <ellipse cx="${x + 26}" cy="${y + 8}" rx="6" ry="2.2" fill="#c2912c" stroke="#2a1a0e" stroke-width="0.6"/>
+        <ellipse cx="${x + 25}" cy="${y + 6}" rx="2.2" ry="1.6" fill="#ffd76b" stroke="#a8791f" stroke-width="0.4"/>
+        <ellipse cx="${x + 28.5}" cy="${y + 6.8}" rx="2" ry="1.5" fill="#f4c44d" stroke="#a8791f" stroke-width="0.4"/>
+        <g class="sparkle-fx">
+            <polygon points="${x-26},${y+1} ${x-25},${y+3} ${x-26},${y+5} ${x-27},${y+3}" fill="#fff3c4"/>
+            <polygon points="${x+11},${y-52} ${x+12.2},${y-49.5} ${x+11},${y-47} ${x+9.8},${y-49.5}" fill="#fff3c4" style="animation-delay:.5s"/>
+            <polygon points="${x-12},${y-56} ${x-11},${y-54} ${x-12},${y-52} ${x-13},${y-54}" fill="#ffe9a3" style="animation-delay:1s"/>
+        </g>
+        ${lvl >= 4 ? `
+            ${FLAG(x - 36, y - 26, '#2c5aa0')}
+            ${FLAG(x + 36, y - 26, '#2c5aa0')}
+        ` : ''}
+        ${lvl >= 7 ? `
+            <polygon points="${x-3},${y-56} ${x},${y-53} ${x+3},${y-56} ${x},${y-59}" fill="#f4c44d" stroke="#a8791f" stroke-width="0.5">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="1.6s" repeatCount="indefinite"/>
+            </polygon>
+            <ellipse cx="${x}" cy="${y - 44}" rx="14" ry="14" fill="#ffd76b" opacity="0.12">
+                <animate attributeName="opacity" values="0.06;0.2;0.06" dur="3s" repeatCount="indefinite"/>
+            </ellipse>
+        ` : ''}
     `,
 
     storage: (x, y, lvl) => `
         ${SHADOW(x, y, 44)}
-        <polygon points="${x-40},${y-4} ${x},${y-22} ${x+40},${y-4} ${x+40},${y+4} ${x},${y+22} ${x-40},${y+4}" fill="#a87d4a" stroke="#3a2010" stroke-width="0.8"/>
-        <polygon points="${x-40},${y-4} ${x-40},${y+4} ${x},${y+22} ${x},${y-22}" fill="rgba(0,0,0,0.18)"/>
-        <!-- horizontal bands -->
-        ${[8, 14].map(dy => `<line x1="${x - 40}" y1="${y - 4 + dy}" x2="${x + 40}" y2="${y - 4 + dy}" stroke="#3a2010" stroke-width="0.5"/>`).join('')}
-        <!-- X braces -->
-        <line x1="${x - 36}" y1="${y - 2}" x2="${x - 4}" y2="${y + 18}" stroke="#3a2010" stroke-width="0.6"/>
-        <line x1="${x - 36}" y1="${y + 4}" x2="${x - 4}" y2="${y - 12}" stroke="#3a2010" stroke-width="0.6"/>
-        <line x1="${x + 36}" y1="${y - 2}" x2="${x + 4}" y2="${y + 18}" stroke="#3a2010" stroke-width="0.6"/>
-        <line x1="${x + 36}" y1="${y + 4}" x2="${x + 4}" y2="${y - 12}" stroke="#3a2010" stroke-width="0.6"/>
-        <!-- roof -->
-        <polygon points="${x-44},${y-6} ${x+44},${y-6} ${x},${y-44}" fill="#5a3818" stroke="#1a0808" stroke-width="0.8"/>
-        <polygon points="${x-44},${y-6} ${x},${y-44} ${x},${y-6}" fill="rgba(0,0,0,0.22)"/>
-        <!-- big doors -->
-        <path d="M ${x - 12} ${y + 16} L ${x - 12} ${y - 8} L ${x + 12} ${y - 14} L ${x + 12} ${y + 10} Z" fill="#2a1808" stroke="#0a0408" stroke-width="0.5"/>
-        <line x1="${x}" y1="${y + 13}" x2="${x}" y2="${y - 11}" stroke="#0a0408" stroke-width="0.5"/>
-        <rect x="${x - 4}" y="${y - 1}" width="2.5" height="2.5" fill="#fbbf24"/>
-        <rect x="${x + 2}" y="${y - 2}" width="2.5" height="2.5" fill="#fbbf24"/>
-        <!-- crates -->
-        <rect x="${x - 32}" y="${y + 4}" width="10" height="9" fill="#a87d4a" stroke="#5a3818" stroke-width="0.5"/>
-        <line x1="${x - 32}" y1="${y + 8.5}" x2="${x - 22}" y2="${y + 8.5}" stroke="#5a3818" stroke-width="0.4"/>
-        <line x1="${x - 27}" y1="${y + 4}" x2="${x - 27}" y2="${y + 13}" stroke="#5a3818" stroke-width="0.4"/>
+        <!-- broad timber warehouse (iso box) -->
+        <polygon points="${x-38},${y-14} ${x},${y-33} ${x+38},${y-14} ${x},${y+5}" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-38},${y-14} ${x},${y+5} ${x},${y+20} ${x-38},${y+1}" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+38},${y-14} ${x},${y+5} ${x},${y+20} ${x+38},${y+1}" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.9"/>
+        <line x1="${x-38}" y1="${y-14}" x2="${x}" y2="${y+5}" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+        <!-- plank courses + one tilted plank -->
+        ${[5, 10].map(d => `
+            <line x1="${x-38}" y1="${y-14+d}" x2="${x}" y2="${y+5+d}" stroke="#6f4722" stroke-width="0.5"/>
+            <line x1="${x}" y1="${y+5+d}" x2="${x+38}" y2="${y-14+d}" stroke="#54371a" stroke-width="0.5"/>
+        `).join('')}
+        <line x1="${x+9}" y1="${y+9}" x2="${x+21}" y2="${y+4.4}" stroke="#54371a" stroke-width="0.7"/>
+        <!-- X-brace on lit face -->
+        <line x1="${x-34}" y1="${y-12}" x2="${x-14}" y2="${y+13}" stroke="#6b4520" stroke-width="1.6"/>
+        <line x1="${x-34}" y1="${y+3}" x2="${x-14}" y2="${y-2}" stroke="#6b4520" stroke-width="1.6"/>
+        <!-- big shingle roof (pyramid, wide) -->
+        <polygon points="${x-44},${y-14} ${x},${y-48} ${x},${y+3}" fill="#a8763f" stroke="#2a1a0e" stroke-width="1"/>
+        <polygon points="${x+44},${y-14} ${x},${y-48} ${x},${y+3}" fill="#7c521f" stroke="#2a1a0e" stroke-width="1"/>
+        <path d="M ${x-31} ${y-24} L ${x} ${y-9}" stroke="#8d6231" stroke-width="0.7"/>
+        <path d="M ${x-20} ${y-33} L ${x} ${y-23}" stroke="#8d6231" stroke-width="0.7"/>
+        <path d="M ${x-9} ${y-41} L ${x} ${y-36}" stroke="#8d6231" stroke-width="0.7"/>
+        <path d="M ${x+31} ${y-24} L ${x} ${y-9}" stroke="#684418" stroke-width="0.7"/>
+        <path d="M ${x+20} ${y-33} L ${x} ${y-23}" stroke="#684418" stroke-width="0.7"/>
+        <line x1="${x}" y1="${y-48}" x2="${x}" y2="${y+3}" stroke="rgba(255,240,210,0.4)" stroke-width="0.9"/>
+        <!-- patched shingle -->
+        <polygon points="${x-24},${y-22} ${x-17},${y-19} ${x-18},${y-15} ${x-25},${y-18}" fill="#c99a5e" stroke="#2a1a0e" stroke-width="0.5"/>
+        <!-- hoist beam + sack -->
+        <line x1="${x}" y1="${y-48}" x2="${x+10}" y2="${y-42}" stroke="#6b4520" stroke-width="1.6"/>
+        <line x1="${x+10}" y1="${y-42}" x2="${x+10}" y2="${y-33}" stroke="#4a4438" stroke-width="0.7"/>
+        <path d="M ${x+7.5} ${y-33} q 2.5 -2.5 5 0 q 1 4 -2.5 5 q -3.5 -1 -2.5 -5 Z" fill="#d9cbb0" stroke="#2a1a0e" stroke-width="0.6"/>
+        <!-- barn doors on lit face -->
+        <path d="M ${x-11} ${y+2} L ${x-11} ${y-11} L ${x+1} ${y-5} L ${x+1} ${y+8} Z" fill="#4a2e16" stroke="#2a1a0e" stroke-width="0.8"/>
+        <line x1="${x-5}" y1="${y-8}" x2="${x-5}" y2="${y+5}" stroke="#2a1a0e" stroke-width="0.6"/>
+        <line x1="${x-11}" y1="${y-11}" x2="${x+1}" y2="${y+8}" stroke="#6e4a24" stroke-width="0.8"/>
+        <line x1="${x-11}" y1="${y+2}" x2="${x+1}" y2="${y-5}" stroke="#6e4a24" stroke-width="0.8"/>
+        <circle cx="${x-3.4}" cy="${y-0.5}" r="0.8" fill="#f4c44d"/>
+        <!-- crate + barrel depth plane -->
+        <g>
+            <polygon points="${x-34},${y+7} ${x-26},${y+3} ${x-18},${y+7} ${x-26},${y+11}" fill="#c99a5e" stroke="#2a1a0e" stroke-width="0.7"/>
+            <polygon points="${x-34},${y+7} ${x-26},${y+11} ${x-26},${y+19} ${x-34},${y+15}" fill="#a8763f" stroke="#2a1a0e" stroke-width="0.7"/>
+            <polygon points="${x-18},${y+7} ${x-26},${y+11} ${x-26},${y+19} ${x-18},${y+15}" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.7"/>
+            <line x1="${x-33}" y1="${y+10.5}" x2="${x-27}" y2="${y+13.5}" stroke="#6b4520" stroke-width="0.5"/>
+            <ellipse cx="${x+22}" cy="${y+16}" rx="5.5" ry="2.2" fill="rgba(30,20,10,0.25)"/>
+            <path d="M ${x+16.5} ${y+6} q -1.8 5 0 10 q 5.5 2.6 11 0 q 1.8 -5 0 -10 q -5.5 -2.6 -11 0 Z" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.8"/>
+            <ellipse cx="${x+22}" cy="${y+6}" rx="5.5" ry="2" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.6"/>
+            <path d="M ${x+15.6} ${y+8.6} q 6.4 3 12.8 0" stroke="#4f5663" stroke-width="1" fill="none"/>
+            <path d="M ${x+15.6} ${y+13.4} q 6.4 3 12.8 0" stroke="#4f5663" stroke-width="1" fill="none"/>
+            <line x1="${x+18}" y1="${y+6.8}" x2="${x+18}" y2="${y+15.4}" stroke="#6b4520" stroke-width="0.5"/>
+        </g>
+        <!-- resident mouser cat on the crate -->
+        <g class="flag-wave">
+            <ellipse cx="${x-26}" cy="${y+3.6}" rx="3.4" ry="2" fill="#3a3328" stroke="#2a1a0e" stroke-width="0.5"/>
+            <circle cx="${x-29.2}" cy="${y+1.6}" r="1.9" fill="#3a3328" stroke="#2a1a0e" stroke-width="0.5"/>
+            <polygon points="${x-30.6},${y+0.4} ${x-30.2},${y-1.6} ${x-28.9},${y-0.2}" fill="#3a3328"/>
+            <polygon points="${x-28.4},${y-0.3} ${x-27.7},${y-2} ${x-26.9},${y-0.1}" fill="#3a3328"/>
+            <path d="M ${x-22.8} ${y+3.6} q 3 -0.5 2.6 -3.4" stroke="#3a3328" stroke-width="1.1" fill="none"/>
+            <circle cx="${x-29.8}" cy="${y+1.3}" r="0.35" fill="#f4c44d"/>
+            <circle cx="${x-28.4}" cy="${y+1.3}" r="0.35" fill="#f4c44d"/>
+        </g>
+        ${lvl >= 4 ? `
+            <polygon points="${x+28},${y+2} ${x+34},${y-1} ${x+40},${y+2} ${x+34},${y+5}" fill="#c99a5e" stroke="#2a1a0e" stroke-width="0.6"/>
+            <polygon points="${x+28},${y+2} ${x+34},${y+5} ${x+34},${y+12} ${x+28},${y+9}" fill="#a8763f" stroke="#2a1a0e" stroke-width="0.6"/>
+            <polygon points="${x+40},${y+2} ${x+34},${y+5} ${x+34},${y+12} ${x+40},${y+9}" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.6"/>
+            ${FLAG(x - 40, y - 12, '#2c5aa0')}
+        ` : ''}
+        ${lvl >= 7 ? `
+            <line x1="${x-44}" y1="${y-14}" x2="${x}" y2="${y+3}" stroke="#f4c44d" stroke-width="1.6"/>
+            <line x1="${x}" y1="${y+3}" x2="${x+44}" y2="${y-14}" stroke="#c2912c" stroke-width="1.6"/>
+            ${LIT_WINDOW(x - 3, y - 32, 6, 6)}
+            <circle cx="${x}" cy="${y-49.5}" r="1.8" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.6"/>
+        ` : ''}
     `,
 
     harbor: (x, y, lvl) => `
         ${SHADOW(x, y, 42)}
-        <!-- stone quay -->
-        <polygon points="${x-36},${y-6} ${x},${y-22} ${x+36},${y-6} ${x+36},${y+2} ${x},${y+18} ${x-36},${y+2}" fill="#8d857a" stroke="#3a342c" stroke-width="0.8"/>
-        <polygon points="${x-36},${y-6} ${x-36},${y+2} ${x},${y+18} ${x},${y-22}" fill="rgba(0,0,0,0.18)"/>
-        ${[0, 5].map(dy => `<line x1="${x - 36}" y1="${y - 6 + dy}" x2="${x + 36}" y2="${y - 6 + dy}" stroke="#3a342c" stroke-width="0.35" opacity="0.5"/>`).join('')}
-        <!-- warehouse -->
-        <polygon points="${x-30},${y-12} ${x-8},${y-20} ${x-8},${y-2} ${x-30},${y+6}" fill="#a87d4a" stroke="#3a2010" stroke-width="0.7"/>
-        <polygon points="${x-32},${y-12} ${x-6},${y-21} ${x-19},${y-32}" fill="#5a3818" stroke="#1a0808" stroke-width="0.6"/>
-        <rect x="${x - 24}" y="${y - 10}" width="7" height="10" fill="#3a2010" stroke="#1a0808" stroke-width="0.4"/>
-        <!-- wooden pier running into the sea -->
-        <polygon points="${x+2},${y+2} ${x+12},${y-2} ${x+40},${y+10} ${x+30},${y+15}" fill="#7a4818" stroke="#3a2010" stroke-width="0.7"/>
-        ${[8, 16, 24].map(dx => `<line x1="${x + dx}" y1="${y + dx * 0.28}" x2="${x + dx + 4}" y2="${y + dx * 0.28 - 2}" stroke="#3a2010" stroke-width="0.5"/>`).join('')}
-        <line x1="${x + 36}" y1="${y + 9}" x2="${x + 36}" y2="${y + 16}" stroke="#3a2010" stroke-width="1.4"/>
-        <!-- moored trade boat with sail -->
-        <path d="M ${x + 26} ${y + 22} Q ${x + 36} ${y + 27} ${x + 46} ${y + 22} L ${x + 43} ${y + 17} L ${x + 29} ${y + 17} Z" fill="#5a3818" stroke="#1a0808" stroke-width="0.7"/>
-        <line x1="${x + 36}" y1="${y + 17}" x2="${x + 36}" y2="${y + 4}" stroke="#3a2010" stroke-width="1"/>
-        <path d="M ${x + 36} ${y + 5} Q ${x + 45} ${y + 9} ${x + 36} ${y + 14} Z" fill="#f0ead8" stroke="#a89868" stroke-width="0.5"/>
-        <!-- crane -->
-        <line x1="${x + 8}" y1="${y - 4}" x2="${x + 8}" y2="${y - 22}" stroke="#3a2010" stroke-width="1.6"/>
-        <line x1="${x + 8}" y1="${y - 22}" x2="${x + 20}" y2="${y - 14}" stroke="#3a2010" stroke-width="1.3"/>
-        <line x1="${x + 20}" y1="${y - 14}" x2="${x + 20}" y2="${y - 6}" stroke="#5a4828" stroke-width="0.6"/>
-        <rect x="${x + 17.5}" y="${y - 6}" width="5" height="4.5" fill="#a87d4a" stroke="#5a3818" stroke-width="0.5"/>
-        <!-- cargo crates on the quay -->
-        <rect x="${x - 4}" y="${y + 4}" width="8" height="7" fill="#a87d4a" stroke="#5a3818" stroke-width="0.5"/>
-        <rect x="${x + 3}" y="${y + 7}" width="6" height="5.5" fill="#c49a5a" stroke="#5a3818" stroke-width="0.5"/>
-        <line x1="${x - 4}" y1="${y + 7.5}" x2="${x + 4}" y2="${y + 7.5}" stroke="#5a3818" stroke-width="0.4"/>
+        <!-- water inlet with drifting ripples -->
+        <polygon points="${x+2},${y+2} ${x+44},${y-4} ${x+44},${y+16} ${x+12},${y+22}" fill="#2c5aa0" stroke="#1d3c6e" stroke-width="0.8"/>
+        <polygon points="${x+4},${y+3} ${x+44},${y-2.5} ${x+44},${y+2} ${x+8},${y+7}" fill="#3d6cb4"/>
+        <path d="M ${x+14} ${y+10} q 4 -1.6 8 0" stroke="#7fb2e8" stroke-width="0.9" fill="none">
+            <animate attributeName="opacity" values="0.2;0.9;0.2" dur="3s" repeatCount="indefinite"/>
+        </path>
+        <path d="M ${x+28} ${y+14} q 4 -1.6 8 0" stroke="#7fb2e8" stroke-width="0.9" fill="none">
+            <animate attributeName="opacity" values="0.9;0.2;0.9" dur="3s" repeatCount="indefinite"/>
+        </path>
+        <!-- stone quay (iso slab) -->
+        <polygon points="${x-38},${y-8} ${x-4},${y-25} ${x+26},${y-13} ${x-6},${y+6}" fill="#a4adb5" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-38},${y-8} ${x-6},${y+6} ${x-6},${y+15} ${x-38},${y+1}" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+26},${y-13} ${x-6},${y+6} ${x-6},${y+15} ${x+26},${y-4}" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.9"/>
+        <line x1="${x-38}" y1="${y-8}" x2="${x-6}" y2="${y+6}" stroke="rgba(255,255,255,0.45)" stroke-width="0.8"/>
+        <line x1="${x-30}" y1="${y-2}" x2="${x-14}" y2="${y+5.5}" stroke="#79828c" stroke-width="0.5"/>
+        <line x1="${x+2}" y1="${y+5}" x2="${x+20}" y2="${y-6}" stroke="#59626c" stroke-width="0.5"/>
+        <!-- harbormaster's office -->
+        <polygon points="${x-34},${y-20} ${x-20},${y-27} ${x-6},${y-21} ${x-20},${y-14}" fill="#b98a4e" stroke="#2a1a0e" stroke-width="0.8"/>
+        <polygon points="${x-34},${y-20} ${x-20},${y-14} ${x-20},${y+2} ${x-34},${y-4}" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.8"/>
+        <polygon points="${x-6},${y-21} ${x-20},${y-14} ${x-20},${y+2} ${x-6},${y-5}" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.8"/>
+        <polygon points="${x-37},${y-19} ${x-20},${y-38} ${x-20},${y-12} Z" fill="#3d6cb4" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-3},${y-20} ${x-20},${y-38} ${x-20},${y-12} Z" fill="#274b85" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x-31} ${y-21} L ${x-20} ${y-33}" stroke="#5b8ccc" stroke-width="0.7"/>
+        <path d="M ${x-26} ${y-17.5} L ${x-20} ${y-24}" stroke="#5b8ccc" stroke-width="0.7"/>
+        ${LIT_WINDOW(x - 30, y - 12, 5, 6)}
+        <path d="M ${x-14} ${y-2.5} L ${x-14} ${y-13} L ${x-9} ${y-10.5} L ${x-9} ${y+0.5} Z" fill="#4a2e16" stroke="#2a1a0e" stroke-width="0.7"/>
+        <!-- timber pier on posts -->
+        <polygon points="${x-2},${y+3} ${x+8},${y-1} ${x+40},${y+11} ${x+30},${y+16}" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.8"/>
+        <polygon points="${x-2},${y+3} ${x+8},${y-1} ${x+9.5},${y-0.2} ${x-0.5},${y+3.8}" fill="#a8763f"/>
+        ${[6, 14, 22, 30].map(d => `<line x1="${x + d}" y1="${y + 1.5 + d * 0.37}" x2="${x + d + 6}" y2="${y - 1 + d * 0.37}" stroke="#6b4520" stroke-width="0.6"/>`).join('')}
+        <line x1="${x+34}" y1="${y+13.5}" x2="${x+34}" y2="${y+20}" stroke="#54371a" stroke-width="1.8"/>
+        <line x1="${x+6}" y1="${y+2.5}" x2="${x+6}" y2="${y+9}" stroke="#54371a" stroke-width="1.8"/>
+        <!-- moored cog with waving sail -->
+        <path d="M ${x + 22} ${y + 21} Q ${x + 33} ${y + 26.5} ${x + 44} ${y + 21} L ${x + 41} ${y + 15.5} L ${x + 25} ${y + 15.5} Z" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.8"/>
+        <path d="M ${x + 22} ${y + 21} Q ${x + 33} ${y + 26.5} ${x + 44} ${y + 21} L ${x + 43.2} ${y + 19.4} Q ${x + 33} ${y + 24.4} ${x + 23} ${y + 19.4} Z" fill="#6b4520"/>
+        <line x1="${x + 33}" y1="${y + 15.5}" x2="${x + 33}" y2="${y - 4}" stroke="#54371a" stroke-width="1.3"/>
+        <path class="flag-wave" d="M ${x + 33.8} ${y - 3} Q ${x + 42} ${y + 1} ${x + 40} ${y + 8} Q ${x + 37} ${y + 12} ${x + 33.8} ${y + 12.5} Z" fill="#f0e6d2" stroke="#2a1a0e" stroke-width="0.7"/>
+        <path class="flag-wave" d="M ${x + 33.8} ${y - 3} Q ${x + 42} ${y + 1} ${x + 40} ${y + 8} Q ${x + 38.5} ${y + 4} ${x + 33.8} ${y + 2} Z" fill="rgba(255,255,255,0.4)"/>
+        <path class="flag-wave" d="M ${x + 35.5} ${y + 3} q 2.5 1.5 2.8 4" stroke="#b3402e" stroke-width="1.1" fill="none"/>
+        ${FLAG(x + 33, y - 3, '#b3402e')}
+        <!-- wooden crane swinging cargo -->
+        <line x1="${x + 4}" y1="${y - 6}" x2="${x + 4}" y2="${y - 28}" stroke="#6b4520" stroke-width="2"/>
+        <line x1="${x + 4}" y1="${y - 28}" x2="${x + 18}" y2="${y - 19}" stroke="#6b4520" stroke-width="1.6"/>
+        <line x1="${x + 4}" y1="${y - 20}" x2="${x + 12}" y2="${y - 23.5}" stroke="#54371a" stroke-width="1"/>
+        <g class="flag-wave">
+            <line x1="${x + 18}" y1="${y - 19}" x2="${x + 18}" y2="${y - 9}" stroke="#4a4438" stroke-width="0.7"/>
+            <polygon points="${x+14.5},${y-9} ${x+18},${y-10.8} ${x+21.5},${y-9} ${x+18},${y-7.2}" fill="#c99a5e" stroke="#2a1a0e" stroke-width="0.6"/>
+            <polygon points="${x+14.5},${y-9} ${x+18},${y-7.2} ${x+18},${y-3.2} ${x+14.5},${y-5}" fill="#a8763f" stroke="#2a1a0e" stroke-width="0.6"/>
+            <polygon points="${x+21.5},${y-9} ${x+18},${y-7.2} ${x+18},${y-3.2} ${x+21.5},${y-5}" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.6"/>
+        </g>
+        <!-- cargo on the quay -->
+        <ellipse cx="${x-1}" cy="${y+11}" rx="4.5" ry="1.8" fill="rgba(30,20,10,0.25)"/>
+        <path d="M ${x-5.5} ${y+3} q -1.4 4 0 8 q 4.5 2.2 9 0 q 1.4 -4 0 -8 q -4.5 -2.2 -9 0 Z" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.7"/>
+        <ellipse cx="${x-1}" cy="${y+3}" rx="4.5" ry="1.7" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.5"/>
+        <path d="M ${x-6.3} ${y+5.4} q 5.3 2.4 10.6 0" stroke="#4f5663" stroke-width="0.9" fill="none"/>
         <!-- gulls -->
         <g class="sparkle-fx">
-            <path d="M ${x - 12} ${y - 38} q 2 -2 4 0 q 2 -2 4 0" stroke="#e8e8f0" stroke-width="0.8" fill="none"/>
-            <path d="M ${x + 26} ${y - 30} q 1.6 -1.6 3.2 0 q 1.6 -1.6 3.2 0" stroke="#e8e8f0" stroke-width="0.7" fill="none" style="animation-delay:.7s"/>
+            <path d="M ${x - 8} ${y - 40} q 2 -2.2 4 0 q 2 -2.2 4 0" stroke="#f0f0f4" stroke-width="0.9" fill="none"/>
+            <path d="M ${x + 22} ${y - 33} q 1.6 -1.8 3.2 0 q 1.6 -1.8 3.2 0" stroke="#f0f0f4" stroke-width="0.8" fill="none" style="animation-delay:.7s"/>
         </g>
+        ${lvl >= 4 ? `
+            <polygon points="${x+10},${y+6} ${x+16},${y+3} ${x+22},${y+6} ${x+16},${y+9}" fill="#c99a5e" stroke="#2a1a0e" stroke-width="0.6"/>
+            <polygon points="${x+10},${y+6} ${x+16},${y+9} ${x+16},${y+15} ${x+10},${y+12}" fill="#a8763f" stroke="#2a1a0e" stroke-width="0.6"/>
+            <polygon points="${x+22},${y+6} ${x+16},${y+9} ${x+16},${y+15} ${x+22},${y+12}" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.6"/>
+        ` : ''}
+        ${lvl >= 7 ? `
+            <polygon points="${x-42},${y-14} ${x-36},${y-17} ${x-30},${y-14} ${x-31.5},${y+6} ${x-36},${y+8} ${x-40.5},${y+6}" fill="#f0e6d2" stroke="#2a1a0e" stroke-width="0.8"/>
+            <polygon points="${x-42},${y-14} ${x-36},${y-17} ${x-36},${y+8} ${x-40.5},${y+6}" fill="#f7efe0"/>
+            <polygon points="${x-40.8},${y-4} ${x-31.2},${y-4} ${x-31.8},${y+1} ${x-40.2},${y+1}" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.5"/>
+            <rect x="${x-39.5}" y="${y-13.5}" width="7" height="4.5" rx="1" fill="#1d3c6e" stroke="#2a1a0e" stroke-width="0.6"/>
+            <rect x="${x-38.6}" y="${y-12.8}" width="5.2" height="3.1" fill="#ffd773">
+                <animate attributeName="opacity" values="1;0.15;1" dur="2s" repeatCount="indefinite"/>
+            </rect>
+            <polygon points="${x-41},${y-14.5} ${x-31},${y-14.5} ${x-36},${y-19.5}" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.7"/>
+        ` : ''}
     `,
 
     researchlab: (x, y, lvl) => `
         ${SHADOW(x, y, 40)}
-        <!-- iso body -->
-        <polygon points="${x-38},${y-8} ${x},${y-26} ${x+38},${y-8} ${x+38},${y+2} ${x},${y+22} ${x-38},${y+2}" fill="#2a4a72" stroke="#0e1e33" stroke-width="0.8"/>
-        <polygon points="${x-38},${y-8} ${x-38},${y+2} ${x},${y+22} ${x},${y-26}" fill="rgba(0,0,0,0.25)"/>
-        <!-- glowing rune windows -->
-        ${[-24, -8, 8, 24].map(dx => `<rect x="${x + dx - 2.5}" y="${y - 18}" width="5" height="12" rx="1.5" fill="#0e1e33" stroke="#0a1420" stroke-width="0.4"/><rect x="${x + dx - 1.5}" y="${y - 17}" width="3" height="10" rx="1" fill="#7fd8ff"><animate attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/></rect>`).join('')}
-        <!-- door -->
-        <path d="M ${x - 6} ${y - 2} L ${x - 6} ${y - 12} Q ${x} ${y - 16} ${x + 6} ${y - 12} L ${x + 6} ${y - 2} Z" fill="#0e1e33" stroke="#0a1420" stroke-width="0.5"/>
-        <!-- observatory drum -->
-        <rect x="${x - 16}" y="${y - 40}" width="32" height="16" rx="2" fill="#1e3a5a" stroke="#0e1e33" stroke-width="0.8"/>
-        <rect x="${x - 16}" y="${y - 40}" width="10" height="16" rx="2" fill="rgba(0,0,0,0.22)"/>
-        <!-- dome -->
-        <path d="M ${x - 18} ${y - 40} A 18 16 0 0 1 ${x + 18} ${y - 40} Z" fill="#5fb0f0" stroke="#0e1e33" stroke-width="0.9"/>
-        <path d="M ${x - 18} ${y - 40} A 18 16 0 0 1 ${x} ${y - 56} L ${x} ${y - 40} Z" fill="rgba(255,255,255,0.25)"/>
-        <ellipse cx="${x - 6}" cy="${y - 50}" rx="4" ry="3" fill="rgba(255,255,255,0.5)"/>
-        <!-- dome slit + finial -->
-        <line x1="${x}" y1="${y - 40}" x2="${x}" y2="${y - 55}" stroke="#0e1e33" stroke-width="1.2"/>
-        <line x1="${x}" y1="${y - 56}" x2="${x}" y2="${y - 64}" stroke="#7a5410" stroke-width="1"/>
-        <circle cx="${x}" cy="${y - 65}" r="2.5" fill="#fbbf24" stroke="#7a5410" stroke-width="0.6"/>
-        <!-- arcane sparkles -->
+        <!-- stone terrace -->
+        <polygon points="${x-34},${y-2} ${x},${y-19} ${x+34},${y-2} ${x},${y+15}" fill="#b6bec5" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-34},${y-2} ${x},${y+15} ${x},${y+22} ${x-34},${y+5}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+34},${y-2} ${x},${y+15} ${x},${y+22} ${x+34},${y+5}" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.9"/>
+        <!-- scholar's tower (deep blue, iso box) -->
+        <polygon points="${x-24},${y-34} ${x},${y-46} ${x+24},${y-34} ${x},${y-22}" fill="#3a6ab0" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-24},${y-34} ${x},${y-22} ${x},${y+10} ${x-24},${y-2}" fill="#2c5aa0" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+24},${y-34} ${x},${y-22} ${x},${y+10} ${x+24},${y-2}" fill="#1d3c6e" stroke="#2a1a0e" stroke-width="0.9"/>
+        <line x1="${x-24}" y1="${y-34}" x2="${x}" y2="${y-22}" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/>
+        <line x1="${x-24}" y1="${y-24}" x2="${x}" y2="${y-12}" stroke="#24488a" stroke-width="0.6"/>
+        <line x1="${x}" y1="${y-12}" x2="${x+24}" y2="${y-24}" stroke="#16305a" stroke-width="0.6"/>
+        <line x1="${x-24}" y1="${y-13}" x2="${x}" y2="${y-1}" stroke="#24488a" stroke-width="0.6"/>
+        <line x1="${x}" y1="${y-1}" x2="${x+24}" y2="${y-13}" stroke="#16305a" stroke-width="0.6"/>
+        <!-- glowing arcane windows -->
+        ${[[-16, -14], [-16, 1]].map(([dx, dy]) => `
+            <rect x="${x + dx - 2.6}" y="${y + dy - 6.5}" width="5.2" height="9" rx="2.6" fill="#10213c" stroke="#2a1a0e" stroke-width="0.6"/>
+            <rect x="${x + dx - 1.6}" y="${y + dy - 5.5}" width="3.2" height="7" rx="1.6" fill="#7fd8ff">
+                <animate attributeName="opacity" values="0.45;1;0.45" dur="2.8s" repeatCount="indefinite" begin="${dy * 0.1}s"/>
+            </rect>
+        `).join('')}
+        <rect x="${x + 13.4}" y="${y - 19.5}" width="5.2" height="9" rx="2.6" fill="#10213c" stroke="#2a1a0e" stroke-width="0.6"/>
+        <rect x="${x + 14.4}" y="${y - 18.5}" width="3.2" height="7" rx="1.6" fill="#7fd8ff">
+            <animate attributeName="opacity" values="1;0.45;1" dur="2.8s" repeatCount="indefinite"/>
+        </rect>
+        <!-- arcane door -->
+        <path d="M ${x + 4} ${y + 8} L ${x + 4} ${y - 3} Q ${x + 8.5} ${y - 8} ${x + 13} ${y - 7.5} L ${x + 13} ${y + 3.5} Z" fill="#10213c" stroke="#2a1a0e" stroke-width="0.8"/>
+        <path d="M ${x + 5.4} ${y + 6.6} L ${x + 5.4} ${y - 2.4} Q ${x + 8.5} ${y - 6} ${x + 11.6} ${y - 5.8} L ${x + 11.6} ${y + 4.4} Z" fill="#1b3660"/>
+        <circle cx="${x + 8.5}" cy="${y - 1}" r="1.2" fill="#7fd8ff" opacity="0.9">
+            <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite"/>
+        </circle>
+        <!-- observatory drum + brass dome -->
+        <ellipse cx="${x}" cy="${y-34}" rx="17" ry="7.5" fill="#22467e" stroke="#2a1a0e" stroke-width="0.8"/>
+        <path d="M ${x-17} ${y-36} L ${x-17} ${y-34} A 17 7.5 0 0 0 ${x+17} ${y-34} L ${x+17} ${y-36} Z" fill="#2c5aa0" stroke="#2a1a0e" stroke-width="0.7"/>
+        <path d="M ${x-16.5} ${y-37} A 16.5 14.5 0 0 1 ${x+16.5} ${y-37} Q ${x+8} ${y-32.5} ${x} ${y-32} Q ${x-8} ${y-32.5} ${x-16.5} ${y-37} Z" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x-16.5} ${y-37} A 16.5 14.5 0 0 1 ${x-2} ${y-51.4} Q ${x-9.5} ${y-45.5} ${x-12.5} ${y-40.5} Z" fill="#f4c44d"/>
+        <path d="M ${x+16.5} ${y-37} A 16.5 14.5 0 0 0 ${x+7} ${y-50.3} Q ${x+10.5} ${y-44} ${x+12.5} ${y-40}" fill="#a8791f"/>
+        <ellipse cx="${x-6}" cy="${y-46}" rx="3.2" ry="2.2" fill="rgba(255,255,255,0.5)"/>
+        <line x1="${x+1}" y1="${y-51.5}" x2="${x+3.5}" y2="${y-33}" stroke="#2a1a0e" stroke-width="1.1"/>
+        <!-- brass telescope out of the slit -->
+        <line x1="${x+2.5}" y1="${y-42}" x2="${x+13}" y2="${y-54}" stroke="#a8791f" stroke-width="2.6"/>
+        <line x1="${x+2.5}" y1="${y-42}" x2="${x+13}" y2="${y-54}" stroke="#f4c44d" stroke-width="1.1"/>
+        <circle cx="${x+13.5}" cy="${y-54.5}" r="1.7" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.6"/>
+        <!-- orbiting arcane motes -->
         <g class="sparkle-fx">
-            <circle cx="${x + 14}" cy="${y - 48}" r="1.8" fill="#7fd8ff"/>
-            <polygon points="${x-16},${y-30} ${x-14},${y-26} ${x-16},${y-22} ${x-18},${y-26}" fill="#bfeaff" opacity="0.9" style="animation-delay:.6s"/>
+            <circle cx="${x + 20}" cy="${y - 44}" r="1.7" fill="#7fd8ff"/>
+            <polygon points="${x-21},${y-28} ${x-19.5},${y-24.5} ${x-21},${y-21} ${x-22.5},${y-24.5}" fill="#bfeaff" style="animation-delay:.6s"/>
+            <circle cx="${x - 15}" cy="${y - 50}" r="1.2" fill="#e6f6ff" style="animation-delay:1.1s"/>
         </g>
+        ${lvl >= 4 ? `
+            <polygon points="${x-24},${y-34} ${x},${y-22} ${x+24},${y-34} ${x+24},${y-31} ${x},${y-19} ${x-24},${y-31}" fill="none" stroke="#f4c44d" stroke-width="1.2" opacity="0.9"/>
+            <circle cx="${x}" cy="${y-20.5}" r="1.6" fill="#f4c44d" stroke="#a8791f" stroke-width="0.5"/>
+        ` : ''}
+        ${lvl >= 7 ? `
+            <g class="smoke-puff">
+                <polygon points="${x-27},${y-44} ${x-24},${y-48} ${x-21},${y-44} ${x-24},${y-40}" fill="#7fd8ff" stroke="#e6f6ff" stroke-width="0.7"/>
+            </g>
+            <ellipse cx="${x}" cy="${y-42}" rx="22" ry="14" fill="#7fd8ff" opacity="0.08">
+                <animate attributeName="opacity" values="0.04;0.14;0.04" dur="3.5s" repeatCount="indefinite"/>
+            </ellipse>
+        ` : ''}
     `,
 
     barracks: (x, y, lvl) => `
         ${SHADOW(x, y, 44)}
-        <!-- left tower -->
-        <polygon points="${x-36},${y-10} ${x-22},${y-14} ${x-22},${y+4} ${x-36},${y+8}" fill="#9c948a" stroke="#1a1408" stroke-width="0.8"/>
-        <polygon points="${x-36},${y-10} ${x-36},${y+8} ${x-22},${y+4} ${x-22},${y-14}" fill="rgba(0,0,0,0.18)"/>
-        <polygon points="${x-38},${y-10} ${x-20},${y-14} ${x-29},${y-34}" fill="#a02818" stroke="#5a0808" stroke-width="0.6"/>
-        <!-- right tower -->
-        <polygon points="${x+22},${y-14} ${x+36},${y-10} ${x+36},${y+8} ${x+22},${y+4}" fill="#9c948a" stroke="#1a1408" stroke-width="0.8"/>
-        <polygon points="${x+22},${y-14} ${x+22},${y+4} ${x+36},${y+8} ${x+36},${y-10}" fill="rgba(0,0,0,0.05)"/>
-        <polygon points="${x+20},${y-14} ${x+38},${y-10} ${x+29},${y-34}" fill="#a02818" stroke="#5a0808" stroke-width="0.6"/>
-        <!-- main wall -->
-        <polygon points="${x-22},${y-6} ${x},${y-14} ${x+22},${y-6} ${x+22},${y+4} ${x},${y+18} ${x-22},${y+4}" fill="#a89e8e" stroke="#1a1408" stroke-width="0.8"/>
-        <polygon points="${x-22},${y-6} ${x-22},${y+4} ${x},${y+18} ${x},${y-14}" fill="rgba(0,0,0,0.15)"/>
-        <!-- stone brick pattern -->
-        ${[0, 4, 8].map(dy => `<line x1="${x - 22}" y1="${y - 6 + dy}" x2="${x + 22}" y2="${y - 6 + dy}" stroke="#5a5448" stroke-width="0.3" opacity="0.6"/>`).join('')}
-        <!-- arched gate -->
-        <path d="M ${x - 8} ${y + 8} L ${x - 8} ${y - 4} Q ${x} ${y - 12} ${x + 8} ${y - 4} L ${x + 8} ${y + 6} Z" fill="#3a2010" stroke="#1a0808" stroke-width="0.6"/>
-        <path d="M ${x - 6} ${y + 5} L ${x - 6} ${y - 3} Q ${x} ${y - 10} ${x + 6} ${y - 3} L ${x + 6} ${y + 4}" fill="#5a3018"/>
-        <!-- shield emblem -->
-        <path d="M ${x} ${y - 4} Q ${x - 4} ${y - 4} ${x - 4} ${y} Q ${x - 4} ${y + 4} ${x} ${y + 6} Q ${x + 4} ${y + 4} ${x + 4} ${y} Q ${x + 4} ${y - 4} ${x} ${y - 4}" fill="#3b82f6" stroke="#1e3a8a" stroke-width="0.4"/>
-        <polygon points="${x},${y-2} ${x+1},${y+1} ${x+3},${y+1} ${x+1.5},${y+3} ${x+2},${y+5} ${x},${y+4} ${x-2},${y+5} ${x-1.5},${y+3} ${x-3},${y+1} ${x-1},${y+1}" fill="#fbbf24"/>
-        <!-- crossed swords -->
-        <line x1="${x - 12}" y1="${y - 16}" x2="${x + 12}" y2="${y - 4}" stroke="#cbd5e1" stroke-width="2"/>
-        <line x1="${x + 12}" y1="${y - 16}" x2="${x - 12}" y2="${y - 4}" stroke="#cbd5e1" stroke-width="2"/>
-        <line x1="${x - 12}" y1="${y - 16}" x2="${x + 12}" y2="${y - 4}" stroke="#475569" stroke-width="0.3"/>
-        <line x1="${x + 12}" y1="${y - 16}" x2="${x - 12}" y2="${y - 4}" stroke="#475569" stroke-width="0.3"/>
-        ${FLAG(x - 29, y - 28, '#dc2626')}
-        ${FLAG(x + 29, y - 28, '#dc2626')}
+        <!-- main hall (iso stone box) -->
+        <polygon points="${x-26},${y-16} ${x},${y-29} ${x+26},${y-16} ${x},${y-3}" fill="#b6bec5" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-26},${y-16} ${x},${y-3} ${x},${y+15} ${x-26},${y+2}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+26},${y-16} ${x},${y-3} ${x},${y+15} ${x+26},${y+2}" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.9"/>
+        <line x1="${x-26}" y1="${y-16}" x2="${x}" y2="${y-3}" stroke="rgba(255,255,255,0.45)" stroke-width="0.8"/>
+        <line x1="${x-24}" y1="${y-9}" x2="${x-2}" y2="${y+2}" stroke="#828c96" stroke-width="0.5"/>
+        <line x1="${x-20}" y1="${y-2}" x2="${x-2}" y2="${y+7}" stroke="#828c96" stroke-width="0.5"/>
+        <line x1="${x+2}" y1="${y+2}" x2="${x+24}" y2="${y-9}" stroke="#565f6a" stroke-width="0.5"/>
+        <line x1="${x-13}" y1="${y-9.5}" x2="${x-13}" y2="${y-3.5}" stroke="#828c96" stroke-width="0.5"/>
+        <!-- stone towers, left and right -->
+        <polygon points="${x-42},${y-22} ${x-31},${y-27.5} ${x-20},${y-22} ${x-20},${y+1} ${x-31},${y+6.5} ${x-42},${y+1}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-42},${y-22} ${x-31},${y-27.5} ${x-31},${y+6.5} ${x-42},${y+1}" fill="#b6bec5"/>
+        <line x1="${x-42}" y1="${y-22}" x2="${x-42}" y2="${y+1}" stroke="rgba(255,255,255,0.4)" stroke-width="0.7"/>
+        <polygon points="${x+20},${y-22} ${x+31},${y-27.5} ${x+42},${y-22} ${x+42},${y+1} ${x+31},${y+6.5} ${x+20},${y+1}" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+20},${y-22} ${x+31},${y-27.5} ${x+31},${y+6.5} ${x+20},${y+1}" fill="#9aa3ab"/>
+        <polygon points="${x+31},${y-27.5} ${x+42},${y-22} ${x+42},${y+1} ${x+31},${y+6.5}" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.7"/>
+        <!-- tower cone roofs (signature red) -->
+        <path d="M ${x-44} ${y-21} L ${x-31} ${y-44} L ${x-18} ${y-21} Q ${x-24.5} ${y-25.5} ${x-31} ${y-25.5} Q ${x-37.5} ${y-25.5} ${x-44} ${y-21} Z" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x-44} ${y-21} L ${x-31} ${y-44} L ${x-31} ${y-25.5} Q ${x-37.5} ${y-25.5} ${x-44} ${y-21} Z" fill="#cd5a44"/>
+        <path d="M ${x+18} ${y-21} L ${x+31} ${y-44} L ${x+44} ${y-21} Q ${x+37.5} ${y-25.5} ${x+31} ${y-25.5} Q ${x+24.5} ${y-25.5} ${x+18} ${y-21} Z" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x+18} ${y-21} L ${x+31} ${y-44} L ${x+31} ${y-25.5} Q ${x+24.5} ${y-25.5} ${x+18} ${y-21} Z" fill="#8c2f20"/>
+        <!-- roof ridge caps + windows in towers -->
+        ${LIT_WINDOW(x - 34, y - 16, 4.5, 6)}
+        ${LIT_WINDOW(x + 28.5, y - 16, 4.5, 6)}
+        <!-- gable roof over main hall -->
+        <polygon points="${x-28},${y-15} ${x},${y-40} ${x},${y-2}" fill="#cd5a44" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+28},${y-15} ${x},${y-40} ${x},${y-2}" fill="#8c2f20" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x-19} ${y-21} L ${x} ${y-11}" stroke="#b3402e" stroke-width="0.7"/>
+        <path d="M ${x-10} ${y-30} L ${x} ${y-25}" stroke="#b3402e" stroke-width="0.7"/>
+        <path d="M ${x+19} ${y-21} L ${x} ${y-11}" stroke="#6e2317" stroke-width="0.7"/>
+        <line x1="${x}" y1="${y-40}" x2="${x}" y2="${y-2}" stroke="rgba(255,235,220,0.5)" stroke-width="0.9"/>
+        <!-- arched gate with banner above -->
+        <path d="M ${x - 9} ${y + 10.5} L ${x - 9} ${y - 1} Q ${x - 4.5} ${y - 6.5} ${x} ${y - 2} L ${x} ${y + 15} Z" fill="#4a2e16" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x - 7.6} ${y + 9} L ${x - 7.6} ${y - 0.4} Q ${x - 4.5} ${y - 4.4} ${x - 1.4} ${y - 1} L ${x - 1.4} ${y + 12.6} Z" fill="#6e4a24"/>
+        <line x1="${x-4.5}" y1="${y-5}" x2="${x-4.5}" y2="${y+13}" stroke="#3a2313" stroke-width="0.5"/>
+        <!-- crossed swords crest on shaded face -->
+        <line x1="${x + 8}" y1="${y - 5}" x2="${x + 20}" y2="${y + 4}" stroke="#dfe7ee" stroke-width="1.8"/>
+        <line x1="${x + 20}" y1="${y - 5}" x2="${x + 8}" y2="${y + 4}" stroke="#aeb8c4" stroke-width="1.8"/>
+        <rect x="${x + 8.6}" y="${y - 5.2}" width="2.2" height="2.2" rx="0.4" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.4"/>
+        <rect x="${x + 17.2}" y="${y - 5.2}" width="2.2" height="2.2" rx="0.4" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.4"/>
+        <path d="M ${x + 11} ${y - 8.5} l 3 -1.5 l 3 1.5 l 0 3.4 q 0 2.6 -3 3.8 q -3 -1.2 -3 -3.8 Z" fill="#b3402e" stroke="#f4c44d" stroke-width="0.7"/>
+        <!-- training dummy, front depth plane -->
+        <line x1="${x-16}" y1="${y+20}" x2="${x-16}" y2="${y+8}" stroke="#8a5a2b" stroke-width="1.6"/>
+        <line x1="${x-21}" y1="${y+11.5}" x2="${x-11}" y2="${y+11.5}" stroke="#8a5a2b" stroke-width="1.3"/>
+        <circle cx="${x-16}" cy="${y+7}" r="2.8" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.6"/>
+        <path d="M ${x-19} ${y+6} q 3 -3.4 6 0" stroke="#2a1a0e" stroke-width="0.5" fill="none"/>
+        <circle cx="${x-16}" cy="${y+12}" r="1.4" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.4"/>
+        ${FLAG(x - 31, y - 42, '#b3402e')}
+        ${FLAG(x + 31, y - 42, '#b3402e')}
+        ${lvl >= 4 ? `
+            <polygon points="${x+2},${y-14} ${x+8},${y-17} ${x+8},${y-3} ${x+5},${y-6.5} ${x+2},${y-4.5}" fill="#2c5aa0" stroke="#1d3c6e" stroke-width="0.6"/>
+            <circle cx="${x+5}" cy="${y-11.5}" r="1.5" fill="#f4c44d"/>
+            <line x1="${x-28}" y1="${y-15}" x2="${x}" y2="${y-2}" stroke="#f4c44d" stroke-width="1.4"/>
+        ` : ''}
+        ${lvl >= 7 ? `
+            <polygon points="${x-33.5},${y-46} ${x-31},${y-52} ${x-28.5},${y-46} ${x-31},${y-44}" fill="#f4c44d" stroke="#a8791f" stroke-width="0.5"/>
+            <polygon points="${x+33.5},${y-46} ${x+31},${y-52} ${x+28.5},${y-46} ${x+31},${y-44}" fill="#f4c44d" stroke="#a8791f" stroke-width="0.5"/>
+            ${LIT_WINDOW(x - 3.2, y - 26, 6.5, 7)}
+        ` : ''}
     `,
 
     stable: (x, y, lvl) => `
         ${SHADOW(x, y, 44)}
-        <polygon points="${x-40},${y-6} ${x},${y-22} ${x+40},${y-6} ${x+40},${y+6} ${x},${y+22} ${x-40},${y+6}" fill="#a87d4a" stroke="#3a2010" stroke-width="0.8"/>
-        <polygon points="${x-40},${y-6} ${x-40},${y+6} ${x},${y+22} ${x},${y-22}" fill="rgba(0,0,0,0.18)"/>
-        <polygon points="${x-44},${y-6} ${x+44},${y-6} ${x},${y-46}" fill="#c89a40" stroke="#5a3010" stroke-width="0.8"/>
-        <polygon points="${x-44},${y-6} ${x},${y-46} ${x},${y-6}" fill="rgba(0,0,0,0.22)"/>
-        ${[-2, -10, -18, -26].map(dy => `<line x1="${x - 38 + Math.abs(dy) * 0.4}" y1="${y + dy - 6}" x2="${x + 38 - Math.abs(dy) * 0.4}" y2="${y + dy - 6}" stroke="#8a6520" stroke-width="0.4"/>`).join('')}
-        <!-- 3 stall doors -->
-        ${[-22, 0, 22].map((dx, i) => `
-            <path d="M ${x + dx - 5} ${y + 14 + Math.abs(dx) * 0.1} L ${x + dx - 5} ${y - 4} L ${x + dx + 5} ${y - 6 - Math.abs(dx) * 0.05} L ${x + dx + 5} ${y + 12 + Math.abs(dx) * 0.1} Z" fill="#3a2010" stroke="#1a0808" stroke-width="0.5"/>
-            <line x1="${x + dx}" y1="${y + 13}" x2="${x + dx}" y2="${y - 5}" stroke="#1a0808" stroke-width="0.4"/>
-            ${i === 1 ? `<circle cx="${x + dx}" cy="${y + 2}" r="3" fill="#5a3818"/><ellipse cx="${x + dx}" cy="${y + 6}" rx="2" ry="3" fill="#5a3818"/>` : ''}
+        <!-- long timber stable (iso box) -->
+        <polygon points="${x-36},${y-12} ${x},${y-30} ${x+36},${y-12} ${x},${y+6}" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-36},${y-12} ${x},${y+6} ${x},${y+20} ${x-36},${y+2}" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+36},${y-12} ${x},${y+6} ${x},${y+20} ${x+36},${y+2}" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.9"/>
+        <line x1="${x-36}" y1="${y-12}" x2="${x}" y2="${y+6}" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+        ${[5, 10].map(d => `
+            <line x1="${x-36}" y1="${y-12+d}" x2="${x}" y2="${y+6+d}" stroke="#6f4722" stroke-width="0.5"/>
+            <line x1="${x}" y1="${y+6+d}" x2="${x+36}" y2="${y-12+d}" stroke="#54371a" stroke-width="0.5"/>
         `).join('')}
-        <!-- hay bale -->
-        <ellipse cx="${x - 34}" cy="${y + 12}" rx="6" ry="2" fill="#a88838"/>
-        <ellipse cx="${x - 34}" cy="${y + 9}" rx="6" ry="3" fill="#e8c850" stroke="#a88838" stroke-width="0.4"/>
+        <!-- straw hip roof -->
+        <polygon points="${x-42},${y-12} ${x},${y-44} ${x},${y+4}" fill="#e6bc63" stroke="#2a1a0e" stroke-width="1"/>
+        <polygon points="${x+42},${y-12} ${x},${y-44} ${x},${y+4}" fill="#b98a35" stroke="#2a1a0e" stroke-width="1"/>
+        <path d="M ${x-30} ${y-21} L ${x} ${y-7}" stroke="#c9a047" stroke-width="0.7"/>
+        <path d="M ${x-19} ${y-30} L ${x} ${y-21}" stroke="#c9a047" stroke-width="0.7"/>
+        <path d="M ${x-9} ${y-38} L ${x} ${y-33}" stroke="#c9a047" stroke-width="0.7"/>
+        <path d="M ${x+30} ${y-21} L ${x} ${y-7}" stroke="#9c732c" stroke-width="0.7"/>
+        <path d="M ${x+19} ${y-30} L ${x} ${y-21}" stroke="#9c732c" stroke-width="0.7"/>
+        <line x1="${x}" y1="${y-44}" x2="${x}" y2="${y+4}" stroke="rgba(255,246,214,0.5)" stroke-width="0.9"/>
+        <!-- two dutch stall doors on lit face -->
+        ${[[-27, 0], [-13, 6]].map(([dx, dy]) => `
+            <path d="M ${x + dx - 4.5} ${y + dy + 4.5} L ${x + dx - 4.5} ${y + dy - 7} L ${x + dx + 4.5} ${y + dy - 2.5} L ${x + dx + 4.5} ${y + dy + 9} Z" fill="#4a2e16" stroke="#2a1a0e" stroke-width="0.8"/>
+            <line x1="${x + dx - 4.5}" y1="${y + dy - 1}" x2="${x + dx + 4.5}" y2="${y + dy + 3.5}" stroke="#2a1a0e" stroke-width="0.7"/>
+            <line x1="${x + dx - 3.2}" y1="${y + dy - 4.6}" x2="${x + dx + 3.2}" y2="${y + dy - 1.4}" stroke="#6e4a24" stroke-width="0.6"/>
+        `).join('')}
+        <!-- horse peeking out, gently nodding -->
+        <g class="flag-wave">
+            <path d="M ${x - 29.5} ${y - 6} q -1.2 -6 2.4 -8.2 q 3.4 -1.6 4.6 1.6 q 0.8 2.4 -0.6 4.4 q 2 1.4 1.4 3.4 Z" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.7"/>
+            <path d="M ${x - 27.6} ${y - 14.4} q -0.4 -2 1 -2.6 q 1 1 0.8 2.6 Z" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.5"/>
+            <path d="M ${x - 25.2} ${y - 14.6} q 0.2 -2 1.6 -2.2 q 0.7 1.2 0.1 2.6 Z" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.5"/>
+            <path d="M ${x - 27.9} ${y - 13.8} q 2.2 -1.4 3.4 0.4" stroke="#4a2e16" stroke-width="1.4" fill="none"/>
+            <circle cx="${x - 26.2}" cy="${y - 10.8}" r="0.7" fill="#2a1a0e"/>
+            <ellipse cx="${x - 23.6}" cy="${y - 6.4}" rx="1" ry="0.6" fill="#4a2e16"/>
+        </g>
+        <!-- swinging horseshoe sign -->
+        <line x1="${x + 10}" y1="${y - 1}" x2="${x + 17}" y2="${y - 4.5}" stroke="#6b4520" stroke-width="1.4"/>
+        <g class="flag-wave">
+            <line x1="${x + 14}" y1="${y - 2.5}" x2="${x + 14}" y2="${y + 2}" stroke="#4a4438" stroke-width="0.6"/>
+            <path d="M ${x + 11.5} ${y + 6.5} a 3 3 0 1 1 5 0 l -1.2 -0.6 a 1.7 1.7 0 1 0 -2.6 0 Z" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.6"/>
+        </g>
+        <!-- hay bales + pitchfork -->
+        <ellipse cx="${x + 27}" cy="${y + 13}" rx="7.5" ry="2.6" fill="rgba(30,20,10,0.25)"/>
+        <path d="M ${x + 20.5} ${y + 5} q -1.6 4.5 0 8 q 6.5 2.6 13 0 q 1.6 -3.5 0 -8 q -6.5 -2.8 -13 0 Z" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.8"/>
+        <ellipse cx="${x + 27}" cy="${y + 5}" rx="6.5" ry="2.2" fill="#eec86a" stroke="#a8791f" stroke-width="0.5"/>
+        <path d="M ${x + 21} ${y + 8} q 6 2.2 12 0" stroke="#a8791f" stroke-width="0.6" fill="none"/>
+        <path d="M ${x + 21} ${y + 11} q 6 2.2 12 0" stroke="#a8791f" stroke-width="0.6" fill="none"/>
+        <line x1="${x + 36}" y1="${y + 12}" x2="${x + 41}" y2="${y - 2}" stroke="#8a5a2b" stroke-width="1.2"/>
+        ${[0, 1.8, 3.6].map(d => `<line x1="${x + 39.2 + d * 0.5}" y1="${y - 1}" x2="${x + 40 + d * 0.5}" y2="${y - 6}" stroke="#8b95a0" stroke-width="0.7"/>`).join('')}
+        ${lvl >= 4 ? `
+            ${FLAG(x - 40, y - 10, '#2c5aa0')}
+            <ellipse cx="${x + 12}" cy="${y + 15}" rx="4.5" ry="1.6" fill="rgba(30,20,10,0.22)"/>
+            <path d="M ${x + 8} ${y + 10} q -1 3 0 5.5 q 4 1.8 8 0 q 1 -2.5 0 -5.5 q -4 -1.8 -8 0 Z" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.6"/>
+            <ellipse cx="${x + 12}" cy="${y + 10}" rx="4" ry="1.4" fill="#eec86a" stroke="#a8791f" stroke-width="0.4"/>
+        ` : ''}
+        ${lvl >= 7 ? `
+            <line x1="${x-42}" y1="${y-12}" x2="${x}" y2="${y+4}" stroke="#f4c44d" stroke-width="1.6"/>
+            <line x1="${x}" y1="${y+4}" x2="${x+42}" y2="${y-12}" stroke="#c2912c" stroke-width="1.6"/>
+            <path d="M ${x - 2.5} ${y - 47.5} a 3 3 0 1 1 5 0 l -1.2 -0.6 a 1.7 1.7 0 1 0 -2.6 0 Z" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.6"/>
+            ${LIT_WINDOW(x + 12, y - 22, 5, 6)}
+        ` : ''}
     `,
 
     fortress: (x, y, lvl) => `
         ${SHADOW(x, y, 48)}
-        <!-- outer walls -->
-        <polygon points="${x-44},${y-6} ${x},${y-26} ${x+44},${y-6} ${x+44},${y+8} ${x},${y+24} ${x-44},${y+8}" fill="#5e5448" stroke="#0a0408" stroke-width="0.8"/>
-        <polygon points="${x-44},${y-6} ${x-44},${y+8} ${x},${y+24} ${x},${y-26}" fill="rgba(0,0,0,0.25)"/>
-        <!-- left tower -->
-        <polygon points="${x-44},${y-26} ${x-30},${y-30} ${x-30},${y-6} ${x-44},${y-2}" fill="#4e4438" stroke="#0a0408" stroke-width="0.7"/>
-        <polygon points="${x-46},${y-26} ${x-28},${y-30} ${x-37},${y-50}" fill="#7e1818" stroke="#3a0808" stroke-width="0.6"/>
-        <!-- right tower -->
-        <polygon points="${x+30},${y-30} ${x+44},${y-26} ${x+44},${y-2} ${x+30},${y-6}" fill="#5e5448" stroke="#0a0408" stroke-width="0.7"/>
-        <polygon points="${x+28},${y-30} ${x+46},${y-26} ${x+37},${y-50}" fill="#7e1818" stroke="#3a0808" stroke-width="0.6"/>
-        <!-- central keep -->
-        <polygon points="${x-12},${y-32} ${x+12},${y-32} ${x+12},${y-6} ${x-12},${y-6}" fill="#a89e8e" stroke="#0a0408" stroke-width="0.8"/>
-        <polygon points="${x-14},${y-32} ${x+14},${y-32} ${x},${y-58}" fill="#7e1818" stroke="#3a0808" stroke-width="0.7"/>
-        <!-- crenellations -->
-        ${[-12, -6, 0, 6].map(dx => `<rect x="${x + dx - 1}" y="${y - 36}" width="2" height="4" fill="#a89e8e" stroke="#0a0408" stroke-width="0.3"/>`).join('')}
-        <!-- windows -->
-        ${LIT_WINDOW(x - 8, y - 22, 4, 6)}
-        ${LIT_WINDOW(x + 4, y - 22, 4, 6)}
-        ${LIT_WINDOW(x - 40, y - 18, 3, 5)}
-        ${LIT_WINDOW(x + 37, y - 18, 3, 5)}
-        <!-- gate -->
-        <path d="M ${x - 8} ${y + 14} L ${x - 8} ${y - 2} Q ${x} ${y - 10} ${x + 8} ${y - 2} L ${x + 8} ${y + 10} Z" fill="#1a0808" stroke="#000" stroke-width="0.6"/>
-        <line x1="${x}" y1="${y + 12}" x2="${x}" y2="${y - 8}" stroke="#0a0408" stroke-width="0.5"/>
-        <!-- royal banner -->
-        ${FLAG(x, y - 70, '#7c3aed')}
-        ${FLAG(x - 37, y - 50, '#7c3aed')}
-        ${FLAG(x + 37, y - 50, '#7c3aed')}
-        <!-- emblem -->
-        <circle cx="${x}" cy="${y - 22}" r="4" fill="#7c3aed" stroke="#4c1d95" stroke-width="0.5"/>
-        <polygon points="${x},${y-25} ${x+1},${y-22} ${x+3},${y-22} ${x+1.5},${y-20} ${x+2},${y-18} ${x},${y-19} ${x-2},${y-18} ${x-1.5},${y-20} ${x-3},${y-22} ${x-1},${y-22}" fill="#fbbf24"/>
+        <!-- curtain wall (iso box) -->
+        <polygon points="${x-42},${y-10} ${x},${y-31} ${x+42},${y-10} ${x},${y+11}" fill="#a4adb5" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-42},${y-10} ${x},${y+11} ${x},${y+22} ${x-42},${y+1}" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+42},${y-10} ${x},${y+11} ${x},${y+22} ${x+42},${y+1}" fill="#5d6673" stroke="#2a1a0e" stroke-width="0.9"/>
+        <line x1="${x-42}" y1="${y-10}" x2="${x}" y2="${y+11}" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/>
+        <line x1="${x-34}" y1="${y-2}" x2="${x-12}" y2="${y+9}" stroke="#79828c" stroke-width="0.5"/>
+        <line x1="${x+12}" y1="${y+10}" x2="${x+34}" y2="${y-1}" stroke="#4d5663" stroke-width="0.5"/>
+        <!-- battlement walk on the wall top -->
+        ${[[-36, -10], [-27, -14.5], [-18, -19], [18, -19], [27, -14.5], [36, -10]].map(([dx, dy]) => `
+            <polygon points="${x+dx-2.5},${y+dy-2} ${x+dx+2.5},${y+dy+0.5} ${x+dx+2.5},${y+dy-5} ${x+dx-2.5},${y+dy-7.5}" fill="${dx < 0 ? '#b6bec5' : '#79828c'}" stroke="#2a1a0e" stroke-width="0.5"/>
+        `).join('')}
+        <!-- corner towers -->
+        <polygon points="${x-45},${y-16} ${x-36},${y-20.5} ${x-27},${y-16} ${x-27},${y+2} ${x-36},${y+6.5} ${x-45},${y+2}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-45},${y-16} ${x-36},${y-20.5} ${x-36},${y+6.5} ${x-45},${y+2}" fill="#b6bec5"/>
+        <path d="M ${x-47} ${y-15} L ${x-36} ${y-35} L ${x-25} ${y-15} Q ${x-30.5} ${y-19} ${x-36} ${y-19} Q ${x-41.5} ${y-19} ${x-47} ${y-15} Z" fill="#2c5aa0" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x-47} ${y-15} L ${x-36} ${y-35} L ${x-36} ${y-19} Q ${x-41.5} ${y-19} ${x-47} ${y-15} Z" fill="#4d79c0"/>
+        <polygon points="${x+27},${y-16} ${x+36},${y-20.5} ${x+45},${y-16} ${x+45},${y+2} ${x+36},${y+6.5} ${x+27},${y+2}" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+27},${y-16} ${x+36},${y-20.5} ${x+36},${y+6.5} ${x+27},${y+2}" fill="#9aa3ab"/>
+        <polygon points="${x+36},${y-20.5} ${x+45},${y-16} ${x+45},${y+2} ${x+36},${y+6.5}" fill="#5d6673" stroke="#2a1a0e" stroke-width="0.7"/>
+        <path d="M ${x+25} ${y-15} L ${x+36} ${y-35} L ${x+47} ${y-15} Q ${x+41.5} ${y-19} ${x+36} ${y-19} Q ${x+30.5} ${y-19} ${x+25} ${y-15} Z" fill="#2c5aa0" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x+25} ${y-15} L ${x+36} ${y-35} L ${x+36} ${y-19} Q ${x+30.5} ${y-19} ${x+25} ${y-15} Z" fill="#1d3c6e"/>
+        ${LIT_WINDOW(x - 38.5, y - 10, 4, 5.5)}
+        ${LIT_WINDOW(x + 33.5, y - 10, 4, 5.5)}
+        <!-- central keep, tall -->
+        <polygon points="${x-16},${y-38} ${x},${y-46} ${x+16},${y-38} ${x},${y-30}" fill="#b6bec5" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-16},${y-38} ${x},${y-30} ${x},${y-2} ${x-16},${y-10}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+16},${y-38} ${x},${y-30} ${x},${y-2} ${x+16},${y-10}" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.9"/>
+        <line x1="${x-16}" y1="${y-38}" x2="${x}" y2="${y-30}" stroke="rgba(255,255,255,0.45)" stroke-width="0.8"/>
+        <line x1="${x-14}" y1="${y-26}" x2="${x-2}" y2="${y-20}" stroke="#828c96" stroke-width="0.5"/>
+        <line x1="${x+2}" y1="${y-20}" x2="${x+14}" y2="${y-26}" stroke="#565f6a" stroke-width="0.5"/>
+        ${LIT_WINDOW(x - 11, y - 27, 4.5, 6)}
+        ${LIT_WINDOW(x + 6.5, y - 27, 4.5, 6)}
+        <!-- keep spire (royal blue) -->
+        <path d="M ${x-18} ${y-37} L ${x} ${y-64} L ${x+18} ${y-37} Q ${x+9} ${y-42.5} ${x} ${y-42.5} Q ${x-9} ${y-42.5} ${x-18} ${y-37} Z" fill="#2c5aa0" stroke="#2a1a0e" stroke-width="1"/>
+        <path d="M ${x-18} ${y-37} L ${x} ${y-64} L ${x} ${y-42.5} Q ${x-9} ${y-42.5} ${x-18} ${y-37} Z" fill="#4d79c0"/>
+        <circle cx="${x}" cy="${y-65}" r="2" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.6"/>
+        <!-- gatehouse with portcullis -->
+        <path d="M ${x - 10} ${y + 12} L ${x - 10} ${y - 3} Q ${x - 5} ${y - 9} ${x} ${y - 4} L ${x} ${y + 17} Z" fill="#20160c" stroke="#2a1a0e" stroke-width="0.9"/>
+        ${[-8, -5.5, -3].map(dx => `<line x1="${x + dx}" y1="${y + 10 + dx}" x2="${x + dx}" y2="${y + 15.5 + dx * 0.5}" stroke="#8b95a0" stroke-width="0.8"/>`).join('')}
+        <line x1="${x - 9}" y1="${y + 4}" x2="${x - 1}" y2="${y + 8}" stroke="#8b95a0" stroke-width="0.8"/>
+        <line x1="${x - 9}" y1="${y + 8}" x2="${x - 1}" y2="${y + 12}" stroke="#8b95a0" stroke-width="0.8"/>
+        <!-- royal banners -->
+        ${FLAG(x, y - 64, '#2c5aa0')}
+        ${FLAG(x - 36, y - 33, '#2c5aa0')}
+        ${FLAG(x + 36, y - 33, '#2c5aa0')}
+        <!-- gold lion crest on shaded wall -->
+        <path d="M ${x + 14} ${y - 2} l 5.5 -2.8 l 5.5 2.8 l 0 5.5 q 0 4.4 -5.5 6.4 q -5.5 -2 -5.5 -6.4 Z" fill="#1d3c6e" stroke="#f4c44d" stroke-width="0.9"/>
+        <path d="M ${x + 19.5} ${y - 1.6} l 1.1 2.5 2.7 0.3 -2 1.9 0.5 2.7 -2.3 -1.4 -2.3 1.4 0.5 -2.7 -2 -1.9 2.7 -0.3 Z" fill="#f4c44d"/>
+        ${lvl >= 4 ? `
+            <line x1="${x-18}" y1="${y-37}" x2="${x+18}" y2="${y-37}" stroke="#f4c44d" stroke-width="1.3"/>
+            <circle cx="${x-36}" cy="${y-36}" r="1.6" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.5"/>
+            <circle cx="${x+36}" cy="${y-36}" r="1.6" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.5"/>
+        ` : ''}
+        ${lvl >= 7 ? `
+            <g class="sparkle-fx">
+                <polygon points="${x-8},${y-56} ${x-6.8},${y-53.5} ${x-8},${y-51} ${x-9.2},${y-53.5}" fill="#bcd2f2"/>
+                <polygon points="${x+9},${y-50} ${x+10},${y-48} ${x+9},${y-46} ${x+8},${y-48}" fill="#bcd2f2" style="animation-delay:.7s"/>
+            </g>
+            <path d="M ${x-13} ${y+14} q -2.5 -1.2 -2.2 -4" stroke="#4c8a4c" stroke-width="1.1" fill="none"/>
+            <path d="M ${x-14.5} ${y+12} q -3.5 0.5 -5 -2.5" stroke="#4c8a4c" stroke-width="1" fill="none"/>
+            <ellipse cx="${x}" cy="${y-45}" rx="24" ry="16" fill="#7fb2e8" opacity="0.07">
+                <animate attributeName="opacity" values="0.04;0.12;0.04" dur="4s" repeatCount="indefinite"/>
+            </ellipse>
+        ` : ''}
     `,
 
     wall: (x, y, lvl) => `
-        ${SHADOW(x, y, 40)}
-        <polygon points="${x-38},${y-4} ${x},${y-18} ${x+38},${y-4} ${x+38},${y+8} ${x},${y+22} ${x-38},${y+8}" fill="#9c948a" stroke="#1a1408" stroke-width="0.8"/>
-        <polygon points="${x-38},${y-4} ${x-38},${y+8} ${x},${y+22} ${x},${y-18}" fill="rgba(0,0,0,0.2)"/>
-        <!-- crenellations along top edges -->
-        ${[-30, -22, -14, -6, 2, 10, 18, 26].map(dx => `
-            <rect x="${x + dx - 2}" y="${y - 14 + Math.abs(dx) * 0.15}" width="4" height="6" fill="#a89e8e" stroke="#1a1408" stroke-width="0.4"/>
+        ${SHADOW(x, y, 38)}
+        <!-- low rampart (iso box) -->
+        <polygon points="${x-36},${y-6} ${x},${y-24} ${x+36},${y-6} ${x},${y+12}" fill="#b6bec5" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-36},${y-6} ${x},${y+12} ${x},${y+22} ${x-36},${y+4}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+36},${y-6} ${x},${y+12} ${x},${y+22} ${x+36},${y+4}" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.9"/>
+        <line x1="${x-36}" y1="${y-6}" x2="${x}" y2="${y+12}" stroke="rgba(255,255,255,0.45)" stroke-width="0.8"/>
+        <!-- stone block joints -->
+        <line x1="${x-30}" y1="${y+1}" x2="${x-8}" y2="${y+12}" stroke="#7d8790" stroke-width="0.5"/>
+        <line x1="${x-22}" y1="${y-1}" x2="${x-22}" y2="${y+6}" stroke="#7d8790" stroke-width="0.5"/>
+        <line x1="${x+8}" y1="${y+13}" x2="${x+30}" y2="${y+2}" stroke="#565f6a" stroke-width="0.5"/>
+        <line x1="${x+20}" y1="${y+3}" x2="${x+20}" y2="${y+9.5}" stroke="#565f6a" stroke-width="0.5"/>
+        <!-- walkway inset on top -->
+        <polygon points="${x-29},${y-6.5} ${x},${y-21} ${x+29},${y-6.5} ${x},${y+8}" fill="#9aa3ab" stroke="#79828c" stroke-width="0.6"/>
+        <!-- merlons marching along both top edges -->
+        ${[[-31, -8.5], [-21, -13.5], [-11, -18.5]].map(([dx, dy]) => `
+            <polygon points="${x+dx-3},${y+dy+1.5} ${x+dx+2},${y+dy-1} ${x+dx+2},${y+dy-7} ${x+dx-3},${y+dy-4.5}" fill="#b6bec5" stroke="#2a1a0e" stroke-width="0.6"/>
+            <polygon points="${x+dx+2},${y+dy-1} ${x+dx+4},${y+dy} ${x+dx+4},${y+dy-6} ${x+dx+2},${y+dy-7}" fill="#79828c" stroke="#2a1a0e" stroke-width="0.6"/>
         `).join('')}
-        ${[4, 10].map(dy => `<line x1="${x - 38}" y1="${y - 4 + dy}" x2="${x + 38}" y2="${y - 4 + dy}" stroke="#5a5448" stroke-width="0.4"/>`).join('')}
-        ${lvl >= 5 ? `<path d="M ${x - 30} ${y + 10} Q ${x - 32} ${y - 4} ${x - 26} ${y - 8}" stroke="#22c55e" stroke-width="1.2" fill="none"/><circle cx="${x - 28}" cy="${y - 2}" r="1.5" fill="#16a34a"/>` : ''}
+        ${[[11, -18.5], [21, -13.5], [31, -8.5]].map(([dx, dy]) => `
+            <polygon points="${x+dx-2},${y+dy-1} ${x+dx+3},${y+dy+1.5} ${x+dx+3},${y+dy-4.5} ${x+dx-2},${y+dy-7}" fill="#a4adb5" stroke="#2a1a0e" stroke-width="0.6"/>
+            <polygon points="${x+dx-4},${y+dy} ${x+dx-2},${y+dy-1} ${x+dx-2},${y+dy-7} ${x+dx-4},${y+dy-6}" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.6"/>
+        `).join('')}
+        <!-- grass tufts at the footing + resting sparrow -->
+        <path d="M ${x-32} ${y+8} q 0.5 -3 2 -4 M ${x-30.5} ${y+8.5} q 1.5 -2.5 3 -2.5" stroke="#4c8a4c" stroke-width="0.9" fill="none"/>
+        <g class="flag-wave">
+            <ellipse cx="${x-11}" cy="${y-21.5}" rx="1.7" ry="1.2" fill="#8a5a2b"/>
+            <circle cx="${x-12.4}" cy="${y-22.6}" r="0.9" fill="#a8763f"/>
+            <polygon points="${x-13.2},${y-22.6} ${x-14.2},${y-22.3} ${x-13.2},${y-22}" fill="#f4c44d"/>
+        </g>
+        ${lvl >= 4 ? `
+            <path d="M ${x - 27} ${y + 6} Q ${x - 30} ${y - 6} ${x - 24} ${y - 9} M ${x - 26.5} ${y - 1} q 2.5 -0.5 3.5 -2.5" stroke="#4c8a4c" stroke-width="1.2" fill="none"/>
+            <circle cx="${x - 25.5}" cy="${y - 4}" r="1.3" fill="#3d713d"/>
+        ` : ''}
+        ${lvl >= 7 ? `
+            <line x1="${x}" y1="${y-21}" x2="${x}" y2="${y-31}" stroke="#6b4520" stroke-width="1.6"/>
+            <path d="M ${x-1.6} ${y-31} q 1.6 -4.5 3.2 0 q -0.4 2.4 -1.6 2.4 q -1.2 0 -1.6 -2.4 Z" fill="#f59e2d" stroke="#b3402e" stroke-width="0.5">
+                <animate attributeName="opacity" values="0.75;1;0.75" dur="0.9s" repeatCount="indefinite"/>
+            </path>
+            <circle cx="${x}" cy="${y-31.5}" r="3.5" fill="#ffca5f" opacity="0.2">
+                <animate attributeName="opacity" values="0.1;0.3;0.1" dur="0.9s" repeatCount="indefinite"/>
+            </circle>
+        ` : ''}
     `,
 
     archertower: (x, y, lvl) => `
-        ${SHADOW(x, y, 28)}
-        <!-- iso base -->
-        <polygon points="${x-22},${y+2} ${x},${y-8} ${x+22},${y+2} ${x+22},${y+10} ${x},${y+20} ${x-22},${y+10}" fill="#7a7268" stroke="#1a1408" stroke-width="0.6"/>
-        <!-- tower shaft -->
-        <polygon points="${x-14},${y-30} ${x+14},${y-30} ${x+14},${y+2} ${x-14},${y+2}" fill="#9c948a" stroke="#1a1408" stroke-width="0.7"/>
-        <polygon points="${x-14},${y-30} ${x-14},${y+2} ${x-10},${y+2} ${x-10},${y-30}" fill="rgba(0,0,0,0.15)"/>
-        <!-- battlements -->
-        ${[-14, -8, -2, 4, 10].map(dx => `<rect x="${x + dx - 1.5}" y="${y - 36}" width="3" height="6" fill="#a89e8e" stroke="#1a1408" stroke-width="0.3"/>`).join('')}
-        <!-- pointed roof -->
-        <polygon points="${x-16},${y-36} ${x+16},${y-36} ${x},${y-58}" fill="#a02818" stroke="#5a0808" stroke-width="0.8"/>
-        <polygon points="${x-16},${y-36} ${x},${y-58} ${x},${y-36}" fill="rgba(0,0,0,0.22)"/>
-        ${FLAG(x, y - 56)}
-        <!-- arrow slits -->
-        ${LIT_WINDOW(x - 8, y - 24, 3, 8)}
-        ${LIT_WINDOW(x + 5, y - 24, 3, 8)}
-        ${LIT_WINDOW(x - 3, y - 12, 6, 8)}
-        <!-- archer silhouette behind battlement -->
-        <circle cx="${x}" cy="${y - 33}" r="2" fill="#3a2010"/>
-        <rect x="${x - 1.5}" y="${y - 31}" width="3" height="4" fill="#5a3818"/>
-        <path d="M ${x - 5} ${y - 32} Q ${x} ${y - 36} ${x + 5} ${y - 32}" stroke="#5a3818" stroke-width="1" fill="none"/>
+        ${SHADOW(x, y, 30)}
+        <!-- rocky footing -->
+        <polygon points="${x-24},${y-2} ${x},${y-14} ${x+24},${y-2} ${x},${y+10}" fill="#a4adb5" stroke="#2a1a0e" stroke-width="0.8"/>
+        <polygon points="${x-24},${y-2} ${x},${y+10} ${x},${y+19} ${x-24},${y+7}" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.8"/>
+        <polygon points="${x+24},${y-2} ${x},${y+10} ${x},${y+19} ${x+24},${y+7}" fill="#5d6673" stroke="#2a1a0e" stroke-width="0.8"/>
+        <!-- tapered stone shaft -->
+        <path d="M ${x-13} ${y+4} L ${x-10} ${y-30} L ${x+10} ${y-30} L ${x+13} ${y+4} Q ${x} ${y+11} ${x-13} ${y+4} Z" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x-13} ${y+4} L ${x-10} ${y-30} L ${x-1} ${y-30} L ${x-1} ${y+8.5} Q ${x-7} ${y+8} ${x-13} ${y+4} Z" fill="#b6bec5"/>
+        <line x1="${x-11.5}" y1="${y-28}" x2="${x-13.5}" y2="${y+3}" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/>
+        <!-- stone courses -->
+        <path d="M ${x-11} ${y-8} Q ${x} ${y-3} ${x+11} ${y-8}" stroke="#79828c" stroke-width="0.5" fill="none"/>
+        <path d="M ${x-10.4} ${y-18} Q ${x} ${y-13.5} ${x+10.4} ${y-18}" stroke="#79828c" stroke-width="0.5" fill="none"/>
+        <line x1="${x-5}" y1="${y-6}" x2="${x-5}" y2="${y-12.5}" stroke="#79828c" stroke-width="0.5"/>
+        <line x1="${x+4}" y1="${y-16}" x2="${x+4}" y2="${y-22.5}" stroke="#79828c" stroke-width="0.5"/>
+        <!-- glowing arrow slit -->
+        <ellipse cx="${x-0.5}" cy="${y-12}" rx="4" ry="5" fill="#ffca5f" opacity="0.13"/>
+        <path d="M ${x-2} ${y-17} L ${x+1} ${y-17} L ${x+1} ${y-8} L ${x-2} ${y-8} Z" fill="#2a1a0e"/>
+        <rect x="${x-1.4}" y="${y-16.2}" width="1.8" height="7.4" fill="#ffd773">
+            <animate attributeName="opacity" values="0.55;1;0.55" dur="2.6s" repeatCount="indefinite"/>
+        </rect>
+        <!-- corbelled wooden hoarding -->
+        ${[-9, -4.5, 0, 4.5, 9].map(dx => `<polygon points="${x+dx-1.4},${y-30} ${x+dx+1.4},${y-30} ${x+dx+1},${y-33.5} ${x+dx-1},${y-33.5}" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.4"/>`).join('')}
+        <polygon points="${x-15},${y-33.5} ${x+15},${y-33.5} ${x+13.5},${y-42} ${x-13.5},${y-42}" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-15},${y-33.5} ${x-13.5},${y-42} ${x-6},${y-42} ${x-6.6},${y-33.5}" fill="#a8763f"/>
+        ${[-7, 0, 7].map(dx => `<line x1="${x+dx}" y1="${y-34.5}" x2="${x+dx}" y2="${y-41}" stroke="#54371a" stroke-width="0.6"/>`).join('')}
+        <!-- crenellated parapet -->
+        ${[-12, -5.5, 1, 7.5].map(dx => `<rect x="${x+dx-1.6}" y="${y-46}" width="3.2" height="4.5" fill="${dx < 0 ? '#b6bec5' : '#8b95a0'}" stroke="#2a1a0e" stroke-width="0.5"/>`).join('')}
+        <!-- watchful archer -->
+        <circle cx="${x+3}" cy="${y-46}" r="2.2" fill="#e8b98a" stroke="#2a1a0e" stroke-width="0.5"/>
+        <path d="M ${x+0.6} ${y-46.8} q 2.4 -2.4 4.8 0 l 0 -1.4 q -2.4 -1.6 -4.8 0 Z" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.4"/>
+        <rect x="${x+0.8}" y="${y-44.4}" width="4.4" height="3.8" rx="1" fill="#4c7a3c" stroke="#2a1a0e" stroke-width="0.5"/>
+        <path d="M ${x+7.5} ${y-49} q 3.5 3.6 0 7.2" stroke="#6b4520" stroke-width="1" fill="none"/>
+        <line x1="${x+7.5}" y1="${y-49}" x2="${x+7.5}" y2="${y-41.8}" stroke="#d9cbb0" stroke-width="0.45"/>
+        <!-- conical roof (signature red) -->
+        <path d="M ${x-13} ${y-48.5} L ${x} ${y-66} L ${x+13} ${y-48.5} Q ${x+6.5} ${y-52} ${x} ${y-52} Q ${x-6.5} ${y-52} ${x-13} ${y-48.5} Z" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.9"/>
+        <path d="M ${x-13} ${y-48.5} L ${x} ${y-66} L ${x} ${y-52} Q ${x-6.5} ${y-52} ${x-13} ${y-48.5} Z" fill="#cd5a44"/>
+        ${FLAG(x, y - 65)}
+        ${lvl >= 4 ? `
+            <polygon points="${x+11.5},${y-44} ${x+17},${y-46.8} ${x+17},${y-33} ${x+14.2},${y-36.2} ${x+11.5},${y-34.4}" fill="#2c5aa0" stroke="#1d3c6e" stroke-width="0.6"/>
+            <circle cx="${x+14.2}" cy="${y-41.5}" r="1.4" fill="#f4c44d"/>
+        ` : ''}
+        ${lvl >= 7 ? `
+            <circle cx="${x}" cy="${y-67.5}" r="1.9" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.6"/>
+            <ellipse cx="${x-0.5}" cy="${y-12}" rx="7" ry="8" fill="#ffca5f" opacity="0.12">
+                <animate attributeName="opacity" values="0.06;0.2;0.06" dur="2.6s" repeatCount="indefinite"/>
+            </ellipse>
+            ${LIT_WINDOW(x - 7, y - 26, 3, 6)}
+        ` : ''}
     `,
 
     cannon: (x, y, lvl) => `
-        ${SHADOW(x, y, 42)}
-        <!-- iso platform -->
-        <polygon points="${x-38},${y+4} ${x},${y-12} ${x+38},${y+4} ${x+38},${y+12} ${x},${y+24} ${x-38},${y+12}" fill="#5e5448" stroke="#0a0408" stroke-width="0.8"/>
-        <polygon points="${x-38},${y+4} ${x-38},${y+12} ${x},${y+24} ${x},${y-12}" fill="rgba(0,0,0,0.25)"/>
-        <!-- crenellations -->
-        ${[-30, -20, -10, 0, 10, 20].map(dx => `<polygon points="${x + dx - 2.5},${y - 8 + Math.abs(dx) * 0.05} ${x + dx + 2.5},${y - 8 + Math.abs(dx) * 0.05} ${x + dx + 2.5},${y - 14 + Math.abs(dx) * 0.05} ${x + dx - 2.5},${y - 14 + Math.abs(dx) * 0.05}" fill="#5e5448" stroke="#1a1408" stroke-width="0.4"/>`).join('')}
-        <!-- cannon mount + wheels -->
-        <rect x="${x - 14}" y="${y - 8}" width="28" height="8" fill="#5a3818" stroke="#1a0808" stroke-width="0.6"/>
-        <circle cx="${x - 14}" cy="${y - 2}" r="5" fill="#3a2010" stroke="#1a0808" stroke-width="0.5"/>
-        <circle cx="${x - 14}" cy="${y - 2}" r="3" fill="#5a3018"/>
-        <line x1="${x - 14}" y1="${y - 7}" x2="${x - 14}" y2="${y + 3}" stroke="#1a0808" stroke-width="0.4"/>
-        <line x1="${x - 19}" y1="${y - 2}" x2="${x - 9}" y2="${y - 2}" stroke="#1a0808" stroke-width="0.4"/>
-        <circle cx="${x + 14}" cy="${y - 2}" r="5" fill="#3a2010" stroke="#1a0808" stroke-width="0.5"/>
-        <circle cx="${x + 14}" cy="${y - 2}" r="3" fill="#5a3018"/>
-        <!-- barrel -->
-        <ellipse cx="${x}" cy="${y - 16}" rx="18" ry="6" fill="#2a2418" stroke="#000" stroke-width="0.8"/>
-        <ellipse cx="${x}" cy="${y - 17}" rx="18" ry="5" fill="#3a3328"/>
-        <ellipse cx="${x}" cy="${y - 18}" rx="16" ry="3" fill="rgba(255,255,255,0.12)"/>
-        <ellipse cx="${x + 18}" cy="${y - 16}" rx="2.5" ry="4" fill="#000"/>
-        <!-- bands -->
-        <ellipse cx="${x - 8}" cy="${y - 16}" rx="2" ry="5.5" fill="#94a3b8" stroke="#475569" stroke-width="0.3"/>
-        <ellipse cx="${x + 6}" cy="${y - 16}" rx="2" ry="5" fill="#94a3b8" stroke="#475569" stroke-width="0.3"/>
-        ${lvl >= 4 ? `<ellipse cx="${x + 18}" cy="${y - 16}" rx="2" ry="3" fill="#ff6b00" opacity="0.8"><animate attributeName="opacity" values="0.5;1;0.5" dur="0.6s" repeatCount="indefinite"/></ellipse>` : ''}
-        <!-- cannonball pile -->
-        ${lvl >= 2 ? `
-            <ellipse cx="${x + 28}" cy="${y + 14}" rx="5" ry="1.5" fill="rgba(0,0,0,0.4)"/>
-            <circle cx="${x + 26}" cy="${y + 11}" r="2.5" fill="#1a1408"/>
-            <circle cx="${x + 30}" cy="${y + 11}" r="2.5" fill="#1a1408"/>
-            <circle cx="${x + 28}" cy="${y + 8}" r="2.5" fill="#1a1408"/>
+        ${SHADOW(x, y, 40)}
+        <!-- stone bastion (iso platform) -->
+        <polygon points="${x-36},${y-4} ${x},${y-22} ${x+36},${y-4} ${x},${y+14}" fill="#b6bec5" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-36},${y-4} ${x},${y+14} ${x},${y+23} ${x-36},${y+5}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+36},${y-4} ${x},${y+14} ${x},${y+23} ${x+36},${y+5}" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.9"/>
+        <line x1="${x-36}" y1="${y-4}" x2="${x}" y2="${y+14}" stroke="rgba(255,255,255,0.45)" stroke-width="0.8"/>
+        <line x1="${x-28}" y1="${y+2}" x2="${x-8}" y2="${y+12}" stroke="#7d8790" stroke-width="0.5"/>
+        <line x1="${x+8}" y1="${y+13}" x2="${x+28}" y2="${y+3}" stroke="#565f6a" stroke-width="0.5"/>
+        <!-- low merlons on the back edges -->
+        ${[[-28, -8], [-19, -12.5], [-10, -17]].map(([dx, dy]) => `
+            <polygon points="${x+dx-2.5},${y+dy+1} ${x+dx+2},${y+dy-1.2} ${x+dx+2},${y+dy-6} ${x+dx-2.5},${y+dy-3.8}" fill="#b6bec5" stroke="#2a1a0e" stroke-width="0.5"/>
+        `).join('')}
+        ${[[10, -17], [19, -12.5], [28, -8]].map(([dx, dy]) => `
+            <polygon points="${x+dx-2},${y+dy-1.2} ${x+dx+2.5},${y+dy+1} ${x+dx+2.5},${y+dy-3.8} ${x+dx-2},${y+dy-6}" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.5"/>
+        `).join('')}
+        <!-- wooden gun carriage -->
+        <polygon points="${x-16},${y-3} ${x-4},${y-9} ${x+12},${y-1} ${x},${y+5}" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.8"/>
+        <polygon points="${x-16},${y-3} ${x},${y+5} ${x},${y+9} ${x-16},${y+1}" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.8"/>
+        <polygon points="${x+12},${y-1} ${x},${y+5} ${x},${y+9} ${x+12},${y+3}" fill="#54371a" stroke="#2a1a0e" stroke-width="0.8"/>
+        <!-- spoked wheels -->
+        <g>
+            <circle cx="${x-11}" cy="${y+4}" r="5.5" fill="#6b4520" stroke="#2a1a0e" stroke-width="1"/>
+            <circle cx="${x-11}" cy="${y+4}" r="3.6" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.5"/>
+            <line x1="${x-11}" y1="${y-0.6}" x2="${x-11}" y2="${y+8.6}" stroke="#2a1a0e" stroke-width="0.7"/>
+            <line x1="${x-15.6}" y1="${y+4}" x2="${x-6.4}" y2="${y+4}" stroke="#2a1a0e" stroke-width="0.7"/>
+            <line x1="${x-14.2}" y1="${y+0.8}" x2="${x-7.8}" y2="${y+7.2}" stroke="#2a1a0e" stroke-width="0.6"/>
+            <line x1="${x-14.2}" y1="${y+7.2}" x2="${x-7.8}" y2="${y+0.8}" stroke="#2a1a0e" stroke-width="0.6"/>
+            <circle cx="${x-11}" cy="${y+4}" r="1.2" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.5"/>
+        </g>
+        <g>
+            <circle cx="${x+7}" cy="${y+7}" r="4.6" fill="#54371a" stroke="#2a1a0e" stroke-width="0.9"/>
+            <circle cx="${x+7}" cy="${y+7}" r="2.9" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.5"/>
+            <line x1="${x+7}" y1="${y+3.2}" x2="${x+7}" y2="${y+10.8}" stroke="#2a1a0e" stroke-width="0.6"/>
+            <line x1="${x+3.2}" y1="${y+7}" x2="${x+10.8}" y2="${y+7}" stroke="#2a1a0e" stroke-width="0.6"/>
+            <circle cx="${x+7}" cy="${y+7}" r="1" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.4"/>
+        </g>
+        <!-- black iron barrel, aimed down-right -->
+        <g transform="rotate(18 ${x} ${y - 10})">
+            <path d="M ${x-15} ${y-14.5} Q ${x-19} ${y-10} ${x-15} ${y-5.5} L ${x+14} ${y-7.5} L ${x+14} ${y-12.5} Z" fill="#3a3f47" stroke="#2a1a0e" stroke-width="0.9"/>
+            <path d="M ${x-15} ${y-14.5} Q ${x-19} ${y-10} ${x-15} ${y-5.5} L ${x-9} ${y-6} Q ${x-12.5} ${y-10} ${x-9} ${y-14} Z" fill="#4a505a"/>
+            <path d="M ${x-14} ${y-13.5} L ${x+13.5} ${y-11.8}" stroke="rgba(255,255,255,0.25)" stroke-width="1.2"/>
+            <ellipse cx="${x+14.5}" cy="${y-10}" rx="2.2" ry="3.3" fill="#15181c" stroke="#2a1a0e" stroke-width="0.7"/>
+            <ellipse cx="${x-1}" cy="${y-10}" rx="1.5" ry="4.4" fill="#5d6673" stroke="#2a1a0e" stroke-width="0.5"/>
+            <ellipse cx="${x+8}" cy="${y-10}" rx="1.4" ry="3.9" fill="#5d6673" stroke="#2a1a0e" stroke-width="0.5"/>
+            <circle cx="${x-16.5}" cy="${y-10}" r="1.6" fill="#2a2e34" stroke="#2a1a0e" stroke-width="0.5"/>
+        </g>
+        <!-- sputtering fuse -->
+        <path d="M ${x-15.5} ${y-17.5} q -3 -2.5 -2 -5.5" stroke="#6b4520" stroke-width="1" fill="none"/>
+        <g class="sparkle-fx">
+            <polygon points="${x-17.5},${y-25} ${x-16.3},${y-23} ${x-17.5},${y-21} ${x-18.7},${y-23}" fill="#ffb347"/>
+            <circle cx="${x-15.8}" cy="${y-24.5}" r="0.8" fill="#ffe9a3" style="animation-delay:.3s"/>
+        </g>
+        <!-- cannonball pyramid + powder keg -->
+        <ellipse cx="${x+24}" cy="${y+13.5}" rx="6.5" ry="2.1" fill="rgba(30,20,10,0.3)"/>
+        <circle cx="${x+21.5}" cy="${y+10.5}" r="2.7" fill="#3a3f47" stroke="#2a1a0e" stroke-width="0.6"/>
+        <circle cx="${x+26.5}" cy="${y+10.5}" r="2.7" fill="#3a3f47" stroke="#2a1a0e" stroke-width="0.6"/>
+        <circle cx="${x+24}" cy="${y+6.8}" r="2.7" fill="#4a505a" stroke="#2a1a0e" stroke-width="0.6"/>
+        <circle cx="${x+23.2}" cy="${y+6}" r="0.9" fill="rgba(255,255,255,0.35)"/>
+        <ellipse cx="${x-24}" cy="${y+10}" rx="4.8" ry="1.8" fill="rgba(30,20,10,0.28)"/>
+        <path d="M ${x-28.5} ${y+1.5} q -1.5 4.2 0 8.4 q 4.5 2.2 9 0 q 1.5 -4.2 0 -8.4 q -4.5 -2.2 -9 0 Z" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.8"/>
+        <ellipse cx="${x-24}" cy="${y+1.5}" rx="4.5" ry="1.7" fill="#c99a5e" stroke="#2a1a0e" stroke-width="0.5"/>
+        <path d="M ${x-29.3} ${y+4} q 5.3 2.4 10.6 0" stroke="#4f5663" stroke-width="0.9" fill="none"/>
+        <path d="M ${x-29.3} ${y+7.4} q 5.3 2.4 10.6 0" stroke="#4f5663" stroke-width="0.9" fill="none"/>
+        ${lvl >= 4 ? `
+            <ellipse cx="${x+13.5}" cy="${y-5}" rx="2.4" ry="3.2" fill="#ff8a3c" opacity="0.75" transform="rotate(18 ${x} ${y - 10})">
+                <animate attributeName="opacity" values="0.35;0.9;0.35" dur="0.7s" repeatCount="indefinite"/>
+            </ellipse>
+            ${FLAG(x - 33, y - 6, '#b3402e')}
+        ` : ''}
+        ${lvl >= 7 ? `
+            <g transform="rotate(18 ${x} ${y - 10})">
+                <ellipse cx="${x-1}" cy="${y-10}" rx="1.7" ry="4.7" fill="#f4c44d" stroke="#a8791f" stroke-width="0.5"/>
+                <ellipse cx="${x+8}" cy="${y-10}" rx="1.6" ry="4.2" fill="#f4c44d" stroke="#a8791f" stroke-width="0.5"/>
+                <ellipse cx="${x+14.8}" cy="${y-10}" rx="1.4" ry="3.6" fill="#f4c44d" stroke="#a8791f" stroke-width="0.5"/>
+            </g>
+            <circle cx="${x+24}" cy="${y+6.8}" r="2.7" fill="#f4c44d" stroke="#a8791f" stroke-width="0.6"/>
         ` : ''}
     `
 };
@@ -712,18 +1307,51 @@ function villagerSVG(id, variant) {
     </g>`;
 }
 
-function boatSVG() {
+// kind: 'trade' (cargo cog — click to open the Harbor), 'patrol' (naval guard
+// when soldiers hold the patrol formation), or default ambient skiff.
+function boatSVG(kind) {
+    if (kind === 'trade') {
+        return `<g class="ambient-boat">
+            <ellipse cx="0" cy="4" rx="24" ry="2.6" fill="rgba(0,0,0,0.4)"/>
+            <path d="M -22 0 L 22 0 L 16 7 L -16 7 Z" fill="#6e4a24" stroke="#2a1a0e" stroke-width="0.8"/>
+            <path d="M -22 0 L 22 0 L 19 -2 L -19 -2 Z" fill="#8a5a2b"/>
+            <line x1="-19" y1="-1" x2="19" y2="-1" stroke="#2a1a0e" stroke-width="0.4" opacity="0.6"/>
+            <!-- cargo on deck -->
+            <rect x="-14" y="-7" width="7" height="6" fill="#c99a5e" stroke="#2a1a0e" stroke-width="0.6"/>
+            <rect x="-6" y="-6" width="5.5" height="5" fill="#a8763f" stroke="#2a1a0e" stroke-width="0.6"/>
+            <ellipse cx="10" cy="-4" rx="3.4" ry="4" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.6"/>
+            <!-- mast + big trade sail with coin emblem -->
+            <line x1="2" y1="-2" x2="2" y2="-30" stroke="#3a2010" stroke-width="1.4"/>
+            <path d="M 2 -30 Q 18 -22 2 -6 Z" fill="#f0e6d2" stroke="#a88838" stroke-width="0.7"/>
+            <path d="M 2 -30 Q 18 -22 2 -6 Z" fill="url(#sailShade)"/>
+            <circle cx="7.5" cy="-18" r="4" fill="#f4c44d" stroke="#7a5410" stroke-width="0.8"/>
+            <text x="7.5" y="-15.6" text-anchor="middle" font-size="6" font-weight="900" fill="#7a5410" font-family="Inter">$</text>
+            <line x1="2" y1="-30" x2="2" y2="-34" stroke="#3a2010" stroke-width="0.5"/>
+            <polygon points="2,-34 8,-31.5 2,-29.5" fill="#f4c44d" class="flag-wave"/>
+        </g>`;
+    }
+    if (kind === 'patrol') {
+        return `<g class="ambient-boat">
+            <ellipse cx="0" cy="3" rx="20" ry="2.2" fill="rgba(0,0,0,0.4)"/>
+            <path d="M -18 0 L 18 0 L 13 6 L -13 6 Z" fill="#4e5563" stroke="#20242c" stroke-width="0.8"/>
+            <path d="M -18 0 L 18 0 L 15 -1.5 L -15 -1.5 Z" fill="#6b7280"/>
+            <!-- shields along the gunwale -->
+            ${[-10, -3, 4, 11].map(sx => `<circle cx="${sx}" cy="-2.4" r="2.6" fill="#2c5aa0" stroke="#1a3560" stroke-width="0.6"/><circle cx="${sx}" cy="-2.4" r="0.9" fill="#f4c44d"/>`).join('')}
+            <line x1="0" y1="-1" x2="0" y2="-24" stroke="#2a2010" stroke-width="1.2"/>
+            <path d="M 0 -24 L 0 -5 L 12 -14 Z" fill="#2c5aa0" stroke="#1a3560" stroke-width="0.7"/>
+            <path d="M 0 -24 L 0 -5 L 12 -14 Z" fill="url(#sailShade)"/>
+            <path d="M 4.5 -17 l 2.6 1.4 v 2.8 q 0 2 -2.6 3 q -2.6 -1 -2.6 -3 v -2.8 Z" fill="#f0e6d2" stroke="#1a3560" stroke-width="0.5"/>
+            <line x1="0" y1="-24" x2="0" y2="-28" stroke="#2a2010" stroke-width="0.5"/>
+            <polygon points="0,-28 6,-25.5 0,-23.5" fill="#2c5aa0" class="flag-wave"/>
+        </g>`;
+    }
     return `<g class="ambient-boat">
         <ellipse cx="0" cy="3" rx="18" ry="2" fill="rgba(0,0,0,0.4)"/>
-        <!-- hull -->
         <path d="M -16 0 L 16 0 L 12 5 L -12 5 Z" fill="#5a3818" stroke="#2a1808" stroke-width="0.6"/>
         <path d="M -16 0 L 16 0 L 14 -1 L -14 -1 Z" fill="#7a5028"/>
-        <!-- mast -->
         <line x1="0" y1="0" x2="0" y2="-20" stroke="#3a2010" stroke-width="1"/>
-        <!-- sail -->
         <path d="M 0 -20 L 0 -2 L 10 -10 Z" fill="#fde047" stroke="#a87820" stroke-width="0.5"/>
         <path d="M 0 -20 L 0 -2 L 10 -10 Z" fill="url(#sailShade)"/>
-        <!-- flag -->
         <line x1="0" y1="-20" x2="0" y2="-24" stroke="#3a2010" stroke-width="0.4"/>
         <polygon points="0,-24 5,-22 0,-20" fill="#dc2626"/>
     </g>`;
@@ -816,7 +1444,7 @@ function renderIsoWorld() {
         0: { top: '#6cc049', hi: '#8edd66', lip: '#4f9c31' },  // grass
         1: { top: '#59ad3a', hi: '#7fcd55', lip: '#3f8226' },  // dark grass
         2: { top: '#d6b277', hi: '#ecca97', lip: '#ac8a52' },  // path
-        3: { top: '#3f97e2', hi: '#74c2f6', lip: '#2a6cb0' },  // water
+        3: { top: '#4a97d8', hi: '#7fc0ee', lip: '#2c608f' },  // water — same hue family as the ocean backdrop
         4: { top: '#ead49d', hi: '#f6e6b8', lip: '#c4aa70' }   // sand
     };
     const DIRT_L = '#4a3014', DIRT_R = '#684527';
@@ -862,11 +1490,11 @@ function renderIsoWorld() {
                 <polygon points="${x},${y + TH} ${x + TW},${y} ${x + TW},${y + DEPTH} ${x},${y + TH + DEPTH}" fill="${DIRT_R}"/>
                 <polygon points="${topPts}" fill="${p.top}"/>
             </g>
-            <polygon points="${topPts}" fill="rgba(34,211,238,0.10)" stroke="#22d3ee" stroke-width="2" stroke-dasharray="6 4" class="buy-tile" data-pos="${pos}" style="cursor:pointer"/>`;
+            <polygon points="${topPts}" fill="rgba(244,196,77,0.10)" stroke="#f4c44d" stroke-width="2" stroke-dasharray="6 4" class="buy-tile" data-pos="${pos}" style="cursor:pointer"/>`;
             buyMarkers += `<g class="buy-flag" data-pos="${pos}" style="cursor:pointer" transform="translate(${x},${y - 8})">
-                <circle cx="0" cy="0" r="11" fill="#0e1726" stroke="#22d3ee" stroke-width="1.5"/>
-                <text x="0" y="3.5" text-anchor="middle" font-size="12" font-weight="900" fill="#22d3ee">+</text>
-                <g transform="translate(0,16)"><rect x="-21" y="-7" width="42" height="13" rx="6" fill="#0e1726" stroke="#22d3ee" stroke-width="1"/><text x="0" y="2.5" text-anchor="middle" font-size="7.5" font-weight="800" fill="#7fe9f5">${(landPx.coins>=1000?(landPx.coins/1000).toFixed(1)+'K':landPx.coins)}c</text></g>
+                <circle cx="0" cy="0" r="11" fill="#0e1726" stroke="#f4c44d" stroke-width="1.5"/>
+                <text x="0" y="3.5" text-anchor="middle" font-size="12" font-weight="900" fill="#f4c44d">+</text>
+                <g transform="translate(0,16)"><rect x="-21" y="-7" width="42" height="13" rx="6" fill="#0e1726" stroke="#f4c44d" stroke-width="1"/><text x="0" y="2.5" text-anchor="middle" font-size="7.5" font-weight="800" fill="#ffe9a8">${(landPx.coins>=1000?(landPx.coins/1000).toFixed(1)+'K':landPx.coins)}c</text></g>
             </g>`;
             continue;
         }
@@ -999,11 +1627,29 @@ function renderIsoWorld() {
         cart += `<g class="ambient-cart-wrap" data-hx="${c.x}" data-hy="${c.y}" data-rx="${ISO.GW * ISO.TW * 0.34}" data-ry="${ISO.GH * ISO.TH * 0.5}" style="transform:translate(${c.x}px,${c.y}px)">${cartSVG()}</g>`;
     }
 
-    // Boat sails the open water around the island (JS-driven random wander)
+    // Boats with PURPOSE, not decoration:
+    // - Trade Ship: appears whenever the Harbor stands and today's Trade Ship
+    //   deals aren't sold out — click it to open the Harbor.
+    // - Patrol Boat: circles close to shore while soldiers hold the Patrol
+    //   formation — your coastal guard, click to review the patrol.
+    // - Plain skiff only when neither has a reason to sail.
     let boat = '';
     {
         const b0 = iso(-1, 4);
-        boat += `<g class="ambient-boat-wrap" data-hx="${b0.x}" data-hy="${b0.y}" data-rx="${ISO.GW * ISO.TW * 0.55}" data-ry="${ISO.GH * ISO.TH * 0.7}" style="transform:translate(${b0.x}px,${b0.y}px)">${boatSVG()}</g>`;
+        const hasHarbor = state.buildings.some(b => b.type === 'harbor' && !b.constructing);
+        const dealsLeft = !!(state.exp && state.exp.trader && state.exp.trader.some(d => !d.bought));
+        const patrolN = (typeof getDeployed === 'function') ? getDeployed('patrol').length : 0;
+        if (hasHarbor && dealsLeft) {
+            boat += `<g class="ambient-boat-wrap trade-ship" data-hx="${b0.x}" data-hy="${b0.y}" data-rx="${ISO.GW * ISO.TW * 0.55}" data-ry="${ISO.GH * ISO.TH * 0.7}" style="transform:translate(${b0.x}px,${b0.y}px);cursor:pointer">
+                <title>Trade Ship — today's deals are in! Click to open the Harbor.</title>${boatSVG('trade')}</g>`;
+        } else {
+            boat += `<g class="ambient-boat-wrap" data-hx="${b0.x}" data-hy="${b0.y}" data-rx="${ISO.GW * ISO.TW * 0.55}" data-ry="${ISO.GH * ISO.TH * 0.7}" style="transform:translate(${b0.x}px,${b0.y}px)">${boatSVG()}</g>`;
+        }
+        if (patrolN > 0) {
+            const p0 = iso(ISO.GW, 6);
+            boat += `<g class="ambient-boat-wrap patrol-boat" data-hx="${p0.x}" data-hy="${p0.y}" data-rx="${ISO.GW * ISO.TW * 0.48}" data-ry="${ISO.GH * ISO.TH * 0.58}" style="transform:translate(${p0.x}px,${p0.y}px);cursor:pointer">
+                <title>Patrol Boat — ${patrolN} soldier${patrolN === 1 ? '' : 's'} guarding your shores. Click to review.</title>${boatSVG('patrol')}</g>`;
+        }
     }
 
     // Birds flying across the sky

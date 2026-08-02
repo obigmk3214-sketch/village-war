@@ -366,7 +366,8 @@ const Audio = (() => {
     function getCurrentTrack() { return musicPlaying ? PLAYLIST[musicTrackIdx] : null; }
 
     return {
-        click: () => tone(660, 0.04, 'sine', 0.05),
+        // soft wooden tick: low knock + bright transient — reads as "physical button"
+        click: () => { tone(880, 0.03, 'sine', 0.045); tone(240, 0.05, 'triangle', 0.05); },
         place: () => { tone(440, 0.08, 'sine', 0.13); setTimeout(() => tone(660, 0.12, 'sine', 0.10), 60); },
         coin:  () => { tone(1320, 0.06, 'sine', 0.08); setTimeout(() => tone(1760, 0.08, 'sine', 0.06), 50); },
         upgrade: () => { tone(523, 0.1, 'sine', 0.12); setTimeout(() => tone(659, 0.1, 'sine', 0.12), 80); setTimeout(() => tone(784, 0.18, 'sine', 0.12), 160); },

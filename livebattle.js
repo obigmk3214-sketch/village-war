@@ -220,10 +220,31 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
     overlay.innerHTML = `
         <div class="lb-scene">
             <div class="lb-field" id="lb-field">
+                <div class="lb-sea"></div>
+                <div class="lb-sand"></div>
                 <div class="lb-grass"></div>
                 <div class="lb-deployzone"></div>
                 <div class="lb-deployzone lb-dz-west" title="Flanking cove — +15% attack surge"></div>
                 <div class="lb-deployzone lb-dz-east" title="Flanking cove — +15% attack surge"></div>
+                <div class="lb-decor" aria-hidden="true">
+                    <svg class="lb-dirtpath" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <path d="M50 98 C40 86 62 76 54 64 C47 54 57 42 50 30" fill="none" stroke="#7e5f36" stroke-width="6" stroke-linecap="round" opacity="0.45"/>
+                        <path d="M50 98 C40 86 62 76 54 64 C47 54 57 42 50 30" fill="none" stroke="#c9a56a" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+                        <path d="M50 98 C40 86 62 76 54 64 C47 54 57 42 50 30" fill="none" stroke="#e6c68d" stroke-width="1.1" stroke-dasharray="2.5 3.5" stroke-linecap="round" opacity="0.55"/>
+                    </svg>
+                    <svg class="lb-dec" style="left:13.5%;top:44%;width:6%" viewBox="0 0 40 48"><ellipse cx="20" cy="45" rx="13" ry="3" fill="rgba(20,30,10,0.3)"/><rect x="17.5" y="30" width="5" height="14" rx="2" fill="#6b4a2a"/><circle cx="20" cy="18" r="12" fill="#3e6f2e"/><circle cx="12" cy="24" r="8" fill="#356328"/><circle cx="28" cy="24" r="8" fill="#468036"/><circle cx="24" cy="12" r="7" fill="#5a9a42"/><circle cx="26" cy="10" r="4" fill="#95c96e" opacity="0.85"/></svg>
+                    <svg class="lb-dec" style="left:79%;top:5.5%;width:5%" viewBox="0 0 40 48"><ellipse cx="20" cy="45" rx="13" ry="3" fill="rgba(20,30,10,0.3)"/><rect x="17.5" y="30" width="5" height="14" rx="2" fill="#6b4a2a"/><circle cx="20" cy="18" r="12" fill="#3e6f2e"/><circle cx="12" cy="24" r="8" fill="#356328"/><circle cx="28" cy="24" r="8" fill="#468036"/><circle cx="24" cy="12" r="7" fill="#5a9a42"/><circle cx="26" cy="10" r="4" fill="#95c96e" opacity="0.85"/></svg>
+                    <svg class="lb-dec" style="left:74.5%;top:49%;width:5.5%" viewBox="0 0 40 48"><ellipse cx="20" cy="45" rx="13" ry="3" fill="rgba(20,30,10,0.3)"/><rect x="17.5" y="30" width="5" height="14" rx="2" fill="#6b4a2a"/><circle cx="20" cy="18" r="12" fill="#436f2e"/><circle cx="12" cy="24" r="8" fill="#3a6328"/><circle cx="28" cy="24" r="8" fill="#4c8036"/><circle cx="24" cy="12" r="7" fill="#619a42"/><circle cx="26" cy="10" r="4" fill="#9bc96e" opacity="0.85"/></svg>
+                    <svg class="lb-dec" style="left:24%;top:59%;width:4%" viewBox="0 0 40 24"><ellipse cx="20" cy="21" rx="15" ry="3" fill="rgba(0,0,0,0.2)"/><path d="M6 20 L10 8 L20 4 L32 9 L34 20 Z" fill="#8b8f96"/><path d="M10 8 L20 4 L22 20 L6 20 Z" fill="#a7abb2"/><path d="M20 4 L32 9 L30 14 L22 8 Z" fill="#cdd1d8" opacity="0.75"/></svg>
+                    <svg class="lb-dec" style="left:63%;top:57.5%;width:3.4%" viewBox="0 0 40 24"><ellipse cx="20" cy="21" rx="15" ry="3" fill="rgba(0,0,0,0.2)"/><path d="M6 20 L10 8 L20 4 L32 9 L34 20 Z" fill="#8b8f96"/><path d="M10 8 L20 4 L22 20 L6 20 Z" fill="#a7abb2"/><path d="M20 4 L32 9 L30 14 L22 8 Z" fill="#cdd1d8" opacity="0.75"/></svg>
+                    <svg class="lb-dec" style="left:4.5%;top:28%;width:3.6%" viewBox="0 0 40 24"><ellipse cx="20" cy="21" rx="15" ry="3" fill="rgba(0,0,0,0.18)"/><path d="M6 20 L10 8 L20 4 L32 9 L34 20 Z" fill="#9a927e"/><path d="M10 8 L20 4 L22 20 L6 20 Z" fill="#b3ab96"/><path d="M20 4 L32 9 L30 14 L22 8 Z" fill="#d6cdb4" opacity="0.75"/></svg>
+                    <svg class="lb-dec" style="left:30%;top:14%;width:2.4%" viewBox="0 0 20 14"><path d="M4 13 C4 8 2 6 3 3 M8 13 C8 7 8 5 7 2 M12 13 C12 7 13 5 14 2 M16 13 C16 9 18 7 17 4" stroke="#3f7a2e" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+                    <svg class="lb-dec" style="left:68%;top:39%;width:2.4%" viewBox="0 0 20 14"><path d="M4 13 C4 8 2 6 3 3 M8 13 C8 7 8 5 7 2 M12 13 C12 7 13 5 14 2 M16 13 C16 9 18 7 17 4" stroke="#3f7a2e" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+                    <svg class="lb-dec" style="left:21%;top:31%;width:2.2%" viewBox="0 0 20 14"><path d="M4 13 C4 8 2 6 3 3 M8 13 C8 7 8 5 7 2 M12 13 C12 7 13 5 14 2 M16 13 C16 9 18 7 17 4" stroke="#46862f" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+                    <svg class="lb-dec" style="left:58%;top:11%;width:2.2%" viewBox="0 0 20 14"><path d="M4 13 C4 8 2 6 3 3 M8 13 C8 7 8 5 7 2 M12 13 C12 7 13 5 14 2 M16 13 C16 9 18 7 17 4" stroke="#46862f" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+                    <svg class="lb-dec" style="left:40%;top:52%;width:2.4%" viewBox="0 0 20 14"><path d="M4 13 C4 8 2 6 3 3 M8 13 C8 7 8 5 7 2 M12 13 C12 7 13 5 14 2 M16 13 C16 9 18 7 17 4" stroke="#3f7a2e" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+                </div>
+                <div class="lb-cloudshadow"></div>
                 ${base.buildings.map((b, i) => `
                     <div class="lb-bld ${b.th ? 'lb-th' : ''}" id="lbb-${i}" style="left:${b.x}%;top:${b.y}%;width:${b.w}%">
                         <div class="lb-bhp"><div class="lb-bhpfill"></div></div>
@@ -237,6 +258,7 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
                     </div>`).join('')}
                 <div class="lb-troops" id="lb-troops"></div>
                 <div class="lb-fx" id="lb-fx"></div>
+                <div class="lb-vign"></div>
             </div>
             <div class="lb-top">
                 <span class="lb-title">${svgIcon('swords')}️ ${spec.name}</span>

@@ -185,7 +185,7 @@ body {
        there are no light-centre / dark-edge shades. */
     background:
         radial-gradient(ellipse 70% 45% at 50% 12%, rgba(255,247,200,0.20), transparent 60%),
-        #3a86bf;
+        #3579b8;
 }
 #village-grid::after {
     content: '';
@@ -3135,36 +3135,117 @@ body { background: transparent; }
 @keyframes starPopDim { to { transform: scale(0.8); } }
 .log-stars { color: #fde047; }
 
-/* ============ LIVE BATTLE ============ */
-.lb-scene { width: 96%; max-width: 900px; aspect-ratio: 900/620; position: relative; border-radius: 16px; overflow: hidden; border: 4px solid #2a4218; box-shadow: 0 0 50px rgba(0,0,0,0.6); }
-.lb-field { position: absolute; inset: 0; touch-action: none; }
-.lb-grass { position: absolute; inset: 0;
+/* ============ LIVE BATTLE — defended island at golden hour ============ */
+.lb-scene { width: 96%; max-width: 900px; aspect-ratio: 900/620; position: relative; border-radius: 16px; overflow: hidden;
+    border: 4px solid #0d2c3d; box-shadow: 0 0 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(120,200,230,0.15); }
+.lb-field { position: absolute; inset: 0; touch-action: none; background: #123a4e; }
+
+/* -- Sea: deep blue-teal with sun glint and two drifting foam sheets -- */
+.lb-sea { position: absolute; inset: 0; z-index: 0; overflow: hidden;
     background:
-        radial-gradient(circle 3px at 18% 28%, rgba(0,0,0,0.1) 0 2px, transparent 3px),
-        radial-gradient(circle 3px at 68% 60%, rgba(0,0,0,0.08) 0 2px, transparent 3px),
-        radial-gradient(circle 2px at 40% 75%, rgba(255,255,255,0.08) 0 1px, transparent 2px),
-        linear-gradient(180deg, #538f37 0%, #5fa83f 55%, #4f9a36 100%);
-    background-size: 90px 90px, 120px 120px, 70px 70px, 100% 100%; }
-.lb-deployzone { position: absolute; left: 0; right: 0; bottom: 0; height: 38%;
-    background: linear-gradient(180deg, transparent, rgba(34,211,238,0.10) 30%, rgba(34,211,238,0.16));
-    border-top: 2px dashed rgba(34,211,238,0.65); animation: dzPulse 1.8s ease-in-out infinite; }
-@keyframes dzPulse { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
-.lb-bld { position: absolute; transform: translate(-50%, -55%); z-index: 4; }
-.lb-bld svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 4px 3px rgba(0,0,0,0.45)); }
-.lb-bld.lb-th svg { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)) drop-shadow(0 0 10px rgba(251,191,36,0.5)); }
-.lb-bhp { position: absolute; left: 8%; top: -8px; width: 84%; height: 5px; background: rgba(0,0,0,0.6); border-radius: 3px; overflow: hidden; border: 1px solid rgba(0,0,0,0.7); z-index: 5; }
-.lb-bhpfill { height: 100%; width: 100%; background: linear-gradient(90deg,#b91c1c,#f87171); }
-.lb-bhpfill.low { background: linear-gradient(90deg,#7f1d1d,#b91c1c); animation: badgePulse 0.8s infinite; }
+        radial-gradient(ellipse 70% 40% at 68% 8%, rgba(255,196,110,0.16), transparent 70%),
+        linear-gradient(180deg, #1e6a84 0%, #175872 40%, #114459 75%, #0d3346 100%); }
+.lb-sea::before, .lb-sea::after { content: ''; position: absolute; top: -20px; bottom: -20px; left: -200px; right: -200px;
+    background-image:
+        radial-gradient(ellipse 22px 5px at 30px 18px, rgba(255,255,255,0.22) 0 40%, transparent 70%),
+        radial-gradient(ellipse 16px 4px at 95px 46px, rgba(200,240,250,0.16) 0 40%, transparent 70%);
+    background-size: 140px 72px; animation: lbSeaDrift 13s linear infinite; }
+.lb-sea::after { background-size: 190px 96px; opacity: 0.6; animation: lbSeaDrift2 21s linear infinite; }
+@keyframes lbSeaDrift { from { transform: translateX(0); } to { transform: translateX(140px); } }
+@keyframes lbSeaDrift2 { from { transform: translateX(0); } to { transform: translateX(-190px); } }
+
+/* -- Sand: the island shelf; beaches double as deploy zones -- */
+.lb-sand { position: absolute; inset: 2% 1.5% 1.5% 1.5%; z-index: 1;
+    border-radius: 34% 40% 30% 38% / 26% 30% 24% 28%;
+    background:
+        radial-gradient(ellipse 90% 70% at 50% 30%, rgba(255,236,180,0.35), transparent 65%),
+        linear-gradient(180deg, #d8c188 0%, #e8d29a 45%, #dcbf85 100%);
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.5), 0 0 0 7px rgba(255,255,255,0.16), 0 0 24px 10px rgba(160,225,240,0.18),
+        inset 0 0 26px rgba(160,110,50,0.35); }
+.lb-sand::after { content: ''; position: absolute; inset: -7px; border-radius: inherit; pointer-events: none;
+    border: 3px solid rgba(255,255,255,0.35); filter: blur(2px); animation: lbFoam 4.2s ease-in-out infinite; }
+@keyframes lbFoam { 0%,100% { opacity: 0.25; transform: scale(1); } 50% { opacity: 0.75; transform: scale(1.006); } }
+
+/* -- Grass plateau: sunlit center falling to shaded edges, mottled -- */
+.lb-grass { position: absolute; inset: 4.5% 13% 35% 13%; z-index: 2;
+    border-radius: 26% 32% 28% 30% / 30% 26% 32% 28%;
+    background:
+        radial-gradient(circle 3px at 18% 28%, rgba(0,0,0,0.12) 0 2px, transparent 3px),
+        radial-gradient(circle 3px at 68% 60%, rgba(0,0,0,0.09) 0 2px, transparent 3px),
+        radial-gradient(circle 2px at 40% 75%, rgba(255,255,240,0.10) 0 1px, transparent 2px),
+        radial-gradient(ellipse 26% 20% at 30% 62%, rgba(60,110,40,0.35), transparent 70%),
+        radial-gradient(ellipse 24% 18% at 72% 20%, rgba(150,200,110,0.28), transparent 70%),
+        radial-gradient(ellipse 75% 70% at 50% 40%, #7cb95c 0%, #6dab4e 45%, #578c3e 75%, #4e7d3a 100%);
+    background-size: 90px 90px, 120px 120px, 70px 70px, 100% 100%, 100% 100%, 100% 100%;
+    box-shadow: inset 0 0 34px rgba(24,48,14,0.55), inset 0 -12px 22px rgba(140,100,40,0.28),
+        0 6px 14px rgba(30,20,5,0.28); }
+
+/* -- Deploy beaches: warm sand indicators with a gentle come-hither pulse -- */
+.lb-deployzone { position: absolute; left: 0; right: 0; bottom: 0; height: 38%; z-index: 3;
+    background: linear-gradient(180deg, transparent, rgba(255,224,150,0.10) 30%, rgba(255,234,175,0.16));
+    border-top: 2px dashed rgba(255,244,210,0.6); animation: dzPulse 1.8s ease-in-out infinite; }
+@keyframes dzPulse { 0%,100% { opacity: 0.65; } 50% { opacity: 1; } }
+
+/* -- Static decor: dirt path, trees, rocks, grass tufts -- */
+.lb-decor { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.lb-dirtpath { position: absolute; inset: 4.5% 13% 2% 13%; width: 74%; height: 93.5%; opacity: 0.9; }
+.lb-dec { position: absolute; height: auto; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); }
+
+/* -- Drifting cloud shadow -- */
+.lb-cloudshadow { position: absolute; top: 12%; left: 0; width: 34%; height: 30%; z-index: 3; pointer-events: none;
+    border-radius: 48% 52% 55% 45% / 55% 48% 52% 45%; background: #08140a; opacity: 0.06; filter: blur(6px);
+    animation: lbCloud 52s linear infinite; }
+@keyframes lbCloud { from { transform: translateX(-110%) translateY(0); } to { transform: translateX(320%) translateY(10%); } }
+
+/* -- Golden-hour vignette (above troops, below UI) -- */
+.lb-vign { position: absolute; inset: 0; z-index: 7; pointer-events: none;
+    background:
+        linear-gradient(205deg, rgba(255,178,84,0.10), transparent 42%),
+        radial-gradient(ellipse 85% 80% at 50% 44%, transparent 55%, rgba(58,30,10,0.30) 100%); }
+
+/* -- Buildings: grounded, slightly larger, elliptical contact shadows -- */
+.lb-bld { position: absolute; transform: translate(-50%, -58%) scale(1.06); z-index: 4; }
+.lb-bld::before { content: ''; position: absolute; left: 50%; bottom: -2%; width: 96%; height: 26%;
+    transform: translateX(-50%); border-radius: 50%; z-index: -1;
+    background: radial-gradient(ellipse at center, rgba(20,26,10,0.42), rgba(20,26,10,0.18) 55%, transparent 72%); }
+.lb-bld svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.35)); }
+.lb-bld.lb-th svg { filter: drop-shadow(0 3px 3px rgba(0,0,0,0.4)) drop-shadow(0 0 10px rgba(251,191,36,0.5)); }
+
+/* -- HP bars: slim, rounded, smooth -- */
+.lb-bhp { position: absolute; left: 8%; top: -9px; width: 84%; height: 4px; background: rgba(18,8,4,0.6);
+    border-radius: 999px; overflow: hidden; border: 1px solid rgba(12,5,2,0.8); z-index: 5; }
+.lb-bhpfill { height: 100%; width: 100%; border-radius: 999px; background: linear-gradient(90deg,#ff9a3d,#ef4444);
+    transition: width 0.25s ease; }
+.lb-bhpfill.low { background: linear-gradient(90deg,#7f1d1d,#dc2626); animation: badgePulse 0.8s infinite; }
+
+/* -- Defense range: elegant thin dashed ring -- */
 .lb-def .lb-range { display:none; position: absolute; left: 50%; top: 50%; aspect-ratio: 1.6/1; transform: translate(-50%,-50%);
-    border: 1.5px dashed rgba(239,68,68,0.5); border-radius: 50%; pointer-events: none; }
+    border: 1px dashed rgba(255,241,214,0.75); border-radius: 50%; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 66%, rgba(255,220,150,0.08));
+    box-shadow: 0 0 10px rgba(255,214,140,0.18) inset; }
 .lb-bld.lb-def:hover .lb-range { display: block; }
-.lb-bld.lb-destroyed { filter: grayscale(1) brightness(0.45) !important; transform: translate(-50%, -50%) scale(0.92); }
+
+/* -- Destroyed: collapsed smoking rubble -- */
+.lb-bld.lb-destroyed { filter: saturate(0.25) brightness(0.5) sepia(0.35) !important; transform: translate(-50%, -48%) scale(0.86); }
 .lb-bld.lb-destroyed .lb-bhp { display: none; }
+.lb-bld.lb-destroyed svg { filter: none; }
+.lb-bld.lb-destroyed::after { content: ''; position: absolute; left: 50%; top: 26%; width: 14px; height: 14px;
+    border-radius: 50%; pointer-events: none;
+    background: radial-gradient(circle at 40% 45%, rgba(120,120,126,0.8), rgba(80,80,86,0.4) 55%, transparent 75%);
+    box-shadow: 7px 5px 0 -3px rgba(100,100,106,0.55);
+    animation: lbSmoke 2.4s ease-out infinite; }
+@keyframes lbSmoke {
+    0%   { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+    18%  { opacity: 0.75; }
+    100% { transform: translate(-38%, -34px) scale(2); opacity: 0; } }
+
 .lb-troops, .lb-fx { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
 .lb-troop { position: absolute; width: 40px; height: 40px; margin: -26px 0 0 -20px; transition: left 0.08s linear, top 0.08s linear; }
 .lb-troop svg { width: 100%; height: 100%; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4)); }
-.lb-thp { position: absolute; left: 10%; top: -5px; width: 80%; height: 3.5px; background: rgba(0,0,0,0.6); border-radius: 2px; overflow: hidden; }
-.lb-thpfill { height: 100%; width: 100%; background: linear-gradient(90deg,#16a34a,#4ade80); }
+.lb-thp { position: absolute; left: 10%; top: -6px; width: 80%; height: 3px; background: rgba(4,14,7,0.6);
+    border-radius: 999px; overflow: hidden; border: 1px solid rgba(2,10,4,0.75); }
+.lb-thpfill { height: 100%; width: 100%; border-radius: 999px; background: linear-gradient(90deg,#22c55e,#86efac);
+    transition: width 0.2s ease; }
 .lb-tdead { animation: btDie 0.5s ease-in forwards; }
 .lb-top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 10px; padding: 8px 12px;
     background: linear-gradient(180deg, rgba(8,14,24,0.85), rgba(8,14,24,0.35) 80%, transparent); z-index: 10; }
@@ -3774,13 +3855,15 @@ h2 .nav-ic .vw-ic, .exp-title .vw-ic, .codex-h .vw-ic { width: 1.05em; height: 1
 /* ============================================================
    BATTLE DEPTH: beach landings, spells, guards
    ============================================================ */
-/* Flanking coves — west & east landing strips */
-.lb-dz-west, .lb-dz-east { left: 0; right: auto; top: 0; bottom: 0; height: auto; width: 12%;
-    background: linear-gradient(90deg, rgba(96,165,250,0.16), rgba(96,165,250,0.08) 60%, transparent);
-    border-top: none; border-right: 2px dashed rgba(96,165,250,0.6); }
+/* Flanking coves — west & east sandy landing strips */
+.lb-dz-west, .lb-dz-east { left: 0; right: auto; top: 3%; bottom: 3%; height: auto; width: 12%;
+    background: linear-gradient(90deg, rgba(255,228,158,0.14), rgba(255,228,158,0.07) 60%, transparent);
+    border-top: none; border-right: 2px dashed rgba(255,244,210,0.55);
+    border-radius: 40% 0 0 40% / 12% 0 0 12%; animation-delay: 0.6s; }
 .lb-dz-east { left: auto; right: 0;
-    background: linear-gradient(270deg, rgba(96,165,250,0.16), rgba(96,165,250,0.08) 60%, transparent);
-    border-right: none; border-left: 2px dashed rgba(96,165,250,0.6); }
+    background: linear-gradient(270deg, rgba(255,228,158,0.14), rgba(255,228,158,0.07) 60%, transparent);
+    border-right: none; border-left: 2px dashed rgba(255,244,210,0.55);
+    border-radius: 0 40% 40% 0 / 0 12% 12% 0; }
 /* Healing Rain zone */
 .lb-healzone { position: absolute; width: 26%; height: 20%; transform: translate(-50%, -50%);
     border-radius: 50%; pointer-events: none; z-index: 3;
