@@ -26,6 +26,50 @@ function isoSetup() {
     return { w, h };
 }
 
+// Frame the camera on the land the player actually has, not the whole empty
+// map. Without this the island renders as a small diamond marooned in a sea of
+// nothing; with it the village fills the screen and the frame widens naturally
+// as the kingdom grows.
+function islandViewBox(fullW, fullH) {
+    const owned = (typeof getOwnedTiles === 'function') ? getOwnedTiles() : null;
+    if (!owned || !owned.size) return { vx: 0, vy: 0, vw: fullW, vh: fullH };
+    let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+    owned.forEach(pos => {
+        const gx = pos % ISO.GW, gy = Math.floor(pos / ISO.GW);
+        const p = iso(gx, gy);
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+    });
+    // tile half-extents + headroom for tall buildings, then a margin of sea
+    const padX = ISO.TW * 2.6, padTop = 96, padBottom = ISO.TH * 3.4;
+    let vx = minX - ISO.TW - padX;
+    let vy = minY - ISO.TH - padTop;
+    let vw = (maxX - minX) + ISO.TW * 2 + padX * 2;
+    let vh = (maxY - minY) + ISO.TH * 2 + padTop + padBottom;
+    // keep a pleasant landscape aspect so the island never looks squeezed
+    const targetAR = 16 / 10;
+    if (vw / vh < targetAR) { const need = vh * targetAR; vx -= (need - vw) / 2; vw = need; }
+    else { const need = vw / targetAR; vy -= (need - vh) / 2; vh = need; }
+    return { vx, vy, vw, vh };
+}
+
+// Deterministic 0..1 hash — same tile always gets the same variation, so the
+// terrain never shimmers or reshuffles between renders.
+function _tRand(n) { const v = Math.sin(n * 91.7 + 41.3) * 21753.19; return v - Math.floor(v); }
+// Nudge a hex colour a few percent lighter/darker based on tile coords.
+function _tileShade(hex, gx, gy) {
+    const h = hex.replace('#', '');
+    if (h.length !== 6) return hex;
+    const d = (_tRand(gx * 3 + gy * 11) - 0.5) * 16;   // ±8 per channel
+    const ch = (i) => {
+        const v = Math.round(parseInt(h.substr(i, 2), 16) + d);
+        return Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
+    };
+    return '#' + ch(0) + ch(2) + ch(4);
+}
+
 function iso(gx, gy) {
     return {
         x: (gx - gy) * ISO.TW + ISO.OFFSET_X,
@@ -1438,6 +1482,7 @@ function renderIsoWorld() {
     const buyable = (typeof buyableTiles === 'function') ? buyableTiles() : new Set();
     const landPx = (typeof landPrice === 'function') ? landPrice() : { coins: 0 };
     let buyMarkers = '';
+    let buyShown = 0;   // cap visible expansion markers — clutter was the worst offender
 
     const TW = ISO.TW, TH = ISO.TH, DEPTH = 17;
     const PAL = {
@@ -1457,7 +1502,39 @@ function renderIsoWorld() {
     for (let i = 0; i < 3; i++) {
         wavesSVG += `<ellipse class="ocean-wave" cx="${c0.x}" cy="${c0.y + 26}" rx="${wrx}" ry="${wry}" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="2" style="animation-delay:${i * 1.7}s"/>`;
     }
-    tilesSVG += wavesSVG;
+    // ---- Living sea: swell bands + drifting whitecaps + sun glitter ----
+    // The ocean is the largest thing on screen; flat blue is what made the view
+    // read as unfinished. All deterministic (seeded) so it never jitters on
+    // re-render, and all pointer-events:none so it can't steal clicks.
+    let seaSVG = '';
+    const _sr = (n) => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+    // long swell bands sweeping the whole basin
+    for (let i = 0; i < 7; i++) {
+        const sy = c0.y - 240 + i * 78 + _sr(i) * 26;
+        const sw = 260 + _sr(i + 40) * 320;
+        const sx = c0.x - 520 + _sr(i + 80) * 900;
+        seaSVG += `<path class="sea-swell" d="M ${sx} ${sy} q ${sw * 0.25} -7 ${sw * 0.5} 0 q ${sw * 0.25} 7 ${sw * 0.5} 0"
+            fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="2" stroke-linecap="round"
+            style="animation-delay:${(i * 1.3).toFixed(1)}s" pointer-events="none"/>`;
+    }
+    // whitecaps — small foam dashes drifting across the water
+    for (let i = 0; i < 16; i++) {
+        const wx = c0.x - 560 + _sr(i + 5) * 1120;
+        const wy = c0.y - 250 + _sr(i + 25) * 560;
+        const ww = 9 + _sr(i + 60) * 13;
+        seaSVG += `<path class="sea-cap" d="M ${wx} ${wy} q ${ww / 2} -3 ${ww} 0"
+            fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.6" stroke-linecap="round"
+            style="animation-delay:${(_sr(i + 90) * 6).toFixed(1)}s" pointer-events="none"/>`;
+    }
+    // sun glitter path on the water beneath the sun
+    for (let i = 0; i < 14; i++) {
+        const gx = c0.x - 70 + _sr(i + 200) * 140;
+        const gy = c0.y - 210 + _sr(i + 300) * 190;
+        const gr = 1.2 + _sr(i + 400) * 1.8;
+        seaSVG += `<ellipse class="sea-glint" cx="${gx}" cy="${gy}" rx="${gr * 1.9}" ry="${gr * 0.7}"
+            fill="rgba(255,248,214,0.75)" style="animation-delay:${(_sr(i + 500) * 4).toFixed(1)}s" pointer-events="none"/>`;
+    }
+    tilesSVG += seaSVG + wavesSVG;
     tilesSVG += `<ellipse cx="${c0.x}" cy="${c0.y + 70}" rx="${(ISO.GW) * TW * 0.62}" ry="${(ISO.GH) * TH * 0.62}" fill="rgba(0,0,0,0.16)" filter="url(#islandShadow)"/>`;
 
     // Edge detection for beaches: an owned tile touching non-owned land = shoreline
@@ -1484,18 +1561,26 @@ function renderIsoWorld() {
         const topPts = `${x},${y - TH} ${x + TW},${y} ${x},${y + TH} ${x - TW},${y}`;
 
         if (isBuy) {
-            // Claimable land: faded ghost column + cyan dashed top (subtle, clickable)
-            tilesSVG += `<g opacity="0.5">
-                <polygon points="${x - TW},${y} ${x},${y + TH} ${x},${y + TH + DEPTH} ${x - TW},${y + DEPTH}" fill="${DIRT_L}"/>
-                <polygon points="${x},${y + TH} ${x + TW},${y} ${x + TW},${y + DEPTH} ${x},${y + TH + DEPTH}" fill="${DIRT_R}"/>
-                <polygon points="${topPts}" fill="${p.top}"/>
-            </g>
-            <polygon points="${topPts}" fill="rgba(244,196,77,0.10)" stroke="#f4c44d" stroke-width="2" stroke-dasharray="6 4" class="buy-tile" data-pos="${pos}" style="cursor:pointer"/>`;
-            buyMarkers += `<g class="buy-flag" data-pos="${pos}" style="cursor:pointer" transform="translate(${x},${y - 8})">
-                <circle cx="0" cy="0" r="11" fill="#0e1726" stroke="#f4c44d" stroke-width="1.5"/>
-                <text x="0" y="3.5" text-anchor="middle" font-size="12" font-weight="900" fill="#f4c44d">+</text>
-                <g transform="translate(0,16)"><rect x="-21" y="-7" width="42" height="13" rx="6" fill="#0e1726" stroke="#f4c44d" stroke-width="1"/><text x="0" y="2.5" text-anchor="middle" font-size="7.5" font-weight="800" fill="#ffe9a8">${(landPx.coins>=1000?(landPx.coins/1000).toFixed(1)+'K':landPx.coins)}c</text></g>
-            </g>`;
+            // Claimable land reads as a QUIET shallow — a hint of a sandbar under
+            // the water, not a badge. Eighteen loud price pills used to dominate
+            // the whole frame; the price now lives in the hover tooltip and the
+            // confirm, and only a few markers show at once (see buyShown below).
+            // Drawn as a SUBMERGED SANDBAR: no raised dirt column (it's under
+            // water), just a warm shallow tinting the sea — reads as "land you
+            // could raise here" without stamping grey slabs around the island.
+            tilesSVG += `<polygon points="${topPts}" fill="rgba(232,210,154,0.16)" pointer-events="none"/>
+            <polygon points="${topPts}" fill="none" stroke="rgba(232,210,154,0.30)" stroke-width="1" stroke-dasharray="4 7" class="buy-tile" data-pos="${pos}" style="cursor:pointer">
+                <title>Claim this land — ${landPx.coins >= 1000 ? (landPx.coins / 1000).toFixed(1) + 'K' : landPx.coins} coins</title>
+            </polygon>`;
+            // Only mark a handful of expansion spots so the eye has somewhere to rest.
+            if (buyShown < 4) {
+                buyShown++;
+                buyMarkers += `<g class="buy-flag" data-pos="${pos}" style="cursor:pointer" transform="translate(${x},${y})">
+                    <title>Claim this land — ${landPx.coins >= 1000 ? (landPx.coins / 1000).toFixed(1) + 'K' : landPx.coins} coins</title>
+                    <circle cx="0" cy="0" r="9" fill="rgba(14,23,38,0.55)" stroke="rgba(244,196,77,0.75)" stroke-width="1.2"/>
+                    <path d="M -4 0 H 4 M 0 -4 V 4" stroke="#f4c44d" stroke-width="1.8" stroke-linecap="round"/>
+                </g>`;
+            }
             continue;
         }
 
@@ -1522,9 +1607,27 @@ function renderIsoWorld() {
         // top — sandy beach tile if it's a shore grass tile
         const topFill = (isEdge && type === 0) ? '#dcc488' : p.top;
         const topHi = (isEdge && type === 0) ? '#ecd9a0' : p.hi;
-        tilesSVG += `<polygon points="${topPts}" fill="${topFill}" stroke="${p.lip}" stroke-width="0.5" stroke-opacity="0.35"/>`;
+        // Per-tile deterministic shade jitter. Uniform fills made the island read
+        // as a flat checkerboard of blocks; a few percent of variation per tile
+        // is what makes hand-painted terrain look organic.
+        const jit = _tileShade(topFill, gx, gy);
+        tilesSVG += `<polygon points="${topPts}" fill="${jit}" stroke="${p.lip}" stroke-width="0.5" stroke-opacity="0.35"/>`;
         // upper-half highlight for a soft 3D sheen
         tilesSVG += `<polygon points="${x},${y - TH} ${x + TW * 0.5},${y - TH * 0.5} ${x},${y} ${x - TW * 0.5},${y - TH * 0.5}" fill="${topHi}" opacity="0.45" pointer-events="none"/>`;
+        // ground texture: grass tufts on green tiles, pebbles/ripples on sand & path
+        {
+            const r1 = _tRand(gx * 7 + gy * 13), r2 = _tRand(gx * 31 + gy * 17), r3 = _tRand(gx * 53 + gy * 29);
+            const tuft = (tx, ty, c) => `<path d="M ${tx} ${ty} l -1.6 -3 M ${tx} ${ty} l 0 -3.8 M ${tx} ${ty} l 1.7 -2.9" stroke="${c}" stroke-width="0.8" fill="none" stroke-linecap="round" opacity="0.55" pointer-events="none"/>`;
+            const px1 = x - TW * 0.35 + r1 * TW * 0.7, py1 = y + (r2 - 0.5) * TH * 0.9;
+            const px2 = x - TW * 0.3 + r3 * TW * 0.6, py2 = y + (r1 - 0.5) * TH * 0.8;
+            if (type === 0 || type === 1) {
+                tilesSVG += tuft(px1, py1, '#3f8226') + (r3 > 0.55 ? tuft(px2, py2, '#4f9c31') : '');
+            } else if (type === 4 || (isEdge && type === 0)) {
+                tilesSVG += `<ellipse cx="${px1}" cy="${py1}" rx="1.5" ry="0.7" fill="#c4aa70" opacity="0.5" pointer-events="none"/>`;
+            } else if (type === 2 && r2 > 0.5) {
+                tilesSVG += `<ellipse cx="${px1}" cy="${py1}" rx="2" ry="0.9" fill="#ac8a52" opacity="0.45" pointer-events="none"/>`;
+            }
+        }
         if (type === 3) tilesSVG += `<polygon points="${topPts}" fill="#7cc8f8" opacity="0.2" pointer-events="none"><animate attributeName="opacity" values="0.08;0.32;0.08" dur="3.2s" repeatCount="indefinite"/></polygon>`;
     }
 
@@ -1707,7 +1810,8 @@ function renderIsoWorld() {
         </g>`;
     }
 
-    return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" id="iso-svg" preserveAspectRatio="xMidYMid meet">
+    const VB = islandViewBox(w, h);
+    return `<svg viewBox="${VB.vx} ${VB.vy} ${VB.vw} ${VB.vh}" xmlns="http://www.w3.org/2000/svg" id="iso-svg" preserveAspectRatio="xMidYMid meet">
         <defs>
             <filter id="bldShadow" x="-50%" y="-50%" width="200%" height="200%">
                 <feDropShadow dx="2" dy="4" stdDeviation="2" flood-opacity="0.4"/>
@@ -1729,7 +1833,7 @@ function renderIsoWorld() {
                 <circle cx="7" cy="4" r="0.8" fill="rgba(80,80,100,0.3)"/>
             </pattern>
         </defs>
-        <g class="camera-layer" transform="translate(${CAM.x}, ${CAM.y}) scale(${CAM.zoom})" style="transform-origin: ${w/2}px ${h/2}px">
+        <g class="camera-layer" transform="translate(${CAM.x}, ${CAM.y}) scale(${CAM.zoom})" style="transform-origin: ${VB.vx + VB.vw/2}px ${VB.vy + VB.vh/2}px">
             <g class="tiles">${tilesSVG}</g>
             <g class="boats">${boat}</g>
             <g class="hits">${hitSVG}</g>
@@ -1744,7 +1848,7 @@ function renderIsoWorld() {
             <g class="birds">${birds}</g>
             <g class="indicators">${prodSVG}</g>
         </g>
-        <rect class="day-night-overlay" x="0" y="0" width="${w}" height="${h}" fill="url(#dayNight)" pointer-events="none"/>
+        <rect class="day-night-overlay" x="${VB.vx}" y="${VB.vy}" width="${VB.vw}" height="${VB.vh}" fill="url(#dayNight)" pointer-events="none"/>
     </svg>`;
 }
 

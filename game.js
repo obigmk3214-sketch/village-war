@@ -2833,12 +2833,15 @@ function updateDayNight() {
         bg.style.background = bgColor;
     }
 
-    // Tint the iso world based on time of day
+    // Grade the iso world by time of day — but GENTLY. This used to paint a 55%
+    // navy wash at night and 35% orange at dusk, which desaturated the art into
+    // mud for most of the cycle. Shipped games keep this grading subtle so the
+    // colours stay vibrant; it should read as atmosphere, never as a filter.
     const overlay = document.querySelector('.day-night-overlay');
     if (overlay) {
         let tint = 'rgba(0,0,0,0)';
-        if (sun < 0.4) tint = `rgba(20,30,80,${0.55 * (1 - sun)})`;
-        else if (sun < 0.7) tint = `rgba(255,140,80,${0.35 * (0.7 - sun) / 0.3})`;
+        if (sun < 0.4) tint = `rgba(28,42,96,${(0.18 * (0.4 - sun) / 0.4).toFixed(3)})`;
+        else if (sun < 0.7) tint = `rgba(255,168,110,${(0.10 * (0.7 - sun) / 0.3).toFixed(3)})`;
         overlay.setAttribute('fill', tint);
     }
 }

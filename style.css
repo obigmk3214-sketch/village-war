@@ -20,6 +20,29 @@
     --border: #2b3a57;
     --danger: #ef4444;
     --success: #22c55e;
+
+    /* ---- HUD chrome tokens (surface pass) ---- */
+    /* one radius scale for the whole app */
+    --r-xs: 6px;
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 18px;
+    --r-pill: 999px;
+    /* carved panel stack */
+    --chrome-hi: #202b4a;
+    --chrome-mid: #151e35;
+    --chrome-lo: #0b1120;
+    /* dark wood / stone rail */
+    --wood-hi: #4b3720;
+    --wood-lo: #241a0f;
+    /* gold trim */
+    --gold-hi: #ffeaa9;
+    --gold-lo: #a9781f;
+    --gold-line: rgba(244,196,77,0.30);
+    --gold-line-soft: rgba(244,196,77,0.16);
+    /* universal bevel edges */
+    --edge-hi: rgba(255,255,255,0.11);
+    --edge-lo: rgba(0,0,0,0.55);
 }
 
 html { height: 100%; }
@@ -3909,3 +3932,500 @@ h2 .nav-ic .vw-ic, .exp-title .vw-ic, .codex-h .vw-ic { width: 1.05em; height: 1
 .boss-banner-txt { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .boss-banner-txt small { color: var(--text2); font-size: 0.72rem; }
 .boss-banner-cta { font-weight: 900; color: #fbbf24; letter-spacing: 0.06em; }
+
+/* ============================================================
+   HUD CHROME PASS — make the frame read as a shipped game
+   (surface only: colour / gradient / shadow / border / radius)
+   ============================================================ */
+
+/* ---------- 1. GLOBAL APP FRAME ----------------------------
+   A vignette + hairline gold inner border over the whole play
+   area so the game feels like a window into the world.       */
+#main-content::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 40;
+    border-radius: 2px;
+    box-shadow:
+        inset 0 0 0 1px rgba(244,196,77,0.10),
+        inset 0 0 0 2px rgba(0,0,0,0.45),
+        inset 0 22px 42px -18px rgba(0,0,0,0.55),
+        inset 0 -26px 48px -18px rgba(0,0,0,0.6),
+        inset 46px 0 60px -46px rgba(0,0,0,0.5),
+        inset -46px 0 60px -46px rgba(0,0,0,0.5);
+}
+
+/* ---------- 2. RESOURCE BAR (top HUD) ---------------------- */
+#resource-bar {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 42%),
+        linear-gradient(180deg, var(--chrome-hi) 0%, var(--chrome-mid) 55%, var(--chrome-lo) 100%) !important;
+    border-bottom: 1px solid rgba(0,0,0,0.7) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.16),
+        inset 0 -1px 0 var(--gold-line),
+        0 6px 18px rgba(0,0,0,0.55),
+        0 1px 0 rgba(0,0,0,0.6) !important;
+}
+
+/* each resource = a carved gem slot */
+.resource {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 46%),
+        linear-gradient(180deg, #17203a 0%, #0d1425 100%) !important;
+    border: 1px solid var(--gold-line) !important;
+    border-radius: var(--r-pill) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.12),
+        inset 0 -2px 5px rgba(0,0,0,0.55),
+        0 2px 5px rgba(0,0,0,0.45) !important;
+    color: var(--text);
+    text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.resource:hover {
+    border-color: rgba(244,196,77,0.55) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.16),
+        inset 0 -2px 5px rgba(0,0,0,0.5),
+        0 3px 10px rgba(0,0,0,0.5),
+        0 0 12px rgba(244,196,77,0.18) !important;
+}
+
+/* icon sunk into its own little recessed disc */
+.resource .res-icon {
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.10), rgba(0,0,0,0.45) 75%);
+    box-shadow:
+        inset 0 1px 2px rgba(0,0,0,0.7),
+        0 1px 0 rgba(255,255,255,0.07);
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.55));
+}
+
+/* gems slot feels rarer — cool blue enamel + faint glow */
+.resource-gems {
+    border-color: rgba(125,211,252,0.55) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(190,235,255,0.20),
+        inset 0 -2px 6px rgba(0,0,0,0.55),
+        0 2px 6px rgba(0,0,0,0.45),
+        0 0 14px rgba(56,189,248,0.28) !important;
+}
+.resource-gems:hover {
+    border-color: rgba(125,211,252,0.85) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(190,235,255,0.28),
+        inset 0 -2px 6px rgba(0,0,0,0.5),
+        0 3px 10px rgba(0,0,0,0.5),
+        0 0 22px rgba(56,189,248,0.5) !important;
+}
+.resource-gems .res-icon {
+    box-shadow:
+        inset 0 1px 2px rgba(0,0,0,0.7),
+        0 0 8px rgba(56,189,248,0.45);
+}
+
+/* XP meter reads as an inlaid gauge */
+#player-xp-bar {
+    background: linear-gradient(180deg, #05080f, #0d1424);
+    border: 1px solid rgba(0,0,0,0.6);
+    border-radius: var(--r-pill);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.07);
+}
+#player-xp-fill {
+    background: linear-gradient(180deg, var(--gold-hi), var(--gold) 55%, var(--gold-lo));
+    box-shadow: 0 0 8px rgba(244,196,77,0.55);
+    border-radius: var(--r-pill);
+}
+
+/* ---------- 3. SIDEBAR RAIL + NAV PLATES ------------------- */
+#sidebar {
+    background:
+        linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 26%),
+        repeating-linear-gradient(180deg, rgba(255,255,255,0.018) 0 2px, rgba(0,0,0,0.03) 2px 5px),
+        linear-gradient(180deg, #1a1408 0%, #14161f 22%, #0d1220 100%) !important;
+    box-shadow:
+        inset -1px 0 0 var(--gold-line),
+        inset 1px 0 0 rgba(255,255,255,0.06),
+        inset 0 1px 0 rgba(255,255,255,0.06),
+        inset -14px 0 26px -14px rgba(0,0,0,0.8),
+        4px 0 16px rgba(0,0,0,0.5);
+}
+
+/* buttons become tactile plates */
+.nav-btn {
+    border-radius: var(--r-sm);
+    color: var(--text2);
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0) 52%),
+        linear-gradient(180deg, rgba(58,68,96,0.35) 0%, rgba(14,20,34,0.35) 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.09),
+        inset 0 -1px 0 rgba(0,0,0,0.5),
+        0 1px 2px rgba(0,0,0,0.4);
+    text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+    transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.nav-btn:hover {
+    color: var(--text);
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.01) 55%),
+        linear-gradient(180deg, rgba(78,90,124,0.45) 0%, rgba(18,26,44,0.45) 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.14),
+        inset 0 -1px 0 rgba(0,0,0,0.5),
+        0 4px 10px rgba(0,0,0,0.45);
+}
+/* pressed plate — sinks into the rail */
+.nav-btn:active {
+    transform: translateY(1px) scale(0.98);
+    box-shadow:
+        inset 0 3px 7px rgba(0,0,0,0.65),
+        inset 0 -1px 0 rgba(255,255,255,0.05);
+}
+/* selected plate — warm glow, lit face */
+.nav-btn.active {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 55%),
+        linear-gradient(180deg, #b8542f 0%, #8a2f36 55%, #5c1c28 100%) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,214,170,0.45),
+        inset 0 -2px 0 rgba(0,0,0,0.45),
+        0 3px 10px rgba(0,0,0,0.5),
+        0 0 18px rgba(244,140,77,0.30) !important;
+}
+.nav-btn.active, .nav-btn.active span { color: #fff5e2 !important; }
+.nav-btn.active .nav-ic { color: var(--gold) !important; }
+/* gold indicator welded to the rail edge */
+.nav-btn.active::before {
+    content: '';
+    position: absolute;
+    left: -2px; top: 16%; bottom: 16%;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: linear-gradient(180deg, var(--gold-hi), var(--gold) 50%, var(--gold-lo));
+    box-shadow: 0 0 8px rgba(244,196,77,0.9), 0 0 2px rgba(0,0,0,0.6);
+    z-index: 3;
+}
+
+/* locked entries stay clearly dimmed (behaviour preserved) */
+.nav-btn.nav-locked {
+    opacity: 0.38;
+    filter: saturate(0.3);
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.6);
+}
+.nav-btn.nav-locked:hover {
+    opacity: 0.55;
+    transform: none;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.6);
+}
+
+/* badge = stamped enamel pip */
+.nav-badge {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 48%),
+        linear-gradient(180deg, #ff6b6b 0%, #e0303c 45%, #8c1620 100%);
+    border: 1.5px solid rgba(255,236,214,0.9);
+    border-radius: var(--r-pill);
+    box-shadow:
+        inset 0 -1px 2px rgba(0,0,0,0.45),
+        0 2px 4px rgba(0,0,0,0.6),
+        0 0 8px rgba(224,48,60,0.5);
+    text-shadow: 0 1px 1px rgba(0,0,0,0.55);
+}
+
+/* ---------- 4. CHUNKY GAME BUTTONS ------------------------- */
+.btn {
+    border: none !important;
+    border-radius: var(--r-sm);
+    text-shadow: 0 1px 1px rgba(0,0,0,0.45), 0 -1px 0 rgba(0,0,0,0.2);
+    transition: transform 0.09s ease, filter 0.16s ease, box-shadow 0.16s ease;
+}
+/* top gloss */
+.btn::before {
+    background: linear-gradient(180deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.05) 44%, rgba(0,0,0,0.10) 100%);
+}
+/* soften the old inner strip — the lip is now a real box-shadow */
+.btn::after {
+    height: 2px;
+    background: rgba(0,0,0,0.16);
+    border-radius: 0 0 var(--r-sm) var(--r-sm);
+}
+
+/* the solid lip + drop shadow, per variant */
+.btn-primary {
+    background: linear-gradient(180deg, #6fb6ff 0%, #3d8fe0 48%, #2a6ec0 100%) !important;
+    color: #fff;
+    box-shadow: 0 3px 0 #1b4c85, 0 4px 0 rgba(0,0,0,0.35), 0 7px 14px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.4) !important;
+}
+.btn-primary:hover { box-shadow: 0 3px 0 #1b4c85, 0 4px 0 rgba(0,0,0,0.35), 0 10px 20px rgba(47,127,214,0.42),
+                inset 0 1px 0 rgba(255,255,255,0.45) !important; }
+
+.btn-gold {
+    background: linear-gradient(180deg, #ffe89b 0%, #f0bb3c 46%, #c98d14 100%) !important;
+    color: #3d2606;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.42);
+    box-shadow: 0 3px 0 #7a4c0c, 0 4px 0 rgba(0,0,0,0.35), 0 7px 16px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.6) !important;
+}
+.btn-gold:hover { box-shadow: 0 3px 0 #7a4c0c, 0 4px 0 rgba(0,0,0,0.35), 0 10px 22px rgba(234,179,8,0.5),
+                inset 0 1px 0 rgba(255,255,255,0.65) !important; }
+
+.btn-danger {
+    background: linear-gradient(180deg, #ff8a8a 0%, #ea4a5c 48%, #b52a3c 100%) !important;
+    color: #fff;
+    box-shadow: 0 3px 0 #6f1420, 0 4px 0 rgba(0,0,0,0.35), 0 7px 14px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.35) !important;
+}
+.btn-danger:hover { box-shadow: 0 3px 0 #6f1420, 0 4px 0 rgba(0,0,0,0.35), 0 10px 20px rgba(239,68,68,0.45),
+                inset 0 1px 0 rgba(255,255,255,0.4) !important; }
+
+.btn-success {
+    background: linear-gradient(180deg, #7bf0a4 0%, #34c766 48%, #1c8b45 100%) !important;
+    color: #04240f;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.28);
+    box-shadow: 0 3px 0 #0f4a26, 0 4px 0 rgba(0,0,0,0.35), 0 7px 14px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.45) !important;
+}
+.btn-success:hover { box-shadow: 0 3px 0 #0f4a26, 0 4px 0 rgba(0,0,0,0.35), 0 10px 20px rgba(34,197,94,0.45),
+                inset 0 1px 0 rgba(255,255,255,0.5) !important; }
+
+.btn-unlock {
+    background: linear-gradient(180deg, #8ffdf5 0%, #2ad3ea 46%, #0e8fb2 100%) !important;
+    color: #052a33;
+    box-shadow: 0 3px 0 #05576b, 0 4px 0 rgba(0,0,0,0.35), 0 7px 18px rgba(34,211,238,0.45),
+                inset 0 1px 0 rgba(255,255,255,0.5) !important;
+}
+.btn-unlock:hover { box-shadow: 0 3px 0 #05576b, 0 4px 0 rgba(0,0,0,0.35), 0 10px 24px rgba(34,211,238,0.6),
+                inset 0 1px 0 rgba(255,255,255,0.55) !important; }
+
+/* press-down: the lip disappears and the face sinks */
+.btn:active {
+    transform: translateY(3px) scale(0.995);
+    filter: brightness(0.94);
+    box-shadow:
+        0 0 0 rgba(0,0,0,0),
+        inset 0 3px 7px rgba(0,0,0,0.45),
+        inset 0 1px 0 rgba(255,255,255,0.18) !important;
+}
+.btn:active::after { opacity: 0; }
+
+/* locked / disabled = carved-out stone, no lip, sunk face */
+.btn-locked,
+.btn:disabled,
+.btn-locked:hover,
+.btn:disabled:hover {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 50%),
+        linear-gradient(180deg, #2c3444 0%, #1b2230 100%) !important;
+    color: #7d8899 !important;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+    box-shadow:
+        inset 0 3px 7px rgba(0,0,0,0.6),
+        inset 0 -1px 0 rgba(255,255,255,0.06),
+        0 1px 0 rgba(255,255,255,0.05) !important;
+    transform: none !important;
+    filter: none;
+    cursor: not-allowed;
+}
+.btn-locked::before, .btn:disabled::before { opacity: 0.25; }
+.btn-locked::after, .btn:disabled::after { opacity: 0; }
+.btn:disabled { opacity: 0.75; }
+
+/* category / tab pills pick up the same lip language */
+.cat-btn, .raid-tab, .auth-tab {
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 0 rgba(0,0,0,0.45), 0 3px 7px rgba(0,0,0,0.3);
+    text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+}
+.cat-btn.active, .raid-tab.active, .auth-tab.active {
+    border-color: rgba(244,196,77,0.45) !important;
+}
+.cat-btn:active, .raid-tab:active, .auth-tab:active {
+    transform: translateY(2px);
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+}
+
+/* ---------- 5. PANELS — one radius scale, carved slate ----- */
+.card-grid > *,
+.build-card, .troop-card, .raid-card, .quest-card, .ach-card, .hero-card,
+.club-card, .club-war-group, .world-card, .more-card, .shop-item,
+.crate-card, .pot-card, .decor-card, .talent-node, .codex-card, .mission-node,
+#building-info-panel {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0) 38%),
+        linear-gradient(165deg, #1e2842 0%, #141d31 58%, #0e1524 100%) !important;
+    border: 1px solid rgba(255,255,255,0.09) !important;
+    border-radius: var(--r-md) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.13),
+        inset 0 -1px 0 rgba(0,0,0,0.5),
+        0 8px 20px rgba(0,0,0,0.42),
+        0 1px 0 rgba(0,0,0,0.5) !important;
+}
+
+/* the old wood band becomes a slim gilded top edge */
+.build-card::before, .troop-card::before, .raid-card::before,
+.quest-card::before, .hero-card::before {
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(244,196,77,0) 0%, var(--gold-lo) 18%, var(--gold-hi) 50%, var(--gold-lo) 82%, rgba(244,196,77,0) 100%);
+    opacity: 0.55;
+    border-radius: var(--r-md) var(--r-md) 0 0;
+}
+/* rivets become tiny brass studs instead of grey blobs */
+.build-card::after, .troop-card::after, .raid-card::after,
+.quest-card::after, .hero-card::after {
+    background:
+        radial-gradient(circle 3px at 4px 4px, #f0d089 0%, #8a6a24 60%, #2a2010 100%),
+        radial-gradient(circle 3px at 4px 4px, #f0d089 0%, #8a6a24 60%, #2a2010 100%);
+    background-size: 8px 8px, 8px 8px;
+    background-repeat: no-repeat;
+    background-position: 7px 8px, calc(100% - 7px) 8px;
+    opacity: 0.5;
+}
+
+.card-grid > *:hover,
+.build-card:hover, .troop-card:hover, .raid-card:hover,
+.club-card:hover, .world-card:hover {
+    border-color: rgba(244,196,77,0.35) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.16),
+        inset 0 -1px 0 rgba(0,0,0,0.5),
+        0 12px 26px rgba(0,0,0,0.5),
+        0 0 0 1px rgba(244,196,77,0.10) !important;
+}
+
+/* modal shell — the same slate, one step deeper */
+#modal {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 26%),
+        linear-gradient(165deg, #1d2740 0%, #131b2e 58%, #0c1220 100%) !important;
+    border: 1px solid rgba(244,196,77,0.26) !important;
+    border-radius: var(--r-lg) !important;
+    color: var(--text) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.16),
+        inset 0 0 0 1px rgba(0,0,0,0.5),
+        0 28px 70px rgba(0,0,0,0.7),
+        0 0 60px rgba(0,0,0,0.5) !important;
+}
+/* .exp-modal is a content wrapper INSIDE #modal — keep it flat, no nested frame */
+.exp-modal { background: none; border: none; border-radius: var(--r-md); }
+#modal .close-btn { color: var(--text2); }
+#modal .close-btn:hover { color: var(--gold); }
+#modal-overlay { background: radial-gradient(ellipse at center, rgba(4,7,14,0.6), rgba(2,4,8,0.85)); }
+
+/* floating building panel — reads as a HUD plate, not a tooltip */
+#building-info-panel {
+    border-radius: var(--r-lg) !important;
+    border-color: rgba(244,196,77,0.24) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.14),
+        0 18px 42px rgba(0,0,0,0.6) !important;
+}
+#building-info-panel p { color: #c8d3e6 !important; }
+
+/* generic radius harmonisation for the smaller chrome bits */
+.reward-tier, .olb-row, .clan-mem, .lb-row, .code-line,
+.mission-req, .xp-pill, .boost-tag {
+    border-radius: var(--r-sm);
+}
+.harbor-tile, .boss-banner { border-radius: var(--r-md); }
+
+/* state colours must survive the unified panel border */
+.club-war-group { border-color: rgba(239,82,116,0.55) !important; }
+.world-card.event-card { border-color: rgba(249,115,22,0.6) !important; }
+.mission-node.done { border-color: rgba(251,191,36,0.6) !important; }
+#mute-btn, #music-btn, #account-chip { border-radius: var(--r-pill); }
+
+/* ---------- 6. ENGRAVED HEADINGS --------------------------- */
+h2, h3, .view h2, .hero-section-title {
+    color: var(--gold) !important;                 /* fallback + currentColor for inline SVG icons */
+    background-image: linear-gradient(180deg, #fff4cf 0%, var(--gold) 42%, #d29e2c 72%, #8f6512 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 0.4px rgba(28,18,4,0.55);
+    text-shadow: none;
+    filter: drop-shadow(0 1px 0 rgba(0,0,0,0.75)) drop-shadow(0 2px 6px rgba(0,0,0,0.55));
+}
+/* children keep their own colour (icons, counters, sub-labels) */
+h2 *, h3 *, .view h2 *, .hero-section-title * { -webkit-text-fill-color: currentColor; }
+
+/* the view title sits on a carved plate again (background is taken by the text fill) */
+.view h2 {
+    position: relative;
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: var(--r-lg) !important;
+    box-shadow: none !important;
+}
+.view h2::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: var(--r-lg);
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 45%),
+        linear-gradient(180deg, #1f2942 0%, #131b2e 100%);
+    border: 1px solid rgba(244,196,77,0.28);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.14),
+        inset 0 -2px 6px rgba(0,0,0,0.5),
+        0 6px 16px rgba(0,0,0,0.45);
+}
+
+/* mixed-content headers stay solid gold (flex rows with coloured children) */
+.exp-title, .shop-title, .more-section-title, .codex-h {
+    color: var(--gold);
+    -webkit-text-fill-color: currentColor;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.7), 0 2px 10px rgba(244,196,77,0.22);
+}
+.game-title {
+    color: var(--gold);
+    text-shadow: 0 1px 0 rgba(0,0,0,0.75), 0 2px 3px rgba(0,0,0,0.6), 0 0 20px rgba(244,196,77,0.3);
+}
+
+/* ---------- 7. MOBILE: keep the bottom-bar variant honest --- */
+@media (max-width: 768px) {
+    #sidebar {
+        border-right: none !important;
+        box-shadow:
+            inset 0 1px 0 var(--gold-line),
+            inset 0 2px 0 rgba(255,255,255,0.05),
+            inset 0 14px 26px -14px rgba(0,0,0,0.8),
+            0 -4px 16px rgba(0,0,0,0.5);
+    }
+    .nav-btn { border-radius: var(--r-xs); }
+    .nav-btn.active::before {
+        left: 16%; right: 16%; top: auto; bottom: -1px;
+        width: auto; height: 3px;
+        border-radius: 3px 3px 0 0;
+    }
+    #main-content::after { box-shadow: inset 0 0 0 1px rgba(244,196,77,0.08), inset 0 0 60px rgba(0,0,0,0.45); }
+}
+
+/* ============================================================
+   LIVING SEA — swell bands, whitecaps, sun glitter
+   ============================================================ */
+.sea-swell { animation: seaSwell 9s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes seaSwell {
+    0%, 100% { transform: translateX(0) scaleX(1); opacity: 0.35; }
+    50%      { transform: translateX(14px) scaleX(1.04); opacity: 0.8; }
+}
+.sea-cap { animation: seaCap 7s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes seaCap {
+    0%, 100% { opacity: 0; transform: translate(0, 0); }
+    40%      { opacity: 0.85; }
+    100%     { transform: translate(22px, 5px); }
+}
+.sea-glint { animation: seaGlint 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes seaGlint {
+    0%, 100% { opacity: 0.15; transform: scale(0.7); }
+    50%      { opacity: 0.9;  transform: scale(1.15); }
+}
