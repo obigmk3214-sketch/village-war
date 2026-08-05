@@ -417,12 +417,38 @@ function buyResearch(id) {
 }
 
 // ---------- TERRITORY (explicit owned tiles, buyable & level-gated) ----------
-const MAP_W = 14, MAP_H = 10, MAP_TILES = MAP_W * MAP_H;
+// The realm is 20x14. It used to be 14x10, so saves store positions on the old
+// grid — MIGRATE_GRID below remaps them once, centred, so nobody's village moves.
+const MAP_W = 20, MAP_H = 14, MAP_TILES = MAP_W * MAP_H;
+const OLD_MAP_W = 14, OLD_MAP_H = 10;
+const GRID_SHIFT_X = Math.floor((MAP_W - OLD_MAP_W) / 2);   // 3
+const GRID_SHIFT_Y = Math.floor((MAP_H - OLD_MAP_H) / 2);   // 2
+function remapOldPos(p) {
+    const gx = p % OLD_MAP_W, gy = Math.floor(p / OLD_MAP_W);
+    return (gx + GRID_SHIFT_X) + (gy + GRID_SHIFT_Y) * MAP_W;
+}
+function migrateGridIfNeeded() {
+    if (state._gridV === 2) return;
+    // Only remap saves that actually predate the expansion (they have tiles/buildings).
+    const hadWorld = (Array.isArray(state.ownedTiles) && state.ownedTiles.length) ||
+                     (Array.isArray(state.buildings) && state.buildings.length);
+    if (hadWorld && !state._gridV) {
+        if (Array.isArray(state.ownedTiles)) state.ownedTiles = state.ownedTiles.map(remapOldPos);
+        if (Array.isArray(state.buildings)) state.buildings.forEach(b => { b.pos = remapOldPos(b.pos); });
+        if (state.exp && state.exp.decor) {
+            const d = {};
+            for (const k in state.exp.decor) d[remapOldPos(+k)] = state.exp.decor[k];
+            state.exp.decor = d;
+        }
+    }
+    state._gridV = 2;
+}
 
 function ensureLand() {
+    migrateGridIfNeeded();
     if (!Array.isArray(state.ownedTiles) || state.ownedTiles.length === 0) {
         // Seed a centered starter block (~28 tiles)
-        const cx = 7, cy = 5;
+        const cx = Math.floor(MAP_W / 2), cy = Math.floor(MAP_H / 2);
         const cand = [];
         for (let gy = 0; gy < MAP_H; gy++)
             for (let gx = 0; gx < MAP_W; gx++)
@@ -445,7 +471,7 @@ function isTileOwned(pos) { return ownedSet().has(pos); }
 // Max land you can OWN — rises as you level up (and via research bonus)
 function landCap() {
     ensureLand();
-    return Math.min(MAP_TILES, 34 + (state.level - 1) * 4 + (state.landBonus || 0));
+    return Math.min(MAP_TILES, 34 + (state.level - 1) * 6 + (state.landBonus || 0));
 }
 
 // Price of the next tile — escalates as you expand
@@ -1115,7 +1141,31 @@ function setupCameraControls(grid) {
         resetBtn.title = 'Reset view angle';
         resetBtn.textContent = '⟳';
         document.getElementById('view-village').appendChild(resetBtn);
-        resetBtn.onclick = () => { VIEW.spin = 0; VIEW.tilt = 0; CAM.zoom = 1; const s = document.querySelector('#iso-svg'); if (s) { applyView(s); applyCamera(s); } };
+        resetBtn.onclick = () => { VIEW.spin = 0; VIEW.tilt = 0; CAM.zoom = 1; CAM.x = 0; CAM.y = 0; const s = document.querySelector('#iso-svg'); if (s) { applyView(s); applyCamera(s); } };
+    }
+
+    // Zoom controls — obvious, always-there +/- buttons (wheel & pinch still work)
+    if (!document.getElementById('zoom-controls')) {
+        const zc = document.createElement('div');
+        zc.id = 'zoom-controls';
+        zc.innerHTML = `<button id="zoom-in" title="Zoom in">+</button>
+                        <button id="zoom-out" title="Zoom out">−</button>`;
+        document.getElementById('view-village').appendChild(zc);
+        const step = (factor) => {
+            CAM.zoom = Math.max(CAM.minZoom, Math.min(CAM.maxZoom, CAM.zoom * factor));
+            const s = document.querySelector('#iso-svg');
+            if (s) applyCamera(s);
+            try { Audio.click(); } catch (e) {}
+        };
+        zc.querySelector('#zoom-in').onclick = (e) => { e.stopPropagation(); step(1.25); };
+        zc.querySelector('#zoom-out').onclick = (e) => { e.stopPropagation(); step(1 / 1.25); };
+        // keyboard: +/- and 0 to reset
+        document.addEventListener('keydown', (e) => {
+            if (!document.querySelector('#view-village.active')) return;
+            if (e.key === '+' || e.key === '=') step(1.25);
+            else if (e.key === '-' || e.key === '_') step(1 / 1.25);
+            else if (e.key === '0') { CAM.zoom = 1; CAM.x = 0; CAM.y = 0; const s = document.querySelector('#iso-svg'); if (s) applyCamera(s); }
+        });
     }
 
     applyView(svg);

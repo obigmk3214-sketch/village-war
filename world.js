@@ -7,14 +7,14 @@
 const ISO = {
     TW: 48,        // tile half-width
     TH: 24,        // tile half-height
-    GW: 14,        // grid width (cols)
-    GH: 10,        // grid height (rows)
+    GW: 20,        // grid width (cols) — matches MAP_W
+    GH: 14,        // grid height (rows) — matches MAP_H
     OFFSET_X: 0,
     OFFSET_Y: 0
 };
 
 // Camera state — pan/zoom (SVG transform) + 3D view angle (CSS transform)
-const CAM = { x: 0, y: 0, zoom: 1, minZoom: 0.6, maxZoom: 2.2 };
+const CAM = { x: 0, y: 0, zoom: 1, minZoom: 0.45, maxZoom: 3.2 };
 const VIEW = { spin: 0, tilt: 0 };  // degrees: spin = orbit around, tilt = lean back
 
 // Compute final viewbox & offset so everything is centered
@@ -43,7 +43,7 @@ function islandViewBox(fullW, fullH) {
         if (p.y > maxY) maxY = p.y;
     });
     // tile half-extents + headroom for tall buildings, then a margin of sea
-    const padX = ISO.TW * 2.6, padTop = 96, padBottom = ISO.TH * 3.4;
+    const padX = ISO.TW * 0.9, padTop = 74, padBottom = ISO.TH * 1.6;
     let vx = minX - ISO.TW - padX;
     let vy = minY - ISO.TH - padTop;
     let vw = (maxX - minX) + ISO.TW * 2 + padX * 2;

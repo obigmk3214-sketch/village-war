@@ -4343,15 +4343,17 @@ h2 .nav-ic .vw-ic, .exp-title .vw-ic, .codex-h .vw-ic { width: 1.05em; height: 1
 #mute-btn, #music-btn, #account-chip { border-radius: var(--r-pill); }
 
 /* ---------- 6. ENGRAVED HEADINGS --------------------------- */
+/* Embossed, not gradient-clipped: background-clip:text fought the carved plate
+   drawn behind .view h2 and rendered the title invisible. Solid gold + layered
+   shadows gives the same engraved read with none of the fragility. */
 h2, h3, .view h2, .hero-section-title {
-    color: var(--gold) !important;                 /* fallback + currentColor for inline SVG icons */
-    background-image: linear-gradient(180deg, #fff4cf 0%, var(--gold) 42%, #d29e2c 72%, #8f6512 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    -webkit-text-stroke: 0.4px rgba(28,18,4,0.55);
-    text-shadow: none;
-    filter: drop-shadow(0 1px 0 rgba(0,0,0,0.75)) drop-shadow(0 2px 6px rgba(0,0,0,0.55));
+    color: var(--gold) !important;
+    -webkit-text-fill-color: currentColor;
+    text-shadow:
+        0 1px 0 rgba(255,240,200,0.28),
+        0 -1px 0 rgba(28,18,4,0.85),
+        0 2px 3px rgba(0,0,0,0.75),
+        0 4px 10px rgba(0,0,0,0.45);
 }
 /* children keep their own colour (icons, counters, sub-labels) */
 h2 *, h3 *, .view h2 *, .hero-section-title * { -webkit-text-fill-color: currentColor; }
@@ -4429,3 +4431,26 @@ h2 *, h3 *, .view h2 *, .hero-section-title * { -webkit-text-fill-color: current
     0%, 100% { opacity: 0.15; transform: scale(0.7); }
     50%      { opacity: 0.9;  transform: scale(1.15); }
 }
+
+/* ============================================================
+   ZOOM CONTROLS — always-visible, thumb-sized
+   ============================================================ */
+#zoom-controls {
+    position: absolute; right: 14px; bottom: 16px; z-index: 25;
+    display: flex; flex-direction: column; gap: 8px;
+}
+#zoom-controls button {
+    width: 42px; height: 42px; border-radius: 12px; cursor: pointer;
+    font-size: 22px; font-weight: 900; line-height: 1;
+    color: #f4e3b4;
+    background: linear-gradient(180deg, #3a4560 0%, #212b40 100%);
+    border: 1px solid rgba(244,196,77,0.45);
+    box-shadow: 0 3px 0 #131a28, 0 5px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.14);
+    transition: transform .08s ease, box-shadow .08s ease, filter .12s ease;
+}
+#zoom-controls button:hover { filter: brightness(1.15); }
+#zoom-controls button:active {
+    transform: translateY(3px);
+    box-shadow: 0 0 0 #131a28, 0 2px 6px rgba(0,0,0,0.5), inset 0 2px 6px rgba(0,0,0,0.5);
+}
+@media (max-width: 768px) { #zoom-controls { right: 10px; bottom: 84px; } }
