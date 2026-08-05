@@ -1590,9 +1590,40 @@ function renderIsoWorld() {
         const swWater = !_own(gx - 1, gy) || !_own(gx, gy + 1);
         const isEdge = !_own(gx - 1, gy) || !_own(gx + 1, gy) || !_own(gx, gy - 1) || !_own(gx, gy + 1);
 
-        // Solid land column: dirt faces, lip (sandy beach on shore), top, highlight
+        // Solid land column: layered ROCK CLIFF faces, lip (sandy beach on shore),
+        // top, highlight. The rim of the island is one of the largest surfaces on
+        // screen — flat two-tone dirt was what made the land read as cardboard.
+        // Only outward-facing columns get the full strata treatment (interior
+        // columns are hidden behind their neighbours anyway).
         tilesSVG += `<polygon points="${x - TW},${y} ${x},${y + TH} ${x},${y + TH + DEPTH} ${x - TW},${y + DEPTH}" fill="${DIRT_L}"/>`;
         tilesSVG += `<polygon points="${x},${y + TH} ${x + TW},${y} ${x + TW},${y + DEPTH} ${x},${y + TH + DEPTH}" fill="${DIRT_R}"/>`;
+        if (isEdge) {
+            const rk = _tRand(gx * 19 + gy * 7);
+            // horizontal strata bands following the iso slope of each face
+            for (let b = 0; b < 3; b++) {
+                const off = 5 + b * 4.5 + rk * 2.2;
+                if (off >= DEPTH - 1) break;
+                const op = (0.20 - b * 0.045).toFixed(2);
+                // left (SW) face
+                tilesSVG += `<polyline points="${x - TW},${y + off} ${x},${y + TH + off}" fill="none" stroke="#2b1a0a" stroke-width="1" opacity="${op}" pointer-events="none"/>`;
+                // right (SE) face
+                tilesSVG += `<polyline points="${x},${y + TH + off} ${x + TW},${y + off}" fill="none" stroke="#1f1206" stroke-width="1" opacity="${op}" pointer-events="none"/>`;
+            }
+            // a couple of chipped rock facets for irregularity
+            const fx1 = x - TW * 0.55, fy1 = y + TH * 0.55 + 6 + rk * 4;
+            tilesSVG += `<polygon points="${fx1},${fy1} ${fx1 + 8},${fy1 + 3.5} ${fx1 + 6},${fy1 + 9} ${fx1 - 1},${fy1 + 6}" fill="#57381a" opacity="0.5" pointer-events="none"/>`;
+            const fx2 = x + TW * 0.35, fy2 = y + TH * 0.65 + 5 + (1 - rk) * 5;
+            tilesSVG += `<polygon points="${fx2},${fy2} ${fx2 + 7},${fy2 - 3} ${fx2 + 9},${fy2 + 3} ${fx2 + 2},${fy2 + 6}" fill="#3a2410" opacity="0.45" pointer-events="none"/>`;
+            // damp shadow where the cliff meets the water
+            tilesSVG += `<polygon points="${x - TW},${y + DEPTH - 5} ${x},${y + TH + DEPTH - 5} ${x},${y + TH + DEPTH} ${x - TW},${y + DEPTH}" fill="#170e05" opacity="0.35" pointer-events="none"/>`;
+            tilesSVG += `<polygon points="${x},${y + TH + DEPTH - 5} ${x + TW},${y + DEPTH - 5} ${x + TW},${y + DEPTH} ${x},${y + TH + DEPTH}" fill="#170e05" opacity="0.4" pointer-events="none"/>`;
+            // grass overhanging the cliff edge (only on green tiles)
+            if (type === 0 || type === 1) {
+                const ov = (sx, sy, dir) => `<path d="M ${sx} ${sy} q ${dir * 1.5} 3 ${dir * 0.6} 5.5" stroke="#3f8226" stroke-width="1.1" fill="none" stroke-linecap="round" opacity="0.75" pointer-events="none"/>`;
+                tilesSVG += ov(x - TW * 0.6, y + TH * 0.4 + 4, -1) + ov(x - TW * 0.2, y + TH * 0.8 + 4, -1);
+                tilesSVG += ov(x + TW * 0.3, y + TH * 0.7 + 4, 1) + ov(x + TW * 0.7, y + TH * 0.3 + 4, 1);
+            }
+        }
         const lipL = (!_own(gx - 1, gy) || !_own(gx, gy + 1)) && type !== 3 ? SAND : p.lip;
         const lipR = (!_own(gx + 1, gy) || !_own(gx, gy + 1)) && type !== 3 ? SAND : p.lip;
         tilesSVG += `<polygon points="${x - TW},${y} ${x},${y + TH} ${x},${y + TH + 5} ${x - TW},${y + 5}" fill="${lipL}"/>`;
@@ -1604,14 +1635,33 @@ function renderIsoWorld() {
             if (!_own(gx + 1, gy) || !_own(gx, gy + 1))
                 tilesSVG += `<polyline points="${x},${y + TH + 5} ${x + TW},${y + 5}" fill="none" stroke="${FOAM}" stroke-width="1.6" class="foam-edge"/>`;
         }
-        // top — sandy beach tile if it's a shore grass tile
-        const topFill = (isEdge && type === 0) ? '#dcc488' : p.top;
-        const topHi = (isEdge && type === 0) ? '#ecd9a0' : p.hi;
+        // top — the tile keeps its own terrain colour. Shore tiles used to flip
+        // WHOLESALE to sand, which on a small island meant almost every tile went
+        // beige and the whole place read as a sandbar. Now the grass stays green
+        // and a narrow beach band is painted only along the water-facing edges
+        // (see the beach fringe below), so it reads as a green island with a shore.
+        const topFill = p.top;
+        const topHi = p.hi;
         // Per-tile deterministic shade jitter. Uniform fills made the island read
         // as a flat checkerboard of blocks; a few percent of variation per tile
         // is what makes hand-painted terrain look organic.
         const jit = _tileShade(topFill, gx, gy);
         tilesSVG += `<polygon points="${topPts}" fill="${jit}" stroke="${p.lip}" stroke-width="0.5" stroke-opacity="0.35"/>`;
+        // BEACH FRINGE — a soft sand band on just the edges that meet open water.
+        // Corners of the top diamond: N(x,y-TH) E(x+TW,y) S(x,y+TH) W(x-TW,y).
+        // Neighbour->edge mapping in iso: gx+1 = SE, gy+1 = SW, gx-1 = NW, gy-1 = NE.
+        if (type !== 3) {
+            const t = 0.36, SANDC = '#e3cb92';
+            const band = (ax, ay, bx, by) => {
+                const aix = ax + (x - ax) * t, aiy = ay + (y - ay) * t;
+                const bix = bx + (x - bx) * t, biy = by + (y - by) * t;
+                return `<polygon points="${ax},${ay} ${bx},${by} ${bix},${biy} ${aix},${aiy}" fill="${SANDC}" opacity="0.85" pointer-events="none"/>`;
+            };
+            if (!_own(gx + 1, gy)) tilesSVG += band(x, y + TH, x + TW, y);          // SE
+            if (!_own(gx, gy + 1)) tilesSVG += band(x - TW, y, x, y + TH);          // SW
+            if (!_own(gx - 1, gy)) tilesSVG += band(x, y - TH, x - TW, y);          // NW
+            if (!_own(gx, gy - 1)) tilesSVG += band(x + TW, y, x, y - TH);          // NE
+        }
         // upper-half highlight for a soft 3D sheen
         tilesSVG += `<polygon points="${x},${y - TH} ${x + TW * 0.5},${y - TH * 0.5} ${x},${y} ${x - TW * 0.5},${y - TH * 0.5}" fill="${topHi}" opacity="0.45" pointer-events="none"/>`;
         // ground texture: grass tufts on green tiles, pebbles/ripples on sand & path
@@ -1678,6 +1728,16 @@ function renderIsoWorld() {
             }
         } else if (e.kind === 'bld') {
             const is2x2 = (typeof FOOTPRINT_2X2 !== 'undefined') && FOOTPRINT_2X2[e.type];
+            // CAST SHADOW — a skewed pool thrown down-right (light is upper-left,
+            // matching every building's own shading). Without this the buildings
+            // read as stickers floating above the ground instead of standing on it.
+            {
+                const sc = iso(e.gx + (is2x2 ? 0.5 : 0), e.gy + (is2x2 ? 0.5 : 0));
+                const s = is2x2 ? 1.5 : 1;
+                entSVG += `<g transform="translate(${sc.x},${sc.y}) skewX(-32) translate(${-sc.x},${-sc.y})" pointer-events="none" opacity="0.26">
+                    <ellipse cx="${sc.x + 14 * s}" cy="${sc.y + 2}" rx="${26 * s}" ry="${9 * s}" fill="#123018"/>
+                </g>`;
+            }
             if (is2x2) {
                 // render at center of 2x2 footprint, scaled up
                 const c = iso(e.gx + 0.5, e.gy + 0.5);
