@@ -14,8 +14,8 @@ const ISO = {
 };
 
 // Camera state — pan/zoom (SVG transform) + 3D view angle (CSS transform)
-const CAM = { x: 0, y: 0, zoom: 1, minZoom: 0.45, maxZoom: 3.2 };
-const VIEW = { spin: 0, tilt: 0 };  // degrees: spin = orbit around, tilt = lean back
+const CAM = { x: 0, y: 0, zoom: 1.55, minZoom: 0.5, maxZoom: 4.0 };
+const VIEW = { spin: 0, tilt: 0 };  // LOCKED — the iso angle never changes (drag pans instead)
 
 // Compute final viewbox & offset so everything is centered
 function isoSetup() {
@@ -43,7 +43,7 @@ function islandViewBox(fullW, fullH) {
         if (p.y > maxY) maxY = p.y;
     });
     // tile half-extents + headroom for tall buildings, then a margin of sea
-    const padX = ISO.TW * 0.9, padTop = 74, padBottom = ISO.TH * 1.6;
+    const padX = ISO.TW * 0.5, padTop = 60, padBottom = ISO.TH * 1.0;
     let vx = minX - ISO.TW - padX;
     let vy = minY - ISO.TH - padTop;
     let vw = (maxX - minX) + ISO.TW * 2 + padX * 2;
@@ -239,8 +239,14 @@ function buildingTile(gx, gy, type, level, pos) {
     // used to make the Town Hall / Fortress / Barracks unclickable. Fall back to
     // the derived value only for plain 1x1 renders.
     if (pos == null) pos = gx + gy * ISO.GW;
+    // Fit the art to its plot. The renderers draw at a generous scale so their
+    // materials (thatch strands, shingle courses, stone joints) stay legible when
+    // authored, but at full size neighbouring buildings collide into one mass.
+    // Scaling about the anchor keeps every building seated on its own tile with
+    // breathing room around it — footprint reads clearly, detail survives.
+    const S = 0.58;
     return `<g class="bld bld-${type}" data-pos="${pos}" style="cursor:pointer">
-        ${fn(x, y, level)}
+        <g transform="translate(${x},${y}) scale(${S}) translate(${-x},${-y})">${fn(x, y, level)}</g>
         <g class="bld-badge" transform="translate(${x + 10}, ${y - 4})">
             <rect x="0" y="0" width="22" height="13" rx="6" fill="#1a1a2e" stroke="#fbbf24" stroke-width="1"/>
             <text x="11" y="9.5" text-anchor="middle" font-size="9" font-weight="900" fill="#fbbf24" font-family="Inter, sans-serif">${level}</text>
@@ -270,15 +276,23 @@ const SMOKE = (x, y) => `
     <circle class="smoke-puff" cx="${x - 1.5}" cy="${y - 14}" r="4.6" fill="rgba(218,213,204,0.38)" style="animation-delay:1.2s"/>
     <circle class="smoke-puff" cx="${x + 1}" cy="${y - 21}" r="5.4" fill="rgba(208,203,196,0.22)" style="animation-delay:1.8s"/>
 `;
+// Front-on window: cut back into the wall, with a jamb reveal, a projecting
+// stone sill and the shadow that sill drops. Signature unchanged (top-left x,y).
 const LIT_WINDOW = (x, y, w = 5, h = 7) => `
     <ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${w * 1.7}" ry="${h * 1.35}" fill="#ffca5f" opacity="0.13"/>
-    <rect x="${x - 0.8}" y="${y - 0.8}" width="${w + 1.6}" height="${h + 1.6}" rx="1" fill="#2a1a0e"/>
+    <rect x="${x - 1.5}" y="${y - 1.5}" width="${w + 3}" height="${h + 3}" rx="0.6" fill="#33220f"/>
+    <rect x="${x - 0.8}" y="${y - 0.8}" width="${w + 1.6}" height="${h + 1.6}" rx="0.5" fill="#150c05"/>
     <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#ffd773">
         <animate attributeName="fill" values="#ffd773;#ffc247;#ffd773" dur="3.4s" repeatCount="indefinite"/>
     </rect>
     <rect x="${x}" y="${y}" width="${w}" height="${h * 0.42}" fill="rgba(255,255,255,0.35)"/>
     <line x1="${x + w / 2}" y1="${y}" x2="${x + w / 2}" y2="${y + h}" stroke="#2a1a0e" stroke-width="0.5"/>
     <line x1="${x}" y1="${y + h / 2}" x2="${x + w}" y2="${y + h / 2}" stroke="#2a1a0e" stroke-width="0.5"/>
+    <line x1="${x - 1.5}" y1="${y - 1.5}" x2="${x + w + 1.5}" y2="${y - 1.5}" stroke="rgba(255,246,225,0.5)" stroke-width="0.6"/>
+    <line x1="${x - 1.5}" y1="${y - 1.5}" x2="${x - 1.5}" y2="${y + h + 1.5}" stroke="rgba(255,246,225,0.3)" stroke-width="0.55"/>
+    <rect x="${x - 2.4}" y="${y + h + 1.4}" width="${w + 4.8}" height="1.7" rx="0.4" fill="#b6bec5" stroke="#2a1a0e" stroke-width="0.45"/>
+    <line x1="${x - 2.4}" y1="${y + h + 1.7}" x2="${x + w + 2.4}" y2="${y + h + 1.7}" stroke="rgba(255,255,255,0.5)" stroke-width="0.5"/>
+    <rect x="${x - 2}" y="${y + h + 3.1}" width="${w + 4}" height="1.3" fill="rgba(26,16,8,0.25)"/>
 `;
 const STONE_WALL = (cx, cy, w, h, color = '#a89e8e', dark = '#5e5448') => {
     const half = w / 2;
@@ -290,66 +304,353 @@ const STONE_WALL = (cx, cy, w, h, color = '#a89e8e', dark = '#5e5448') => {
     `;
 };
 
+// ============================================================
+// ISO MATERIAL KIT
+// The tile grid is 2:1 (half-width 48, half-height 24), so every plane on a
+// building is built from the two directions (2,1) and (2,-1) plus true
+// vertical. Nothing is ever drawn at an arbitrary angle.
+// Quads are always passed top-left first, going around the perimeter:
+//        A --u-->  B
+//        |         |
+//        v         v
+//        D <-----  C
+// so A/B is the ridge (or wall-plate) and D/C the eave (or ground line).
+// Triangular roof faces are passed as a degenerate quad with A === B (apex).
+// Key light is upper-LEFT: every helper takes a lit colour and a shade colour.
+// ============================================================
+const _rr = (n) => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+const _L2 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+const _Q = (A, B, C, D, u, v) => _L2(_L2(A, D, v), _L2(B, C, v), u);
+const _f = (n) => Math.round(n * 10) / 10;
+const _PT = (...p) => p.map(q => `${_f(q[0])},${_f(q[1])}`).join(' ');
+const _len = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+const _hx = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const _mix = (a, b, t) => '#' + _hx(a).map((v, i) => Math.max(0, Math.min(255, Math.round(v + (_hx(b)[i] - v) * t))).toString(16).padStart(2, '0')).join('');
+// Every stroke helper batches its segments into ONE path — a wall of 40 mortar
+// joints is one element, not forty.
+const _seg = (segs, col, w, extra = '') => segs.length
+    ? `<path d="${segs.map(s => `M${_f(s[0][0])} ${_f(s[0][1])}L${_f(s[1][0])} ${_f(s[1][1])}`).join('')}" stroke="${col}" stroke-width="${w}" fill="none"${extra ? ' ' + extra : ''}/>`
+    : '';
+const _ln = (a, b, col, w, extra = '') => _seg([[a, b]], col, w, extra);
+const _pg = (pts, fill, stroke, w) => `<polygon points="${_PT(...pts)}" fill="${fill}"${stroke ? ` stroke="${stroke}" stroke-width="${w || 0.7}"` : ''}/>`;
+const OUTLINE = '#2a1a0e';
+
+// --- ROOFS -------------------------------------------------------------
+// Overlapping courses of shingles/slates. Each course is offset half a tab
+// from the one above and casts a shadow line onto the course below.
+const SHINGLES = (A, B, C, D, rows, pitch, lit, shade, seed = 3) => {
+    let s = _pg([A, B, C, D], shade);
+    const tabs = [], butt = [], drop = [];
+    for (let i = 0; i < rows; i++) {
+        const t0 = i / rows, t1 = (i + 1) / rows;
+        const p0 = _L2(A, D, t0), p1 = _L2(B, C, t0), p2 = _L2(B, C, t1), p3 = _L2(A, D, t1);
+        s += _pg([p0, p1, p2, p3], _mix(lit, shade, 0.1 + t0 * 0.62));
+        const n = Math.max(1, Math.round(_len(p3, p2) / pitch));
+        for (let j = 1; j < n; j++) {
+            const u = (j + (i % 2 ? 0.5 : 0)) / n;
+            if (u <= 0.01 || u >= 0.99) continue;
+            const b0 = _L2(p3, p2, u);
+            tabs.push([b0, _L2(b0, _L2(p0, p1, u), 0.72 + _rr(i * 13.3 + j + seed) * 0.2)]);
+        }
+        butt.push([p3, p2]);                                        // lit edge of the course
+        drop.push([[p3[0], p3[1] + 0.8], [p2[0], p2[1] + 0.8]]);     // shadow it throws below
+    }
+    return s + _seg(drop, _mix(shade, OUTLINE, 0.55), 0.9)
+        + _seg(butt, _mix(lit, '#ffffff', 0.28), 0.55)
+        + _seg(tabs, _mix(_mix(lit, shade, 0.5), OUTLINE, 0.5), 0.5);
+};
+// Thatch: fine strands running down the slope, ragged and dropping at the eave.
+const THATCH = (A, B, C, D, strands, lit, shade, seed = 5) => {
+    let s = _pg([A, B, C, D], _mix(shade, OUTLINE, 0.3));
+    const bucket = ['', '', '', ''];
+    for (let j = 0; j <= strands; j++) {
+        const u = j / strands;
+        const a = _L2(A, B, u), d = _L2(D, C, u);
+        const r1 = _rr(j * 7.7 + seed), r2 = _rr(j * 3.1 + seed * 2);
+        const tip = [d[0] + (r1 - 0.5) * 1.2, d[1] + (r1 - 0.5) * 0.6 + 2.4 * (0.35 + r2)];
+        const m = _L2(a, tip, 0.55);
+        bucket[Math.min(3, (r1 * 4) | 0)] += `M${_f(a[0])} ${_f(a[1])}Q${_f(m[0])} ${_f(m[1] - 0.7)} ${_f(tip[0])} ${_f(tip[1])}`;
+    }
+    bucket.forEach((d, i) => {
+        if (d) s += `<path d="${d}" stroke="${_mix(shade, lit, 0.12 + i * 0.3)}" stroke-width="${0.65 + i * 0.15}" fill="none" stroke-linecap="round"/>`;
+    });
+    // hazel binding rods lashed across the slope
+    s += _seg([0.34, 0.66].map(v => [_L2(A, D, v), _L2(B, C, v)]), _mix(shade, OUTLINE, 0.4), 1);
+    s += _seg([0.34, 0.66].map(v => [[_L2(A, D, v)[0], _L2(A, D, v)[1] - 0.9], [_L2(B, C, v)[0], _L2(B, C, v)[1] - 0.9]]), _mix(lit, '#ffffff', 0.25), 0.45);
+    return s;
+};
+// --- MASONRY -----------------------------------------------------------
+// Irregular blocks laid in courses with real mortar joints between them.
+const STONEWORK = (A, B, C, D, rows, blockLen, lit, shade, seed = 2) => {
+    let s = _pg([A, B, C, D], _mix(shade, OUTLINE, 0.5));   // mortar bed showing through
+    const hi = [], lo = [];
+    for (let i = 0; i < rows; i++) {
+        const v0 = i / rows + 0.012, v1 = (i + 1) / rows - 0.012;
+        const off = (i % 2) ? 0.5 : 0;
+        const n = Math.max(1, Math.round(_len(_L2(A, D, v0), _L2(B, C, v0)) / blockLen));
+        for (let j = -1; j <= n; j++) {
+            const u0 = Math.max(0.004, (j + off) / n + 0.014), u1 = Math.min(0.996, (j + 1 + off) / n - 0.014);
+            if (u1 - u0 < 0.02) continue;
+            const r = _rr(i * 31.7 + j * 5.3 + seed);
+            const q0 = _Q(A, B, C, D, u0, v0), q1 = _Q(A, B, C, D, u1, v0);
+            const q2 = _Q(A, B, C, D, u1, v1), q3 = _Q(A, B, C, D, u0, v1);
+            s += _pg([q0, q1, q2, q3], _mix(_mix(shade, lit, 0.4 + r * 0.6), '#6f6255', r > 0.87 ? 0.35 : 0));
+            hi.push([q0, q1]);
+            lo.push([q3, q2]);
+        }
+    }
+    return s + _seg(hi, _mix(lit, '#ffffff', 0.35), 0.4) + _seg(lo, _mix(shade, OUTLINE, 0.4), 0.4);
+};
+// Corner quoins: alternating big dressed blocks down a vertical arris.
+const QUOINS = (px, py, h, s, n, lit, shade, dirX = 1) => {
+    let out = '';
+    const step = h / n;
+    for (let i = 0; i < n; i++) {
+        const w = ((i % 2) ? 4.5 : 6.5) * dirX, ty = py - i * step;
+        out += _pg([[px, ty], [px + w, ty + w * s], [px + w, ty + w * s + step * 0.86], [px, ty + step * 0.86]],
+            _mix(lit, shade, i % 2 ? 0.35 : 0.1), OUTLINE, 0.45);
+    }
+    return out;
+};
+// --- CARPENTRY ---------------------------------------------------------
+// Individual boards with seams, a couple of knots and one warped plank.
+const PLANKS = (A, B, C, D, n, lit, shade, seed = 1) => {
+    let s = '';
+    const seam = [], hi = [], grain = [], butt = [];
+    let knots = '';
+    for (let i = 0; i < n; i++) {
+        const v0 = i / n, v1 = (i + 1) / n, r = _rr(i * 17.3 + seed), g = _rr(i * 9.1 + seed + 4);
+        s += _pg([_L2(A, D, v0), _L2(B, C, v0), _L2(B, C, v1), _L2(A, D, v1)], _mix(lit, shade, 0.08 + r * 0.55));
+        seam.push([_L2(A, D, v1), _L2(B, C, v1)]);
+        hi.push([[_L2(A, D, v1)[0], _L2(A, D, v1)[1] - 0.7], [_L2(B, C, v1)[0], _L2(B, C, v1)[1] - 0.7]]);
+        grain.push([_Q(A, B, C, D, 0.1 + g * 0.2, (v0 + v1) / 2), _Q(A, B, C, D, 0.4 + g * 0.3, (v0 + v1) / 2)]);
+        if (r > 0.78) {
+            const k = _Q(A, B, C, D, 0.2 + g * 0.55, (v0 + v1) / 2);
+            knots += `<ellipse cx="${_f(k[0])}" cy="${_f(k[1])}" rx="1.1" ry="0.7" fill="${_mix(shade, OUTLINE, 0.5)}"/>`;
+        }
+        if (r > 0.55) butt.push([_Q(A, B, C, D, 0.3 + g * 0.4, v0), _Q(A, B, C, D, 0.3 + g * 0.4, v1)]);
+    }
+    return s + _seg(seam, _mix(shade, OUTLINE, 0.55), 0.55) + _seg(hi, _mix(lit, '#ffffff', 0.2), 0.35)
+        + _seg(grain, _mix(shade, OUTLINE, 0.3), 0.35) + _seg(butt, _mix(shade, OUTLINE, 0.45), 0.4) + knots;
+};
+// Round log courses: each log carries a lit crown and a shadowed gap beneath,
+// which is what makes a stack of bands read as cylinders.
+const LOGS = (A, B, C, D, n, lit, shade, seed = 1) => {
+    let s = _pg([A, B, C, D], _mix(shade, OUTLINE, 0.3));
+    const crown = [], gap = [], grain = [];
+    for (let i = 0; i < n; i++) {
+        const v0 = i / n, v1 = (i + 1) / n, r = _rr(i * 7.1 + seed);
+        s += _pg([_L2(A, D, v0), _L2(B, C, v0), _L2(B, C, v1), _L2(A, D, v1)], _mix(lit, shade, 0.12 + r * 0.42));
+        crown.push([_L2(A, D, v0 + (v1 - v0) * 0.26), _L2(B, C, v0 + (v1 - v0) * 0.26)]);
+        gap.push([_L2(A, D, v1), _L2(B, C, v1)]);
+        grain.push([_Q(A, B, C, D, 0.15 + r * 0.25, (v0 + v1) / 2), _Q(A, B, C, D, 0.45 + r * 0.3, (v0 + v1) / 2)]);
+    }
+    return s + _seg(gap, _mix(shade, OUTLINE, 0.62), 1)
+        + _seg(crown, _mix(lit, '#ffffff', 0.32), 0.9)
+        + _seg(grain, _mix(shade, OUTLINE, 0.3), 0.35);
+};
+// Timber frame: pale daub infill behind dark exposed beams.
+const HALFTIMBER = (A, B, C, D, bays, lit, shade, beam, beamDark) => {
+    let s = _pg([A, B, C, D], lit);
+    s += _pg([_L2(A, D, 0.55), _L2(B, C, 0.55), C, D], _mix(lit, shade, 0.5));
+    const posts = [];
+    for (let i = 1; i < bays; i++) posts.push([_L2(A, B, i / bays), _L2(D, C, i / bays)]);
+    s += _seg(posts, beam, 1.6);
+    // top plate, sill beam, corner posts, mid rail
+    s += _seg([[A, B], [A, D], [_L2(A, D, 0.52), _L2(B, C, 0.52)]], beam, 2.1);
+    s += _seg([[D, C], [B, C]], beamDark, 2);
+    s += _seg([[[A[0], A[1] + 1.1], [B[0], B[1] + 1.1]]], _mix(beam, '#ffffff', 0.28), 0.5);
+    // a pair of diagonal braces, both following the iso slope
+    s += _seg([
+        [_Q(A, B, C, D, 0.04, 0.52), _Q(A, B, C, D, 1 / bays - 0.02, 0.99)],
+        [_Q(A, B, C, D, 0.96, 0.52), _Q(A, B, C, D, 1 - 1 / bays + 0.02, 0.99)]
+    ], beamDark, 1.2);
+    return s;
+};
+// --- ARCHITECTURAL DETAIL ---------------------------------------------
+// Shadow the roof overhang throws onto the wall right under the eave.
+const EAVE_SHADOW = (A, B, C, D, depth = 0.18) =>
+    _pg([A, B, _L2(B, C, depth), _L2(A, D, depth)], 'rgba(26,16,8,0.30)');
+// Damp staining and splash-back where the wall meets the ground.
+const DAMP = (D, C, h = 4) =>
+    _pg([[D[0], D[1] - h], [C[0], C[1] - h], C, D], 'rgba(48,40,26,0.22)');
+// A 1px lighter rim along the upper-left silhouette.
+const RIM = (a, b) => _ln(a, b, 'rgba(255,248,235,0.45)', 0.9);
+// Stone base course under a timber wall.
+const FOOTING = (D, C, h, lit, shade) => {
+    const A = [D[0], D[1] - h], B = [C[0], C[1] - h];
+    return STONEWORK(A, B, C, D, 2, 8, lit, shade, 9) + RIM(A, B);
+};
+// Recessed door in an iso wall face. (bx,by) sits on the ground line,
+// s = +0.5 for a wall running down to the right, -0.5 for one running up.
+// Doors are 15-18px tall so a 14px villager can walk through them.
+const ISO_DOOR = (bx, by, s, w, h, o = {}) => {
+    const wood = o.wood || '#7a4e24', dk = o.dark || '#3a2313', arch = o.arch === undefined ? 3.5 : o.arch;
+    const hw = w / 2;
+    const BL = [bx - hw, by - hw * s], BR = [bx + hw, by + hw * s];
+    const TL = [BL[0], BL[1] - h], TR = [BR[0], BR[1] - h];
+    const head =(pTL, pTR, a) => `Q ${((pTL[0] + pTR[0]) / 2).toFixed(2)} ${(((pTL[1] + pTR[1]) / 2) - a * 1.9).toFixed(2)} ${pTR[0].toFixed(2)} ${pTR[1].toFixed(2)}`;
+    const face = (pBL, pTL, pTR, pBR, a) => `M ${pBL[0].toFixed(2)} ${pBL[1].toFixed(2)} L ${pTL[0].toFixed(2)} ${pTL[1].toFixed(2)} ${head(pTL, pTR, a)} L ${pBR[0].toFixed(2)} ${pBR[1].toFixed(2)} Z`;
+    const gr = 1.7; // jamb / lintel reveal
+    const oBL = [BL[0] - gr, BL[1] - gr * s], oBR = [BR[0] + gr, BR[1] + gr * s];
+    const oTL = [oBL[0], oBL[1] - h - gr], oTR = [oBR[0], oBR[1] - h - gr];
+    const iBL = [BL[0] + 1.4, BL[1] + 1.4 * s], iBR = [BR[0] - 1.4, BR[1] - 1.4 * s];
+    const iTL = [iBL[0], iBL[1] - h + 1.4], iTR = [iBR[0], iBR[1] - h + 1.4];
+    let out = '';
+    // threshold stone, worn smooth
+    out += _pg([[BL[0] - 2, BL[1] - 2 * s], [BR[0] + 2, BR[1] + 2 * s], [BR[0] + 2, BR[1] + 2 * s + 2.6], [BL[0] - 2, BL[1] - 2 * s + 2.6]], '#9aa3ab', OUTLINE, 0.5);
+    out += _ln([BL[0] - 2, BL[1] - 2 * s], [BR[0] + 2, BR[1] + 2 * s], 'rgba(255,255,255,0.4)', 0.5);
+    // jambs + lintel cut back into the wall
+    out += `<path d="${face(oBL, oTL, oTR, oBR, arch + 1)}" fill="${dk}" stroke="${OUTLINE}" stroke-width="0.8"/>`;
+    // the dark reveal itself
+    out += `<path d="${face(BL, TL, TR, BR, arch)}" fill="#150c05"/>`;
+    // door leaf, boarded and braced
+    out += `<path d="${face(iBL, iTL, iTR, iBR, arch * 0.8)}" fill="${wood}"/>`;
+    for (let i = 1; i < 4; i++) {
+        const t = i / 4;
+        out += _ln(_L2(iBL, iBR, t), _L2(iTL, iTR, t), _mix(wood, OUTLINE, 0.5), 0.55);
+    }
+    out += _ln(iBL, [iTR[0], iTR[1] + 1], _mix(wood, OUTLINE, 0.35), 1.1);
+    // iron straps + ring handle
+    for (const t of [0.26, 0.74]) {
+        const a = _L2(iBL, iTL, t), b = _L2(iBR, iTR, t);
+        out += _ln(a, b, '#3f434a', 1.3);
+        out += _ln([a[0], a[1] - 0.5], [b[0], b[1] - 0.5], '#6b7280', 0.4);
+    }
+    out += `<circle cx="${(bx + hw * 0.45).toFixed(2)}" cy="${(by + hw * 0.45 * s - h * 0.42).toFixed(2)}" r="1.1" fill="none" stroke="#f4c44d" stroke-width="0.7"/>`;
+    // light catching the top-left of the reveal
+    out += _ln(oTL, [oTL[0] + w * 0.5, oTL[1] + w * 0.5 * s], 'rgba(255,246,225,0.55)', 0.7);
+    out += _ln(oBL, oTL, 'rgba(255,246,225,0.35)', 0.6);
+    return out;
+};
+// Recessed window in an iso wall face: reveal, sill, glazing bars, shutter.
+const ISO_WIN = (cx, cy, s, w, h, o = {}) => {
+    const hw = w / 2, lit = o.lit !== false;
+    const BL = [cx - hw, cy - hw * s], BR = [cx + hw, cy + hw * s];
+    const TL = [BL[0], BL[1] - h], TR = [BR[0], BR[1] - h];
+    const g = 1.3;
+    const oBL = [BL[0] - g, BL[1] - g * s], oBR = [BR[0] + g, BR[1] + g * s];
+    const oTL = [oBL[0], oBL[1] - h - g], oTR = [oBR[0], oBR[1] - h - g];
+    let out = '';
+    if (lit) out += `<ellipse cx="${cx.toFixed(2)}" cy="${(cy - h / 2).toFixed(2)}" rx="${(w * 1.5).toFixed(2)}" ry="${(h * 1.3).toFixed(2)}" fill="#ffca5f" opacity="0.12"/>`;
+    out += _pg([oTL, oTR, oBR, oBL], '#2a1a0e');
+    out += lit
+        ? `<polygon points="${_PT(TL, TR, BR, BL)}" fill="#ffd773"><animate attributeName="fill" values="#ffd773;#ffc247;#ffd773" dur="${(3 + _rr(cx + cy) * 1.6).toFixed(2)}s" repeatCount="indefinite"/></polygon>`
+        : _pg([TL, TR, BR, BL], '#1d2430');
+    if (lit) out += _pg([TL, TR, _L2(TR, BR, 0.45), _L2(TL, BL, 0.45)], 'rgba(255,255,255,0.34)');
+    // glazing bars
+    out += _ln(_L2(TL, TR, 0.5), _L2(BL, BR, 0.5), '#2a1a0e', 0.55);
+    out += _ln(_L2(TL, BL, 0.5), _L2(TR, BR, 0.5), '#2a1a0e', 0.55);
+    // projecting sill, and the shadow it drops on the wall
+    const sBL = [BL[0] - 2, BL[1] - 2 * s + 0.6], sBR = [BR[0] + 2, BR[1] + 2 * s + 0.6];
+    out += _pg([[sBL[0], sBL[1] - 1.4], [sBR[0], sBR[1] - 1.4], [sBR[0], sBR[1] + 1.4], [sBL[0], sBL[1] + 1.4]], '#b6bec5', OUTLINE, 0.5);
+    out += _ln([sBL[0], sBL[1] - 1.4], [sBR[0], sBR[1] - 1.4], 'rgba(255,255,255,0.5)', 0.5);
+    out += _ln([sBL[0], sBL[1] + 1.6], [sBR[0], sBR[1] + 1.6], 'rgba(26,16,8,0.28)', 1.4);
+    // reveal highlight, upper-left
+    out += _ln(oTL, oTR, 'rgba(255,246,225,0.5)', 0.6);
+    out += _ln(oBL, oTL, 'rgba(255,246,225,0.3)', 0.5);
+    if (o.shutter) {
+        const sw = w * 0.42;
+        out += _pg([[oTL[0] - sw, oTL[1] - sw * s], oTL, [oBL[0], oBL[1] + 0.4], [oBL[0] - sw, oBL[1] - sw * s + 0.4]], '#2c5aa0', OUTLINE, 0.6);
+        out += _ln([oTL[0] - sw * 0.5, oTL[1] - sw * 0.5 * s], [oBL[0] - sw * 0.5, oBL[1] - sw * 0.5 * s], '#1d3c6e', 0.5);
+    }
+    return out;
+};
+// Moss / weeds catching in a valley or at a footing.
+const MOSS = (px, py, n = 3, seed = 1, col = '#5a7f3e') => {
+    let out = '';
+    for (let i = 0; i < n; i++) {
+        const r = _rr(i * 5.7 + seed), dx = (r - 0.5) * 7, dy = (_rr(i * 3.3 + seed) - 0.5) * 2.2;
+        out += `<path d="M ${(px + dx).toFixed(2)} ${(py + dy).toFixed(2)} q ${(0.6 + r).toFixed(2)} -2.6 ${(2 + r).toFixed(2)} -3.4" stroke="${_mix(col, '#8fbf5e', r)}" stroke-width="${(0.7 + r * 0.5).toFixed(2)}" fill="none" stroke-linecap="round"/>`;
+    }
+    return out;
+};
+// Trodden earth in front of a doorway.
+const WORN_PATH = (px, py, rx = 11) =>
+    `<ellipse cx="${px}" cy="${py}" rx="${rx}" ry="${(rx * 0.42).toFixed(2)}" fill="#8a7550" opacity="0.32"/>` +
+    `<ellipse cx="${px}" cy="${py}" rx="${(rx * 0.6).toFixed(2)}" ry="${(rx * 0.26).toFixed(2)}" fill="#9c8560" opacity="0.3"/>`;
+
 const BUILDING_RENDERERS = {
     townhall: (x, y, lvl) => `
         ${SHADOW(x, y, 46)}
-        <!-- stone plinth (iso box) -->
-        <polygon points="${x-42},${y-8} ${x},${y-29} ${x+42},${y-8} ${x},${y+13}" fill="#b6bec5" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x-42},${y-8} ${x},${y+13} ${x},${y+22} ${x-42},${y+1}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x+42},${y-8} ${x},${y+13} ${x},${y+22} ${x+42},${y+1}" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.9"/>
-        <line x1="${x-42}" y1="${y-8}" x2="${x}" y2="${y+13}" stroke="rgba(255,255,255,0.45)" stroke-width="0.8"/>
-        <line x1="${x-34}" y1="${y-1}" x2="${x-10}" y2="${y+11}" stroke="#7d8790" stroke-width="0.5"/>
-        <line x1="${x+10}" y1="${y+12}" x2="${x+34}" y2="${y}" stroke="#565f6a" stroke-width="0.5"/>
-        <!-- plastered great hall -->
-        <polygon points="${x-32},${y-31} ${x},${y-47} ${x+32},${y-31} ${x},${y-15}" fill="#f7efe0" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x-32},${y-31} ${x},${y-15} ${x},${y+7} ${x-32},${y-9}" fill="#f0e6d2" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x+32},${y-31} ${x},${y-15} ${x},${y+7} ${x+32},${y-9}" fill="#d9cbb0" stroke="#2a1a0e" stroke-width="0.9"/>
-        <!-- timber framing -->
-        <line x1="${x-32}" y1="${y-31}" x2="${x-32}" y2="${y-9}" stroke="#6b4520" stroke-width="1.6"/>
-        <line x1="${x+32}" y1="${y-31}" x2="${x+32}" y2="${y-9}" stroke="#54371a" stroke-width="1.6"/>
-        <line x1="${x}" y1="${y-15}" x2="${x}" y2="${y+7}" stroke="#6b4520" stroke-width="1.6"/>
-        <line x1="${x-32}" y1="${y-9}" x2="${x}" y2="${y+7}" stroke="#6b4520" stroke-width="1.4"/>
-        <line x1="${x}" y1="${y+7}" x2="${x+32}" y2="${y-9}" stroke="#54371a" stroke-width="1.4"/>
-        <line x1="${x-27}" y1="${y-27}" x2="${x-16}" y2="${y-6}" stroke="#6b4520" stroke-width="1" opacity="0.85"/>
-        <line x1="${x+14}" y1="${y-7}" x2="${x+27}" y2="${y-26}" stroke="#54371a" stroke-width="1" opacity="0.85"/>
-        <line x1="${x-32}" y1="${y-31}" x2="${x}" y2="${y-15}" stroke="rgba(255,255,255,0.4)" stroke-width="0.7"/>
-        <!-- lit windows on both faces -->
-        ${LIT_WINDOW(x - 24, y - 25, 6, 8)}
-        ${LIT_WINDOW(x + 17, y - 25, 6, 8)}
-        <!-- grand arched door + stone steps -->
-        <polygon points="${x-14},${y+9} ${x-1},${y+15.5} ${x-1},${y+19} ${x-14},${y+12.5}" fill="#b6bec5" stroke="#2a1a0e" stroke-width="0.6"/>
-        <path d="M ${x - 12} ${y + 9} L ${x - 12} ${y - 6} Q ${x - 6.5} ${y - 13} ${x - 1} ${y - 8} L ${x - 1} ${y + 14.5} Z" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.9"/>
-        <path d="M ${x - 10.5} ${y + 8} L ${x - 10.5} ${y - 5} Q ${x - 6.5} ${y - 10} ${x - 2.5} ${y - 6.5} L ${x - 2.5} ${y + 12.5} Z" fill="#8a5a2b"/>
-        <line x1="${x-6.5}" y1="${y-8.8}" x2="${x-6.5}" y2="${y+10.5}" stroke="#4a2e16" stroke-width="0.5"/>
-        <circle cx="${x - 4}" cy="${y + 2}" r="0.9" fill="#f4c44d"/>
-        <!-- kingdom crest on shaded face -->
-        <path d="M ${x + 12} ${y - 11} l 5 -2.5 l 5 2.5 l 0 5.5 q 0 4.2 -5 6.2 q -5 -2 -5 -6.2 Z" fill="#2c5aa0" stroke="#f4c44d" stroke-width="0.9"/>
-        <path d="M ${x + 17} ${y - 10.8} l 1 2.4 2.6 0.3 -1.9 1.8 0.5 2.6 -2.2 -1.3 -2.2 1.3 0.5 -2.6 -1.9 -1.8 2.6 -0.3 Z" fill="#f4c44d"/>
-        <!-- great gold pyramid roof -->
-        <polygon points="${x-38},${y-30} ${x},${y-62} ${x},${y-11}" fill="#ffd76b" stroke="#2a1a0e" stroke-width="1"/>
-        <polygon points="${x+38},${y-30} ${x},${y-62} ${x},${y-11}" fill="#c2912c" stroke="#2a1a0e" stroke-width="1"/>
-        <path d="M ${x-27} ${y-39} L ${x} ${y-26}" stroke="#e0b23f" stroke-width="0.6"/>
-        <path d="M ${x-17} ${y-48} L ${x} ${y-40}" stroke="#e0b23f" stroke-width="0.6"/>
-        <path d="M ${x-8} ${y-55} L ${x} ${y-51}" stroke="#e0b23f" stroke-width="0.6"/>
-        <path d="M ${x+27} ${y-39} L ${x} ${y-26}" stroke="#9c7322" stroke-width="0.6"/>
-        <path d="M ${x+17} ${y-48} L ${x} ${y-40}" stroke="#9c7322" stroke-width="0.6"/>
-        <line x1="${x}" y1="${y-62}" x2="${x}" y2="${y-11}" stroke="rgba(255,246,214,0.55)" stroke-width="1"/>
+        ${WORN_PATH(x - 16, y + 20, 14)}
+        <!-- dressed stone plinth: paved top, two coursed faces, 7px high -->
+        <polygon points="${x-42},${y-8} ${x},${y-29} ${x+42},${y-8} ${x},${y+13}" fill="#aeb6bf" stroke="#2a1a0e" stroke-width="0.9"/>
+        ${_seg([0.25, 0.5, 0.75].map(t => [[x - 42 + 42 * t, y - 8 - 21 * t], [x + 42 * t, y + 13 - 21 * t]]), '#98a1aa', 0.5)}
+        ${_seg([0.3, 0.62].map(t => [[x - 42 + 42 * t, y - 8 + 21 * t], [x + 42 * t, y - 29 + 21 * t]]), '#98a1aa', 0.5)}
+        ${STONEWORK([x - 42, y - 8], [x, y + 13], [x, y + 20], [x - 42, y - 1], 1, 12, '#b9c1c9', '#828c97', 11)}
+        ${STONEWORK([x, y + 13], [x + 42, y - 8], [x + 42, y - 1], [x, y + 20], 1, 12, '#828c97', '#565f6c', 17)}
+        ${RIM([x - 42, y - 8], [x, y + 13])}
+        ${DAMP([x - 42, y - 1], [x, y + 20], 3)}
+        ${MOSS(x - 33, y + 5, 3, 4)}
+        ${MOSS(x + 26, y + 5, 2, 9)}
+        <!-- great hall: exposed frame over daub, on its own stone footing -->
+        <polygon points="${x-32},${y-37} ${x},${y-53} ${x+32},${y-37} ${x},${y-21}" fill="#c4b69d" stroke="#2a1a0e" stroke-width="0.9"/>
+        ${HALFTIMBER([x - 32, y - 37], [x, y - 21], [x, y + 7], [x - 32, y - 9], 4, '#f7efe0', '#e2d4ba', '#7a5228', '#5c3d1a')}
+        ${HALFTIMBER([x, y - 21], [x + 32, y - 37], [x + 32, y - 9], [x, y + 7], 4, '#dccdb1', '#bcab8b', '#5c3d1a', '#432b12')}
+        ${FOOTING([x - 32, y - 9], [x, y + 7], 6, '#c2cad2', '#8b95a0')}
+        ${FOOTING([x, y + 7], [x + 32, y - 9], 6, '#959ea8', '#616a76')}
+        ${QUOINS(x, y + 7, 28, 0.5, 7, '#efe7d4', '#c0b195', -1)}
+        ${QUOINS(x, y + 7, 28, -0.5, 7, '#cec19f', '#9a8c6f', 1)}
+        ${RIM([x - 32, y - 37], [x, y - 21])}
+        <!-- recessed, silled windows; one shuttered -->
+        ${ISO_WIN(x - 24, y - 13, 0.5, 8, 9, { shutter: true })}
+        ${ISO_WIN(x + 9.6, y - 6, -0.5, 8, 9, {})}
+        <!-- kingdom crest hung on the shaded face, clear of the eave -->
+        <path d="M ${x + 17} ${y - 23} l 5 -2.5 l 5 2.5 l 0 5.5 q 0 4.2 -5 6.2 q -5 -2 -5 -6.2 Z" fill="#2c5aa0" stroke="#f4c44d" stroke-width="0.9"/>
+        <path d="M ${x + 22} ${y - 22.8} l 1 2.4 2.6 0.3 -1.9 1.8 0.5 2.6 -2.2 -1.3 -2.2 1.3 0.5 -2.6 -1.9 -1.8 2.6 -0.3 Z" fill="#f4c44d"/>
+        <!-- great arched door, 17px tall: a 14px villager walks straight in -->
+        ${ISO_DOOR(x - 12, y + 1, 0.5, 14, 16, { wood: '#7a4e24', arch: 3.5 })}
+        <!-- shadow the overhanging eave drops on the wall beneath it -->
+        ${EAVE_SHADOW([x - 32, y - 37], [x, y - 21], [x, y + 7], [x - 32, y - 9], 0.13)}
+        ${EAVE_SHADOW([x, y - 21], [x + 32, y - 37], [x + 32, y - 9], [x, y + 7], 0.13)}
+        <!-- gilded tile roof, eight courses a plane, overhanging the wall by 4px -->
+        ${SHINGLES([x, y - 62], [x, y - 62], [x, y - 16], [x - 36, y - 34], 8, 7.5, '#ffe08a', '#c08d28', 21)}
+        ${SHINGLES([x, y - 62], [x, y - 62], [x + 36, y - 34], [x, y - 16], 8, 7.5, '#cfa03a', '#8a641a', 33)}
+        <!-- a replacement tile in a paler batch, and a mossy patch -->
+        ${_pg([[x - 21, y - 37], [x - 15, y - 34], [x - 16, y - 30], [x - 22, y - 33]], '#f2dc9c', '#b8902f', 0.4)}
+        ${MOSS(x - 27, y - 30, 2, 12, '#75903f')}
+        ${MOSS(x + 8, y - 19, 2, 3, '#6f8a3e')}
+        <!-- fascia boards along both eaves -->
+        ${_pg([[x - 36, y - 34], [x, y - 16], [x, y - 13.4], [x - 36, y - 31.4]], '#8a5a2b', OUTLINE, 0.7)}
+        ${_pg([[x, y - 16], [x + 36, y - 34], [x + 36, y - 31.4], [x, y - 13.4]], '#573a19', OUTLINE, 0.7)}
+        ${_ln([x - 36, y - 34], [x, y - 16], 'rgba(255,240,205,0.5)', 0.6)}
+        <!-- lead hip rolls down all three visible arrises -->
+        ${_ln([x, y - 62], [x, y - 16], '#ffeaa8', 1.7)}
+        ${_seg([[[x, y - 62], [x - 36, y - 34]], [[x, y - 62], [x + 36, y - 34]]], '#c99a2b', 1.4)}
+        ${_ln([x - 0.9, y - 60], [x - 0.9, y - 18], 'rgba(255,255,255,0.4)', 0.5)}
         <!-- finial + royal banner -->
         <circle cx="${x}" cy="${y - 63.5}" r="2.2" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.7"/>
         ${FLAG(x, y - 60)}
         ${lvl >= 4 ? `
-            <line x1="${x-38}" y1="${y-30}" x2="${x}" y2="${y-11}" stroke="#f4c44d" stroke-width="1.8"/>
-            <line x1="${x}" y1="${y-11}" x2="${x+38}" y2="${y-30}" stroke="#c2912c" stroke-width="1.8"/>
-            <polygon points="${x-28},${y-27} ${x-20},${y-23} ${x-20},${y-5} ${x-24},${y-9.5} ${x-28},${y-7}" fill="#2c5aa0" stroke="#1d3c6e" stroke-width="0.7"/>
-            <circle cx="${x-24}" cy="${y-17.5}" r="1.9" fill="#f4c44d"/>
+            <!-- gilded eave trim, and a shingled porch canopy over the door -->
+            ${_ln([x - 36, y - 34], [x, y - 16], '#f4c44d', 1.6)}
+            ${_ln([x, y - 16], [x + 36, y - 34], '#c2912c', 1.6)}
+            <!-- a flight of dressed stone steps down off the plinth -->
+            ${[0, 1, 2].map(i => `
+                ${_pg([[x - 21 - 3 * i, y + 0.5 + 3.9 * i], [x - 7 - 3 * i, y + 7.5 + 3.9 * i], [x - 10 - 3 * i, y + 9 + 3.9 * i], [x - 24 - 3 * i, y + 2 + 3.9 * i]], '#c2cad2', OUTLINE, 0.5)}
+                ${_pg([[x - 24 - 3 * i, y + 2 + 3.9 * i], [x - 10 - 3 * i, y + 9 + 3.9 * i], [x - 10 - 3 * i, y + 11.4 + 3.9 * i], [x - 24 - 3 * i, y + 4.4 + 3.9 * i]], '#8b95a0', OUTLINE, 0.5)}
+                ${_ln([x - 24 - 3 * i, y + 2 + 3.9 * i], [x - 10 - 3 * i, y + 9 + 3.9 * i], 'rgba(255,255,255,0.45)', 0.5)}
+            `).join('')}
+            <!-- iron lantern bracket beside the door -->
+            ${_seg([[[x - 3, y - 9], [x - 6.5, y - 10.6]], [[x - 6.5, y - 10.6], [x - 6.5, y - 8]]], '#3f434a', 0.9)}
+            <path d="M ${x - 8.4} ${y - 8} l 3.8 0 l 0.8 4.6 l -5.4 0 Z" fill="#2a1a0e"/>
+            <rect x="${x - 7.6}" y="${y - 7.4}" width="2.6" height="3.4" fill="#ffd773">
+                <animate attributeName="opacity" values="0.6;1;0.6" dur="2.2s" repeatCount="indefinite"/>
+            </rect>
         ` : ''}
         ${lvl >= 7 ? `
-            <polygon points="${x-45},${y-4} ${x-39},${y-7} ${x-33},${y-4} ${x-33},${y+13} ${x-39},${y+16} ${x-45},${y+13}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.8"/>
-            <polygon points="${x-45},${y-4} ${x-39},${y-7} ${x-39},${y+16} ${x-45},${y+13}" fill="#b6bec5"/>
-            <polygon points="${x-47},${y-5} ${x-31},${y-5} ${x-39},${y-20}" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.8"/>
-            <polygon points="${x+33},${y-4} ${x+39},${y-7} ${x+45},${y-4} ${x+45},${y+13} ${x+39},${y+16} ${x+33},${y+13}" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.8"/>
-            <polygon points="${x+33},${y-4} ${x+39},${y-7} ${x+39},${y+16} ${x+33},${y+13}" fill="#9aa3ab"/>
-            <polygon points="${x+31},${y-5} ${x+47},${y-5} ${x+39},${y-20}" fill="#c2912c" stroke="#2a1a0e" stroke-width="0.8"/>
+            <!-- flanking stone turrets, coursed and shingled like the hall -->
+            ${[[-38, 1], [38, -1]].map(([dx, sd]) => `
+                ${STONEWORK([x + dx - 6, y - 15], [x + dx, y - 12], [x + dx, y + 9], [x + dx - 6, y + 6], 3, 6, sd > 0 ? '#c2cad2' : '#a2abb5', '#77818d', 41 + dx)}
+                ${STONEWORK([x + dx, y - 12], [x + dx + 6, y - 15], [x + dx + 6, y + 6], [x + dx, y + 9], 3, 6, sd > 0 ? '#8b95a0' : '#79838f', '#4f5865', 53 + dx)}
+                ${_pg([[x + dx - 6, y - 15], [x + dx, y - 18], [x + dx + 6, y - 15], [x + dx, y - 12]], '#9aa3ab', OUTLINE, 0.7)}
+                ${SHINGLES([x + dx, y - 36], [x + dx, y - 36], [x + dx, y - 13], [x + dx - 8, y - 17], 5, 5.5, '#ffe08a', '#c08d28', 61)}
+                ${SHINGLES([x + dx, y - 36], [x + dx, y - 36], [x + dx + 8, y - 17], [x + dx, y - 13], 5, 5.5, '#cfa03a', '#8a641a', 67)}
+                ${_ln([x + dx, y - 36], [x + dx, y - 13], '#ffeaa8', 1.4)}
+                <circle cx="${x + dx}" cy="${y - 37}" r="1.6" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.6"/>
+                ${ISO_WIN(x + dx - 3, y + 1, 0.5, 4.5, 6, {})}
+            `).join('')}
             <g class="sparkle-fx">
                 <polygon points="${x-12},${y-52} ${x-10.5},${y-48.5} ${x-12},${y-45} ${x-13.5},${y-48.5}" fill="#fff3c4"/>
                 <polygon points="${x+13},${y-44} ${x+14.5},${y-41} ${x+13},${y-38} ${x+11.5},${y-41}" fill="#fff3c4" style="animation-delay:.6s"/>
@@ -505,44 +806,50 @@ const BUILDING_RENDERERS = {
 
     lumbermill: (x, y, lvl) => `
         ${SHADOW(x, y, 42)}
-        <!-- timber cabin walls (iso box) -->
-        <polygon points="${x-30},${y-15} ${x},${y-30} ${x+30},${y-15} ${x},${y}" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x-30},${y-15} ${x},${y} ${x},${y+18} ${x-30},${y+3}" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x+30},${y-15} ${x},${y} ${x},${y+18} ${x+30},${y+3}" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.9"/>
-        <!-- log courses -->
-        ${[5, 10, 15].map(d => `
-            <line x1="${x-30}" y1="${y-15+d}" x2="${x}" y2="${y+d}" stroke="#6f4722" stroke-width="0.6"/>
-            <line x1="${x}" y1="${y+d}" x2="${x+30}" y2="${y-15+d}" stroke="#54371a" stroke-width="0.6"/>
-        `).join('')}
-        <line x1="${x-30}" y1="${y-15}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
-        <!-- door on lit face + lit window on shaded face -->
-        <path d="M ${x-20} ${y+7} L ${x-20} ${y-5} Q ${x-15.5} ${y-9.5} ${x-11} ${y-9.5+5} L ${x-11} ${y+11.5} Z" fill="#4a2e16" stroke="#2a1a0e" stroke-width="0.8"/>
-        <path d="M ${x-18.6} ${y+6} L ${x-18.6} ${y-4.2} Q ${x-15.5} ${y-7.4} ${x-12.4} ${y-3.2} L ${x-12.4} ${y+9.8} Z" fill="#7a4e24"/>
-        <circle cx="${x-13.8}" cy="${y+2.5}" r="0.8" fill="#f4c44d"/>
-        ${LIT_WINDOW(x + 12, y - 5, 6, 7)}
-        <!-- thatch pyramid roof -->
-        <polygon points="${x-36},${y-15} ${x},${y-46} ${x},${y+2}" fill="#e6bc63" stroke="#2a1a0e" stroke-width="1"/>
-        <polygon points="${x+36},${y-15} ${x},${y-46} ${x},${y+2}" fill="#b98a35" stroke="#2a1a0e" stroke-width="1"/>
-        <path d="M ${x-26} ${y-24} L ${x} ${y-10}" stroke="#c9a047" stroke-width="0.7"/>
-        <path d="M ${x-16} ${y-32} L ${x} ${y-23}" stroke="#c9a047" stroke-width="0.7"/>
-        <path d="M ${x-7} ${y-39} L ${x} ${y-35}" stroke="#c9a047" stroke-width="0.7"/>
-        <path d="M ${x+26} ${y-24} L ${x} ${y-10}" stroke="#9c732c" stroke-width="0.7"/>
-        <path d="M ${x+16} ${y-32} L ${x} ${y-23}" stroke="#9c732c" stroke-width="0.7"/>
-        <line x1="${x}" y1="${y-46}" x2="${x}" y2="${y+2}" stroke="rgba(255,246,214,0.5)" stroke-width="0.9"/>
-        <!-- ragged thatch fringe -->
-        ${[-32, -22, -12].map(d => `<path d="M ${x+d} ${y-15+(-d-30)*-0.5} q 1.5 3 3 0" stroke="#b98a35" stroke-width="0.8" fill="none"/>`).join('')}
-        <!-- stone chimney + hearth smoke -->
-        <rect x="${x-19}" y="${y-42}" width="6" height="15" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.7"/>
-        <rect x="${x-19}" y="${y-42}" width="2.4" height="15" fill="#b6bec5"/>
-        <rect x="${x-20.5}" y="${y-44}" width="9" height="3" rx="1" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.6"/>
-        ${SMOKE(x - 16, y - 48)}
-        <!-- sawing trestle with spinning blade -->
-        <line x1="${x+22}" y1="${y+16}" x2="${x+27}" y2="${y+8}" stroke="#6b4520" stroke-width="1.6"/>
-        <line x1="${x+32}" y1="${y+16}" x2="${x+27}" y2="${y+8}" stroke="#54371a" stroke-width="1.6"/>
-        <rect x="${x+16}" y="${y+5.5}" width="24" height="5" rx="2.5" fill="#a8763f" stroke="#2a1a0e" stroke-width="0.8"/>
-        <rect x="${x+16}" y="${y+5.5}" width="24" height="1.8" rx="0.9" fill="#c99a5e"/>
-        <circle cx="${x+40}" cy="${y+8}" r="2.5" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.6"/>
-        <circle cx="${x+40}" cy="${y+8}" r="1.1" fill="#54371a"/>
+        ${WORN_PATH(x - 17, y + 13, 12)}
+        <!-- log cabin: round courses on a stone footing -->
+        ${_pg([[x - 30, y - 32], [x, y - 47], [x + 30, y - 32], [x, y - 17]], '#7a5228', OUTLINE, 0.9)}
+        ${LOGS([x - 30, y - 32], [x, y - 17], [x, y + 8], [x - 30, y - 7], 6, '#b07a3c', '#7c4f22', 6)}
+        ${LOGS([x, y - 17], [x + 30, y - 32], [x + 30, y - 7], [x, y + 8], 6, '#875828', '#563715', 9)}
+        ${FOOTING([x - 30, y - 7], [x, y + 8], 6, '#b9c1c9', '#828c97')}
+        ${FOOTING([x, y + 8], [x + 30, y - 7], 6, '#8b95a0', '#5d6673')}
+        ${DAMP([x - 30, y - 7], [x, y + 8], 3.5)}
+        ${RIM([x - 30, y - 32], [x, y - 17])}
+        <!-- notched log ends poking past the corner post, alternating course by course -->
+        ${[0, 1, 2, 3, 4, 5].map(i => {
+            const ly = y + 8 - 25 * (i + 0.5) / 6;
+            return i % 2
+                ? `<ellipse cx="${x - 4.2}" cy="${_f(ly + 2.1)}" rx="2.4" ry="1.9" fill="#c99a5e" stroke="${OUTLINE}" stroke-width="0.55"/><ellipse cx="${x - 4.2}" cy="${_f(ly + 2.1)}" rx="1" ry="0.8" fill="#8a5a2b"/>`
+                : `<ellipse cx="${x + 4.2}" cy="${_f(ly + 2.1)}" rx="2.4" ry="1.9" fill="#a8763f" stroke="${OUTLINE}" stroke-width="0.55"/><ellipse cx="${x + 4.2}" cy="${_f(ly + 2.1)}" rx="1" ry="0.8" fill="#6b4520"/>`;
+        }).join('')}
+        <!-- doorway and windows, cut back into the log wall -->
+        ${ISO_DOOR(x - 13.5, y + 1.25, 0.5, 13, 15, { wood: '#7a4e24', arch: 3 })}
+        ${ISO_WIN(x - 25, y - 9, 0.5, 6, 7, {})}
+        ${ISO_WIN(x + 16, y - 8, -0.5, 6, 7, { shutter: true })}
+        ${EAVE_SHADOW([x - 30, y - 32], [x, y - 17], [x, y + 8], [x - 30, y - 7], 0.13)}
+        ${EAVE_SHADOW([x, y - 17], [x + 30, y - 32], [x + 30, y - 7], [x, y + 8], 0.13)}
+        <!-- thatch: strands down the slope, ragged at the eave, 6px overhang -->
+        ${THATCH([x, y - 56], [x, y - 56], [x, y - 13], [x - 36, y - 31], 26, '#f0cf7c', '#a87c2c', 7)}
+        ${THATCH([x, y - 56], [x, y - 56], [x + 36, y - 31], [x, y - 13], 24, '#c39a3e', '#7e5c18', 11)}
+        <!-- turf ridge cap and the moss that always creeps up a thatch valley -->
+        ${_ln([x, y - 56], [x, y - 13], '#c8a24a', 2.2)}
+        ${_ln([x - 0.9, y - 54], [x - 0.9, y - 16], 'rgba(255,246,214,0.5)', 0.8)}
+        ${_seg([[[x, y - 56], [x - 36, y - 31]], [[x, y - 56], [x + 36, y - 31]]], '#a87c2c', 1.6)}
+        ${MOSS(x - 9, y - 19, 3, 13, '#6f8a3e')}
+        ${MOSS(x + 7, y - 18, 2, 21, '#75903f')}
+        <!-- stone chimney, coursed, with its own weathered cap -->
+        ${STONEWORK([x - 21, y - 47], [x - 16.5, y - 44.8], [x - 16.5, y - 27], [x - 21, y - 29.2], 4, 5, '#a9b2bb', '#79838f', 27)}
+        ${STONEWORK([x - 16.5, y - 44.8], [x - 12, y - 47], [x - 12, y - 29.2], [x - 16.5, y - 27], 4, 5, '#79838f', '#535c68', 31)}
+        ${_pg([[x - 22, y - 47], [x - 16.5, y - 49.8], [x - 11, y - 47], [x - 16.5, y - 44.2]], '#6d7681', OUTLINE, 0.7)}
+        ${_ln([x - 22, y - 47], [x - 16.5, y - 44.2], 'rgba(255,255,255,0.4)', 0.6)}
+        ${MOSS(x - 18, y - 30, 2, 17)}
+        ${SMOKE(x - 16.5, y - 52)}
+        <!-- sawing trestle with its spinning blade -->
+        ${_seg([[[x + 22, y + 16], [x + 27, y + 8]], [[x + 32, y + 16], [x + 27, y + 8]]], '#6b4520', 1.7)}
+        ${PLANKS([x + 16, y + 5], [x + 40, y + 5], [x + 40, y + 10.5], [x + 16, y + 10.5], 2, '#c99a5e', '#8a5a2b', 3)}
+        ${_pg([[x + 16, y + 5], [x + 40, y + 5], [x + 40, y + 10.5], [x + 16, y + 10.5]], 'none', OUTLINE, 0.7)}
+        <circle cx="${x + 40}" cy="${y + 8}" r="2.5" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.6"/>
+        <circle cx="${x + 40}" cy="${y + 8}" r="1.1" fill="#54371a"/>
         <g transform="translate(${x + 27}, ${y + 2})">
             <g class="sawblade">
                 ${Array.from({length: 8}, (_, i) => {
@@ -556,101 +863,151 @@ const BUILDING_RENDERERS = {
                 <circle r="1.4" fill="#2a1a0e"/>
             </g>
         </g>
-        <!-- log pile with fresh-cut ends -->
-        <g>
-            <rect x="${x-42}" y="${y+8}" width="20" height="5" rx="2.5" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.7"/>
-            <rect x="${x-40}" y="${y+3}" width="20" height="5" rx="2.5" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.7"/>
-            <rect x="${x-38}" y="${y-2}" width="19" height="5" rx="2.5" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.7"/>
-            <circle cx="${x-40}" cy="${y+10.5}" r="2.4" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.6"/>
-            <circle cx="${x-38}" cy="${y+5.5}" r="2.4" fill="#e0b45c" stroke="#2a1a0e" stroke-width="0.6"/>
-            <circle cx="${x-36}" cy="${y+0.5}" r="2.4" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.6"/>
-            <circle cx="${x-40}" cy="${y+10.5}" r="1" fill="#a8763f"/>
-            <circle cx="${x-38}" cy="${y+5.5}" r="1" fill="#a8763f"/>
-            <circle cx="${x-36}" cy="${y+0.5}" r="1" fill="#a8763f"/>
-        </g>
+        <ellipse cx="${x + 27}" cy="${y + 13}" rx="8" ry="2.6" fill="#d9c08a" opacity="0.5"/>
+        <!-- stacked timber, end grain showing its rings -->
+        ${[[-41, 11.5], [-39, 6], [-37, 0.5]].map(([dx, dy], i) => `
+            ${_pg([[x + dx, y + dy - 2.4], [x + dx + 20, y + dy - 2.4], [x + dx + 20, y + dy + 2.4], [x + dx, y + dy + 2.4]], i % 2 ? '#9a6a35' : '#a8763f', OUTLINE, 0.6)}
+            ${_ln([x + dx, y + dy - 1.5], [x + dx + 20, y + dy - 1.5], 'rgba(255,255,255,0.28)', 0.7)}
+            <ellipse cx="${x + dx}" cy="${y + dy}" rx="2.5" ry="2.5" fill="#e0b45c" stroke="#2a1a0e" stroke-width="0.6"/>
+            <circle cx="${x + dx}" cy="${y + dy}" r="1.5" fill="none" stroke="#c08d3e" stroke-width="0.5"/>
+            <circle cx="${x + dx}" cy="${y + dy}" r="0.6" fill="#a8763f"/>
+        `).join('')}
+        <!-- chopping block with the axe left in it -->
+        ${_pg([[x - 14, y + 14], [x - 6, y + 14], [x - 6, y + 20], [x - 14, y + 20]], '#8a5a2b', OUTLINE, 0.6)}
+        <ellipse cx="${x - 10}" cy="${y + 14}" rx="4" ry="1.8" fill="#c99a5e" stroke="#2a1a0e" stroke-width="0.5"/>
+        ${_ln([x - 10, y + 13], [x - 5, y + 4], '#8a5a2b', 1.5)}
+        <path d="M ${x - 6.5} ${y + 4.5} q 3.6 -1.4 4.4 2.4 l -4.6 1.4 Z" fill="#aeb8c4" stroke="#2a1a0e" stroke-width="0.5"/>
         ${lvl >= 4 ? `
-            ${FLAG(x - 34, y - 6, '#2c5aa0')}
-            <rect x="${x+12}" y="${y+12}" width="14" height="4" rx="2" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.6"/>
-            <circle cx="${x+13.5}" cy="${y+14}" r="1.9" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.5"/>
+            ${FLAG(x - 41, y + 3, '#2c5aa0')}
+            <!-- a second saw bench and a fresh pile of offcuts -->
+            ${_pg([[x + 10, y + 13], [x + 26, y + 13], [x + 26, y + 17], [x + 10, y + 17]], '#9a6a35', OUTLINE, 0.6)}
+            ${_ln([x + 10, y + 13.8], [x + 26, y + 13.8], 'rgba(255,255,255,0.25)', 0.6)}
+            <ellipse cx="${x + 10}" cy="${y + 15}" rx="2" ry="2" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.5"/>
+            ${_seg([[[x + 13, y + 19], [x + 18, y + 17.5]], [[x + 16, y + 20], [x + 21, y + 18.6]]], '#c99a5e', 1.1)}
         ` : ''}
         ${lvl >= 7 ? `
-            <line x1="${x-36}" y1="${y-15}" x2="${x}" y2="${y+2}" stroke="#f4c44d" stroke-width="1.6"/>
-            <line x1="${x}" y1="${y+2}" x2="${x+36}" y2="${y-15}" stroke="#c2912c" stroke-width="1.6"/>
-            ${LIT_WINDOW(x - 3.2, y - 34, 6.5, 7)}
+            <!-- gilded barge boards, a finial, and a lantern by the door -->
+            ${_seg([[[x - 36, y - 31], [x, y - 13]], [[x, y - 13], [x + 36, y - 31]]], '#f4c44d', 1.6)}
+            <circle cx="${x}" cy="${y - 57.5}" r="2" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.6"/>
+            ${_seg([[[x - 5.5, y - 12.5], [x - 9, y - 14.2]], [[x - 9, y - 14.2], [x - 9, y - 11.6]]], '#3f434a', 0.9)}
+            <path d="M ${x - 10.9} ${y - 11.6} l 3.8 0 l 0.8 4.6 l -5.4 0 Z" fill="#2a1a0e"/>
+            <rect x="${x - 10.1}" y="${y - 11}" width="2.6" height="3.4" fill="#ffd773">
+                <animate attributeName="opacity" values="0.6;1;0.6" dur="2.2s" repeatCount="indefinite"/>
+            </rect>
+            ${ISO_WIN(x + 26, y - 12, -0.5, 5.5, 6.5, {})}
         ` : ''}
     `,
 
     farm: (x, y, lvl) => `
         ${SHADOW(x, y, 44)}
-        <!-- tilled field (iso diamond) -->
-        <polygon points="${x-44},${y-2} ${x-8},${y-20} ${x+34},${y-6} ${x-2},${y+18}" fill="#7a5230" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x-44},${y-2} ${x-8},${y-20} ${x-5},${y-18.8} ${x-41},${y-0.8}" fill="#8d6238"/>
-        <!-- furrow rows of ripe wheat -->
-        ${[0, 1, 2, 3, 4].map(i => `
-            <line x1="${x - 38 + i * 7.4}" y1="${y - 2.5 + i * 3.4}" x2="${x - 5 + i * 7}" y2="${y - 17 + i * 2.6}" stroke="#4f3115" stroke-width="2.6" opacity="0.55"/>
-            <line x1="${x - 38 + i * 7.4}" y1="${y - 3.5 + i * 3.4}" x2="${x - 5 + i * 7}" y2="${y - 18 + i * 2.6}" stroke="#d9a94a" stroke-width="2.2"/>
-            <line x1="${x - 38 + i * 7.4}" y1="${y - 4.3 + i * 3.4}" x2="${x - 5 + i * 7}" y2="${y - 18.8 + i * 2.6}" stroke="#eec86a" stroke-width="1"/>
-        `).join('')}
-        <!-- swaying wheat tufts -->
-        ${[[-33, -3], [-22, 4], [-12, -6], [-1, 1], [8, -8], [12, 5]].map(([dx, dy], i) => `
-            <g class="flag-wave" style="animation-delay:${i * 0.3}s">
-                <path d="M ${x + dx} ${y + dy} q -1 -4 0.5 -6.5" stroke="#c9973c" stroke-width="0.9" fill="none"/>
-                <ellipse cx="${x + dx + 0.6}" cy="${y + dy - 7}" rx="1.3" ry="2.4" fill="#eec86a" stroke="#a8791f" stroke-width="0.4"/>
+        <!-- tilled field: a true iso rhombus, worked into ridge and furrow -->
+        ${PLANKS([x - 13, y - 13.5], [x + 23, y + 4.5], [x - 3, y + 17.5], [x - 39, y - 0.5], 7, '#96683c', '#4a2d12', 3)}
+        ${_pg([[x - 13, y - 13.5], [x + 23, y + 4.5], [x - 3, y + 17.5], [x - 39, y - 0.5]], 'none', OUTLINE, 0.8)}
+        <!-- ripe wheat: individual stalks, not a fill -->
+        ${(() => {
+            const A = [x - 13, y - 13.5], B = [x + 23, y + 4.5], C = [x - 3, y + 17.5], D = [x - 39, y - 0.5];
+            const stem = [], head = [], wash = [];
+            for (let i = 0; i < 7; i++) {
+                const v = (i + 0.45) / 7;
+                wash.push([_Q(A, B, C, D, 0.03, v), _Q(A, B, C, D, 0.97, v)]);
+                for (let j = 0; j < 19; j++) {
+                    const r = _rr(i * 11.3 + j * 3.7);
+                    const p = _Q(A, B, C, D, (j + 0.25 + r * 0.5) / 19, v);
+                    const h = 4.2 + r * 1.6;
+                    const t = [p[0] + (r - 0.5) * 1.1, p[1] - h];
+                    stem.push([p, t]);
+                    head.push([[t[0] - (r - 0.5) * 0.25, t[1] + 1.7], [t[0], t[1]]]);
+                }
+            }
+            return _seg(wash.map(w => [[w[0][0], w[0][1] - 2.4], [w[1][0], w[1][1] - 2.4]]), '#b98f2e', 3.4, 'opacity="0.55"')
+                + _seg(stem, '#9a7a24', 0.5) + _seg(head, '#e8c765', 0.9);
+        })()}
+        <!-- individual heads catching the breeze -->
+        ${[[-30, 2], [-21, 7], [-11, 12], [-24, -4], [-14, 1], [-4, 6], [2, -2], [8, 3]].map(([dx, dy], i) => `
+            <g class="flag-wave" style="animation-delay:${(i * 0.27).toFixed(2)}s">
+                <path d="M ${x + dx} ${y + dy} q -0.9 -3.6 0.5 -6" stroke="#a8791f" stroke-width="0.6" fill="none"/>
+                <ellipse cx="${x + dx + 0.6}" cy="${y + dy - 6.8}" rx="0.9" ry="1.9" fill="#eec86a" stroke="#a8791f" stroke-width="0.35"/>
             </g>
         `).join('')}
-        <!-- red barn (iso) -->
-        <polygon points="${x+8},${y-24} ${x+24},${y-32} ${x+40},${y-24} ${x+24},${y-16}" fill="#c4523e" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x+8},${y-24} ${x+24},${y-16} ${x+24},${y+8} ${x+8},${y}" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x+40},${y-24} ${x+24},${y-16} ${x+24},${y+8} ${x+40},${y}" fill="#8c2f20" stroke="#2a1a0e" stroke-width="0.9"/>
-        ${[3, 8, 13, 18].map(d => `
-            <line x1="${x+10}" y1="${y-23+d}" x2="${x+22}" y2="${y-17+d}" stroke="#8c2f20" stroke-width="0.5" opacity="0.7"/>
-            <line x1="${x+26}" y1="${y-17+d}" x2="${x+38}" y2="${y-23+d}" stroke="#6e2317" stroke-width="0.5" opacity="0.7"/>
-        `).join('')}
-        <!-- barn gambrel roof -->
-        <polygon points="${x+4},${y-22} ${x+24},${y-44} ${x+24},${y-14}" fill="#f0e6d2" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x+44},${y-22} ${x+24},${y-44} ${x+24},${y-14}" fill="#cbb896" stroke="#2a1a0e" stroke-width="0.9"/>
-        <line x1="${x+24}" y1="${y-44}" x2="${x+24}" y2="${y-14}" stroke="rgba(255,255,255,0.55)" stroke-width="1"/>
-        <path d="M ${x+11} ${y-25} L ${x+24} ${y-19}" stroke="#d9cbb0" stroke-width="0.6"/>
-        <path d="M ${x+16} ${y-32} L ${x+24} ${y-28}" stroke="#d9cbb0" stroke-width="0.6"/>
-        <path d="M ${x+37} ${y-25} L ${x+24} ${y-19}" stroke="#b5a184" stroke-width="0.6"/>
-        <!-- white-trim barn door + hayloft -->
-        <path d="M ${x+11} ${y-3} L ${x+11} ${y-15} L ${x+21} ${y-10} L ${x+21} ${y+2} Z" fill="#4a2e16" stroke="#f0e6d2" stroke-width="1"/>
-        <line x1="${x+11}" y1="${y-15}" x2="${x+21}" y2="${y+2}" stroke="#f0e6d2" stroke-width="0.8"/>
-        <line x1="${x+11}" y1="${y-3}" x2="${x+21}" y2="${y-10}" stroke="#f0e6d2" stroke-width="0.8"/>
-        <circle cx="${x+31.5}" cy="${y-9}" r="3.4" fill="#4a2e16" stroke="#f0e6d2" stroke-width="1"/>
-        <circle cx="${x+31.5}" cy="${y-9}" r="1.4" fill="#eec86a"/>
-        <!-- fence with gate, front depth plane -->
-        ${[[-42, 2], [-33, 6.5], [-24, 11], [-15, 15.5]].map(([dx, dy]) => `
-            <line x1="${x + dx}" y1="${y + dy}" x2="${x + dx}" y2="${y + dy - 8}" stroke="#8a5a2b" stroke-width="1.6"/>
-            <line x1="${x + dx - 0.5}" y1="${y + dy - 8}" x2="${x + dx - 0.5}" y2="${y + dy - 4}" stroke="#a8763f" stroke-width="0.6"/>
-        `).join('')}
-        <line x1="${x-42}" y1="${y-3.5}" x2="${x-15}" y2="${y+10}" stroke="#8a5a2b" stroke-width="1.3"/>
-        <line x1="${x-42}" y1="${y-0.5}" x2="${x-15}" y2="${y+13}" stroke="#6b4520" stroke-width="1.3"/>
-        <!-- scarecrow -->
-        <line x1="${x - 26}" y1="${y - 8}" x2="${x - 26}" y2="${y - 24}" stroke="#6b4520" stroke-width="1.4"/>
-        <line x1="${x - 32}" y1="${y - 19}" x2="${x - 20}" y2="${y - 19}" stroke="#6b4520" stroke-width="1.2"/>
-        <rect x="${x-29}" y="${y-20.5}" width="6" height="6" rx="1.5" fill="#2c5aa0" stroke="#1d3c6e" stroke-width="0.5"/>
-        <circle cx="${x - 26}" cy="${y - 24}" r="2.6" fill="#eec86a" stroke="#2a1a0e" stroke-width="0.5"/>
-        <polygon points="${x-31},${y-25.5} ${x-21},${y-25.5} ${x-26},${y-30}" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.5"/>
-        <!-- crow that hops on the scarecrow -->
+        <!-- post-and-rail fence along the near edge of the field -->
+        ${_seg([0.12, 0.36, 0.6, 0.84].map(t => [[x - 39 + 36 * t, y + 1 + 18 * t], [x - 39 + 36 * t, y - 8 + 18 * t]]), '#6b4520', 1.9)}
+        ${_seg([0.12, 0.36, 0.6, 0.84].map(t => [[x - 39.6 + 36 * t, y - 7.5 + 18 * t], [x - 39.6 + 36 * t, y - 3.5 + 18 * t]]), '#a8763f', 0.7)}
+        ${_seg([[[x - 35, y - 4.5], [x - 8, y + 9]], [[x - 35, y - 1], [x - 8, y + 12.5]]], '#8a5a2b', 1.4)}
+        ${_seg([[[x - 35, y - 5.1], [x - 8, y + 8.4]]], '#c99a5e', 0.5)}
+        <!-- scarecrow on a leaning post -->
+        ${_ln([x - 22, y - 1], [x - 21.4, y - 17], '#6b4520', 1.5)}
+        ${_ln([x - 27, y - 12.5], [x - 15.5, y - 12.5], '#6b4520', 1.2)}
+        ${_pg([[x - 24.6, y - 14.2], [x - 18.4, y - 14.2], [x - 18.8, y - 7.6], [x - 24.2, y - 7.6]], '#2c5aa0', '#1d3c6e', 0.5)}
+        ${_seg([[[x - 24.6, y - 13.4], [x - 18.4, y - 13.4]]], 'rgba(255,255,255,0.3)', 0.5)}
+        ${_seg([[[x - 26.4, y - 12.2], [x - 27.6, y - 9.6]], [[x - 15.8, y - 12.2], [x - 14.8, y - 9.4]]], '#d9a94a', 0.9)}
+        <circle cx="${x - 21.5}" cy="${y - 17.6}" r="2.7" fill="#eec86a" stroke="#2a1a0e" stroke-width="0.5"/>
+        ${_pg([[x - 26.5, y - 19.2], [x - 16.5, y - 19.2], [x - 21.5, y - 23.6]], '#c9973c', OUTLINE, 0.5)}
+        ${_pg([[x - 26.5, y - 19.2], [x - 21.5, y - 23.6], [x - 21.5, y - 19.2]], '#e0b45c')}
         <g class="smoke-puff" style="animation-delay:.8s">
-            <ellipse cx="${x-32.5}" cy="${y-20.5}" rx="1.8" ry="1.2" fill="#2a1a0e"/>
-            <circle cx="${x-34}" cy="${y-21.6}" r="0.9" fill="#2a1a0e"/>
-            <polygon points="${x-34.8},${y-21.6} ${x-36},${y-21.3} ${x-34.8},${y-21}" fill="#d9a94a"/>
+            <ellipse cx="${x - 28}" cy="${y - 13.6}" rx="1.8" ry="1.2" fill="#2a1a0e"/>
+            <circle cx="${x - 29.5}" cy="${y - 14.7}" r="0.9" fill="#2a1a0e"/>
+            <polygon points="${x-30.3},${y-14.7} ${x-31.5},${y-14.4} ${x-30.3},${y-14.1}" fill="#d9a94a"/>
         </g>
+        <!-- BARN: board-and-batten over a stone footing, gable to the front-right -->
+        ${WORN_PATH(x + 9, y + 6, 11)}
+        ${_pg([[x + 5, y - 32.5], [x + 22, y - 41], [x + 39, y - 32.5], [x + 22, y - 24]], '#8c2f20', OUTLINE, 0.8)}
+        ${PLANKS([x + 5, y - 32.5], [x + 5, y - 6.5], [x + 22, y + 2], [x + 22, y - 24], 9, '#cf5b44', '#9a3524', 12)}
+        ${PLANKS([x + 22, y - 24], [x + 22, y + 2], [x + 39, y - 6.5], [x + 39, y - 32.5], 9, '#9c3524', '#6e2317', 15)}
+        ${FOOTING([x + 5, y - 6.5], [x + 22, y + 2], 5, '#b9c1c9', '#828c97')}
+        ${FOOTING([x + 22, y + 2], [x + 39, y - 6.5], 5, '#8b95a0', '#5d6673')}
+        ${DAMP([x + 5, y - 6.5], [x + 22, y + 2], 3)}
+        <!-- white corner boards and plate trim, the way barns are finished -->
+        ${_seg([[[x + 5, y - 32.5], [x + 5, y - 6.5]], [[x + 22, y - 24], [x + 22, y + 2]], [[x + 5, y - 32.5], [x + 22, y - 24]]], '#f2ece0', 1.7)}
+        ${_seg([[[x + 39, y - 32.5], [x + 39, y - 6.5]], [[x + 22, y - 24], [x + 39, y - 32.5]]], '#cfc7b6', 1.6)}
+        <!-- big braced barn door, 17px tall, hung on a sliding track -->
+        ${ISO_DOOR(x + 13.5, y - 2.25, 0.5, 15, 17, { wood: '#7a4e24', dark: '#f2ece0', arch: 0 })}
+        ${_ln([x + 4, y - 27.5], [x + 23, y - 18], '#4f5663', 1.2)}
+        ${ISO_WIN(x + 31.5, y - 11, -0.5, 6, 7, {})}
+        ${EAVE_SHADOW([x + 5, y - 32.5], [x + 22, y - 24], [x + 22, y + 2], [x + 5, y - 6.5], 0.12)}
+        <!-- gable end: boarded, with a hayloft door and its hoist beam -->
+        ${_pg([[x + 22, y - 24], [x + 39, y - 32.5], [x + 30.5, y - 41.25]], '#a83c28', OUTLINE, 0.8)}
+        ${_seg([0.2, 0.35, 0.5, 0.65, 0.8].map(t => {
+            const bx = x + 22 + 17 * t, by = y - 24 - 8.5 * t;
+            const ty = t < 0.5 ? (y - 24) + ((y - 41.25) - (y - 24)) * (t / 0.5) : (y - 41.25) + ((y - 32.5) - (y - 41.25)) * ((t - 0.5) / 0.5);
+            return [[bx, by], [bx, ty]];
+        }), '#7e2718', 0.55)}
+        ${ISO_DOOR(x + 30.5, y - 28.5, -0.5, 9, 8, { wood: '#6e4a24', dark: '#f2ece0', arch: 0 })}
+        ${_ln([x + 30.5, y - 42], [x + 36.5, y - 39], '#6b4520', 1.7)}
+        ${_ln([x + 36.1, y - 39.2], [x + 36.1, y - 34], '#4a4438', 0.6)}
+        <path d="M ${x + 33.7} ${y - 34} q 2.4 -2.4 4.8 0 q 1 3.8 -2.4 4.8 q -3.4 -1 -2.4 -4.8 Z" fill="#d9cbb0" stroke="#2a1a0e" stroke-width="0.6"/>
+        <!-- shingled roof plane: ridge and eave both on the iso grid -->
+        ${SHINGLES([x + 10.1, y - 51.4], [x + 33.9, y - 39.6], [x + 22.7, y - 19.8], [x - 1.1, y - 31.7], 7, 7, '#ded5c4', '#8b8275', 44)}
+        ${_pg([[x - 1.1, y - 31.7], [x + 22.7, y - 19.8], [x + 22.7, y - 17.4], [x - 1.1, y - 29.3]], '#8a5a2b', OUTLINE, 0.7)}
+        ${_ln([x - 1.1, y - 31.7], [x + 22.7, y - 19.8], 'rgba(255,255,255,0.5)', 0.6)}
+        ${_ln([x + 10.1, y - 51.4], [x + 33.9, y - 39.6], '#f7f2e8', 2)}
+        ${_ln([x + 10.1, y - 52.3], [x + 33.9, y - 40.5], 'rgba(255,255,255,0.55)', 0.6)}
+        ${_ln([x + 33.9, y - 39.6], [x + 22.7, y - 19.8], '#f2ece0', 1.6)}
+        ${MOSS(x + 5, y - 29, 3, 6, '#75903f')}
         ${lvl >= 4 ? `
+            <!-- hen scratching at the barn door -->
             <ellipse cx="${x - 7}" cy="${y + 12}" rx="5" ry="3.4" fill="#f5f2ea" stroke="#2a1a0e" stroke-width="0.6"/>
             <ellipse cx="${x - 6}" cy="${y + 10.5}" rx="3.4" ry="2" fill="#fff" opacity="0.8"/>
-            <circle cx="${x - 11.5}" cy="${y + 10}" r="2" fill="#3a3328" stroke="#2a1a0e" stroke-width="0.4"/>
-            <circle cx="${x - 12.2}" cy="${y + 9.6}" r="0.4" fill="#fff"/>
-            <line x1="${x - 9}" y1="${y + 15}" x2="${x - 9}" y2="${y + 17}" stroke="#2a1a0e" stroke-width="0.8"/>
-            <line x1="${x - 5}" y1="${y + 15}" x2="${x - 5}" y2="${y + 17}" stroke="#2a1a0e" stroke-width="0.8"/>
+            <circle cx="${x - 11.5}" cy="${y + 10}" r="2" fill="#f5f2ea" stroke="#2a1a0e" stroke-width="0.4"/>
+            <path d="M ${x - 12.4} ${y + 8.2} q 1 -1.8 2 0" fill="#b3402e" stroke="#b3402e" stroke-width="0.5"/>
+            <polygon points="${x-13.4},${y+10} ${x-15},${y+10.5} ${x-13.4},${y+11}" fill="#d9a94a"/>
+            <circle cx="${x - 12.2}" cy="${y + 9.6}" r="0.4" fill="#2a1a0e"/>
+            ${_seg([[[x - 9, y + 15], [x - 9, y + 17]], [[x - 5, y + 15], [x - 5, y + 17]]], '#d9a94a', 0.8)}
+            <!-- water butt under the eave -->
+            <path d="M ${x - 4} ${y - 4} q -1.4 4 0 8 q 4.4 2.2 8.8 0 q 1.4 -4 0 -8 q -4.4 -2.2 -8.8 0 Z" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.7"/>
+            <ellipse cx="${x + 0.4}" cy="${y - 4}" rx="4.4" ry="1.7" fill="#3d6cb4" stroke="#2a1a0e" stroke-width="0.5"/>
+            ${_seg([[[x - 4.8, y - 1.6], [x + 5.6, y - 1.6]], [[x - 4.8, y + 1.8], [x + 5.6, y + 1.8]]], '#4f5663', 0.9)}
         ` : ''}
         ${lvl >= 7 ? `
-            <line x1="${x+24}" y1="${y-44}" x2="${x+24}" y2="${y-52}" stroke="#6b4520" stroke-width="1.4"/>
+            <!-- ridge cupola with a turning weather vane -->
+            ${_pg([[x + 18, y - 51], [x + 24, y - 54], [x + 30, y - 51], [x + 24, y - 48]], '#f2ece0', OUTLINE, 0.6)}
+            ${_pg([[x + 18, y - 51], [x + 24, y - 48], [x + 24, y - 41], [x + 18, y - 44]], '#e0d8c8', OUTLINE, 0.6)}
+            ${_pg([[x + 30, y - 51], [x + 24, y - 48], [x + 24, y - 41], [x + 30, y - 44]], '#b8ae9c', OUTLINE, 0.6)}
+            ${SHINGLES([x + 24, y - 62], [x + 24, y - 62], [x + 24, y - 47], [x + 16, y - 51.5], 4, 5, '#d9705a', '#8c2f20', 51)}
+            ${SHINGLES([x + 24, y - 62], [x + 24, y - 62], [x + 32, y - 51.5], [x + 24, y - 47], 4, 5, '#a83c28', '#6e2317', 55)}
+            ${_ln([x + 24, y - 62], [x + 24, y - 67], '#4f5663', 1.3)}
             <g class="sawblade">
-                <g transform="translate(${x+24},${y-52})">
-                    ${[0, 90, 180, 270].map(a => `<polygon points="0,0 ${Math.cos(a * Math.PI / 180) * 9 - Math.sin(a * Math.PI / 180) * 2},${Math.sin(a * Math.PI / 180) * 9 * 0.6 + Math.cos(a * Math.PI / 180) * 2 * 0.6} ${Math.cos(a * Math.PI / 180) * 10 + Math.sin(a * Math.PI / 180) * 2},${Math.sin(a * Math.PI / 180) * 10 * 0.6 - Math.cos(a * Math.PI / 180) * 2 * 0.6}" fill="#f0e6d2" stroke="#2a1a0e" stroke-width="0.5"/>`).join('')}
+                <g transform="translate(${x + 24},${y - 67})">
+                    ${[0, 90, 180, 270].map(a => `<polygon points="0,0 ${Math.cos(a * Math.PI / 180) * 8 - Math.sin(a * Math.PI / 180) * 1.8},${Math.sin(a * Math.PI / 180) * 8 * 0.6 + Math.cos(a * Math.PI / 180) * 1.8 * 0.6} ${Math.cos(a * Math.PI / 180) * 9 + Math.sin(a * Math.PI / 180) * 1.8},${Math.sin(a * Math.PI / 180) * 9 * 0.6 - Math.cos(a * Math.PI / 180) * 1.8 * 0.6}" fill="#f0e6d2" stroke="#2a1a0e" stroke-width="0.5"/>`).join('')}
                     <circle r="1.6" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.5"/>
                 </g>
             </g>
@@ -953,64 +1310,91 @@ const BUILDING_RENDERERS = {
 
     barracks: (x, y, lvl) => `
         ${SHADOW(x, y, 44)}
-        <!-- main hall (iso stone box) -->
-        <polygon points="${x-26},${y-16} ${x},${y-29} ${x+26},${y-16} ${x},${y-3}" fill="#b6bec5" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x-26},${y-16} ${x},${y-3} ${x},${y+15} ${x-26},${y+2}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x+26},${y-16} ${x},${y-3} ${x},${y+15} ${x+26},${y+2}" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.9"/>
-        <line x1="${x-26}" y1="${y-16}" x2="${x}" y2="${y-3}" stroke="rgba(255,255,255,0.45)" stroke-width="0.8"/>
-        <line x1="${x-24}" y1="${y-9}" x2="${x-2}" y2="${y+2}" stroke="#828c96" stroke-width="0.5"/>
-        <line x1="${x-20}" y1="${y-2}" x2="${x-2}" y2="${y+7}" stroke="#828c96" stroke-width="0.5"/>
-        <line x1="${x+2}" y1="${y+2}" x2="${x+24}" y2="${y-9}" stroke="#565f6a" stroke-width="0.5"/>
-        <line x1="${x-13}" y1="${y-9.5}" x2="${x-13}" y2="${y-3.5}" stroke="#828c96" stroke-width="0.5"/>
-        <!-- stone towers, left and right -->
-        <polygon points="${x-42},${y-22} ${x-31},${y-27.5} ${x-20},${y-22} ${x-20},${y+1} ${x-31},${y+6.5} ${x-42},${y+1}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x-42},${y-22} ${x-31},${y-27.5} ${x-31},${y+6.5} ${x-42},${y+1}" fill="#b6bec5"/>
-        <line x1="${x-42}" y1="${y-22}" x2="${x-42}" y2="${y+1}" stroke="rgba(255,255,255,0.4)" stroke-width="0.7"/>
-        <polygon points="${x+20},${y-22} ${x+31},${y-27.5} ${x+42},${y-22} ${x+42},${y+1} ${x+31},${y+6.5} ${x+20},${y+1}" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x+20},${y-22} ${x+31},${y-27.5} ${x+31},${y+6.5} ${x+20},${y+1}" fill="#9aa3ab"/>
-        <polygon points="${x+31},${y-27.5} ${x+42},${y-22} ${x+42},${y+1} ${x+31},${y+6.5}" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.7"/>
-        <!-- tower cone roofs (signature red) -->
-        <path d="M ${x-44} ${y-21} L ${x-31} ${y-44} L ${x-18} ${y-21} Q ${x-24.5} ${y-25.5} ${x-31} ${y-25.5} Q ${x-37.5} ${y-25.5} ${x-44} ${y-21} Z" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.9"/>
-        <path d="M ${x-44} ${y-21} L ${x-31} ${y-44} L ${x-31} ${y-25.5} Q ${x-37.5} ${y-25.5} ${x-44} ${y-21} Z" fill="#cd5a44"/>
-        <path d="M ${x+18} ${y-21} L ${x+31} ${y-44} L ${x+44} ${y-21} Q ${x+37.5} ${y-25.5} ${x+31} ${y-25.5} Q ${x+24.5} ${y-25.5} ${x+18} ${y-21} Z" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.9"/>
-        <path d="M ${x+18} ${y-21} L ${x+31} ${y-44} L ${x+31} ${y-25.5} Q ${x+24.5} ${y-25.5} ${x+18} ${y-21} Z" fill="#8c2f20"/>
-        <!-- roof ridge caps + windows in towers -->
-        ${LIT_WINDOW(x - 34, y - 16, 4.5, 6)}
-        ${LIT_WINDOW(x + 28.5, y - 16, 4.5, 6)}
-        <!-- gable roof over main hall -->
-        <polygon points="${x-28},${y-15} ${x},${y-40} ${x},${y-2}" fill="#cd5a44" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x+28},${y-15} ${x},${y-40} ${x},${y-2}" fill="#8c2f20" stroke="#2a1a0e" stroke-width="0.9"/>
-        <path d="M ${x-19} ${y-21} L ${x} ${y-11}" stroke="#b3402e" stroke-width="0.7"/>
-        <path d="M ${x-10} ${y-30} L ${x} ${y-25}" stroke="#b3402e" stroke-width="0.7"/>
-        <path d="M ${x+19} ${y-21} L ${x} ${y-11}" stroke="#6e2317" stroke-width="0.7"/>
-        <line x1="${x}" y1="${y-40}" x2="${x}" y2="${y-2}" stroke="rgba(255,235,220,0.5)" stroke-width="0.9"/>
-        <!-- arched gate with banner above -->
-        <path d="M ${x - 9} ${y + 10.5} L ${x - 9} ${y - 1} Q ${x - 4.5} ${y - 6.5} ${x} ${y - 2} L ${x} ${y + 15} Z" fill="#4a2e16" stroke="#2a1a0e" stroke-width="0.9"/>
-        <path d="M ${x - 7.6} ${y + 9} L ${x - 7.6} ${y - 0.4} Q ${x - 4.5} ${y - 4.4} ${x - 1.4} ${y - 1} L ${x - 1.4} ${y + 12.6} Z" fill="#6e4a24"/>
-        <line x1="${x-4.5}" y1="${y-5}" x2="${x-4.5}" y2="${y+13}" stroke="#3a2313" stroke-width="0.5"/>
-        <!-- crossed swords crest on shaded face -->
-        <line x1="${x + 8}" y1="${y - 5}" x2="${x + 20}" y2="${y + 4}" stroke="#dfe7ee" stroke-width="1.8"/>
-        <line x1="${x + 20}" y1="${y - 5}" x2="${x + 8}" y2="${y + 4}" stroke="#aeb8c4" stroke-width="1.8"/>
-        <rect x="${x + 8.6}" y="${y - 5.2}" width="2.2" height="2.2" rx="0.4" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.4"/>
-        <rect x="${x + 17.2}" y="${y - 5.2}" width="2.2" height="2.2" rx="0.4" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.4"/>
-        <path d="M ${x + 11} ${y - 8.5} l 3 -1.5 l 3 1.5 l 0 3.4 q 0 2.6 -3 3.8 q -3 -1.2 -3 -3.8 Z" fill="#b3402e" stroke="#f4c44d" stroke-width="0.7"/>
-        <!-- training dummy, front depth plane -->
-        <line x1="${x-16}" y1="${y+20}" x2="${x-16}" y2="${y+8}" stroke="#8a5a2b" stroke-width="1.6"/>
-        <line x1="${x-21}" y1="${y+11.5}" x2="${x-11}" y2="${y+11.5}" stroke="#8a5a2b" stroke-width="1.3"/>
-        <circle cx="${x-16}" cy="${y+7}" r="2.8" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.6"/>
-        <path d="M ${x-19} ${y+6} q 3 -3.4 6 0" stroke="#2a1a0e" stroke-width="0.5" fill="none"/>
-        <circle cx="${x-16}" cy="${y+12}" r="1.4" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.4"/>
-        ${FLAG(x - 31, y - 42, '#b3402e')}
-        ${FLAG(x + 31, y - 42, '#b3402e')}
+        ${WORN_PATH(x - 17, y + 17, 14)}
+        <!-- great hall: coursed ashlar with quoined corners -->
+        ${_pg([[x - 26, y - 24], [x, y - 37], [x + 26, y - 24], [x, y - 11]], '#8b95a0', OUTLINE, 0.9)}
+        ${STONEWORK([x - 26, y - 24], [x, y - 11], [x, y + 15], [x - 26, y + 2], 5, 10, '#c2cad2', '#8b95a0', 5)}
+        ${STONEWORK([x, y - 11], [x + 26, y - 24], [x + 26, y + 2], [x, y + 15], 5, 10, '#8b95a0', '#5d6673', 8)}
+        ${RIM([x - 26, y - 24], [x, y - 11])}
+        ${DAMP([x - 26, y + 2], [x, y + 15], 4)}
+        ${QUOINS(x, y + 15, 26, 0.5, 7, '#dee4ea', '#a9b2bb', -1)}
+        ${QUOINS(x, y + 15, 26, -0.5, 7, '#a9b2bb', '#79838f', 1)}
+        ${MOSS(x - 21, y + 3, 3, 23)}
+        <!-- arched gate, 16px to the crown, with iron-strapped leaves -->
+        ${ISO_DOOR(x - 13, y + 8.5, 0.5, 13, 16, { wood: '#6e4a24', arch: 2.5 })}
+        <!-- arrow slits: deep, narrow, splayed -->
+        ${ISO_WIN(x - 21, y - 2, 0.5, 3.4, 9, {})}
+        ${ISO_WIN(x + 11, y + 1, -0.5, 3.4, 9, {})}
+        ${ISO_WIN(x + 21, y - 4, -0.5, 3.4, 9, {})}
+        <!-- painted shields hung out along the hall wall -->
+        <path d="M ${x - 24} ${y - 10} l 4 -2 l 4 2 l 0 4.4 q 0 3.4 -4 5 q -4 -1.6 -4 -5 Z" fill="#b3402e" stroke="#f4c44d" stroke-width="0.7"/>
+        <path d="M ${x + 15} ${y - 10} l 4 -2 l 4 2 l 0 4.4 q 0 3.4 -4 5 q -4 -1.6 -4 -5 Z" fill="#1d3c6e" stroke="#c2912c" stroke-width="0.7"/>
+        <!-- crossed swords over the gate -->
+        ${_seg([[[x - 20, y - 15], [x - 8, y - 9]]], '#dfe7ee', 1.7)}
+        ${_seg([[[x - 20, y - 9], [x - 8, y - 15]]], '#aeb8c4', 1.7)}
+        ${_pg([[x - 20.6, y - 15.8], [x - 18.4, y - 14.7], [x - 19, y - 13.6], [x - 21.2, y - 14.7]], '#8a5a2b', OUTLINE, 0.4)}
+        ${_pg([[x - 7.4, y - 15.8], [x - 9.6, y - 14.7], [x - 9, y - 13.6], [x - 6.8, y - 14.7]], '#8a5a2b', OUTLINE, 0.4)}
+        ${EAVE_SHADOW([x - 26, y - 24], [x, y - 11], [x, y + 15], [x - 26, y + 2], 0.12)}
+        ${EAVE_SHADOW([x, y - 11], [x + 26, y - 24], [x + 26, y + 2], [x, y + 15], 0.12)}
+        <!-- tiled hip roof, seven courses a plane, 4px overhang -->
+        ${SHINGLES([x, y - 48], [x, y - 48], [x, y - 7], [x - 30, y - 22], 7, 7, '#d9705a', '#8c2f20', 12)}
+        ${SHINGLES([x, y - 48], [x, y - 48], [x + 30, y - 22], [x, y - 7], 7, 7, '#a83c28', '#631f14', 16)}
+        ${_pg([[x - 26, y - 30], [x - 20, y - 27], [x - 21, y - 23], [x - 27, y - 26]], '#c25a45', '#8c2f20', 0.5)}
+        ${_pg([[x - 30, y - 22], [x, y - 7], [x, y - 4.6], [x - 30, y - 19.6]], '#7a5228', OUTLINE, 0.7)}
+        ${_pg([[x, y - 7], [x + 30, y - 22], [x + 30, y - 19.6], [x, y - 4.6]], '#523618', OUTLINE, 0.7)}
+        ${_ln([x - 30, y - 22], [x, y - 7], 'rgba(255,235,220,0.5)', 0.6)}
+        ${_ln([x, y - 48], [x, y - 7], '#e08a72', 1.7)}
+        ${_seg([[[x, y - 48], [x - 30, y - 22]], [[x, y - 48], [x + 30, y - 22]]], '#b84a34', 1.4)}
+        ${MOSS(x - 8, y - 11, 2, 29, '#6f8a3e')}
+        <!-- flanking drum towers, battered base and conical roof -->
+        ${[[-35, 1], [35, -1]].map(([dx, sd]) => `
+            ${_pg([[x + dx - 10, y - 33], [x + dx, y - 38], [x + dx + 10, y - 33], [x + dx, y - 28]], '#79838f', OUTLINE, 0.8)}
+            ${STONEWORK([x + dx - 10, y - 33], [x + dx, y - 28], [x + dx, y - 2], [x + dx - 10, y - 7], 6, 7, sd > 0 ? '#c2cad2' : '#a9b2bb', '#828c97', 33 + dx)}
+            ${STONEWORK([x + dx, y - 28], [x + dx + 10, y - 33], [x + dx + 10, y - 7], [x + dx, y - 2], 6, 7, sd > 0 ? '#8b95a0' : '#79838f', '#535c68', 37 + dx)}
+            ${_pg([[x + dx - 12, y - 5], [x + dx, y + 1], [x + dx + 12, y - 5], [x + dx + 12, y - 1], [x + dx, y + 5], [x + dx - 12, y - 1]], '#8b95a0', OUTLINE, 0.7)}
+            ${_ln([x + dx - 12, y - 5], [x + dx, y + 1], 'rgba(255,255,255,0.4)', 0.7)}
+            ${_ln([x + dx - 10, y - 33], [x + dx, y - 28], 'rgba(255,248,235,0.45)', 0.9)}
+            ${ISO_WIN(x + dx - 4, y - 12, 0.5, 3.2, 8, {})}
+            ${SHINGLES([x + dx, y - 56], [x + dx, y - 56], [x + dx, y - 26], [x + dx - 11, y - 32], 6, 6, '#d9705a', '#8c2f20', 41)}
+            ${SHINGLES([x + dx, y - 56], [x + dx, y - 56], [x + dx + 11, y - 32], [x + dx, y - 26], 6, 6, '#a83c28', '#631f14', 45)}
+            ${_ln([x + dx, y - 56], [x + dx, y - 26], '#e08a72', 1.4)}
+            ${_pg([[x + dx - 11, y - 32], [x + dx, y - 26], [x + dx, y - 24], [x + dx - 11, y - 30]], '#7a5228', OUTLINE, 0.6)}
+            ${_pg([[x + dx, y - 26], [x + dx + 11, y - 32], [x + dx + 11, y - 30], [x + dx, y - 24]], '#523618', OUTLINE, 0.6)}
+            ${MOSS(x + dx - 7, y - 4, 2, 47 + dx)}
+        `).join('')}
+        ${FLAG(x - 35, y - 57, '#b3402e')}
+        ${FLAG(x + 35, y - 57, '#b3402e')}
+        <!-- training dummy and a rack of spears in the yard -->
+        ${_ln([x - 20, y + 22], [x - 20, y + 9], '#8a5a2b', 1.7)}
+        ${_ln([x - 25, y + 12.5], [x - 15, y + 12.5], '#8a5a2b', 1.4)}
+        <circle cx="${x - 20}" cy="${y + 7.6}" r="2.9" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.6"/>
+        ${_ln([x - 23, y + 6.6], [x - 17, y + 6.6], '#2a1a0e', 0.5)}
+        <circle cx="${x - 20}" cy="${y + 13}" r="1.5" fill="#b3402e" stroke="#2a1a0e" stroke-width="0.4"/>
+        ${_seg([[[x - 27, y + 10.5], [x - 26, y + 13.6]], [[x - 14, y + 11], [x - 13.4, y + 14]]], '#c9b49a', 1)}
+        ${_seg([[[x + 12, y + 21], [x + 26, y + 14]], [[x + 13, y + 18], [x + 13, y + 22]], [[x + 25, y + 12], [x + 25, y + 16]]], '#8a5a2b', 1.4)}
+        ${_seg([[[x + 15, y + 19.5], [x + 16, y + 8]], [[x + 19, y + 18], [x + 20, y + 6.5]], [[x + 23, y + 16], [x + 23.6, y + 5]]], '#7a5228', 1.1)}
+        ${_seg([[[x + 16, y + 8], [x + 16, y + 5]], [[x + 20, y + 6.5], [x + 20, y + 3.5]], [[x + 23.6, y + 5], [x + 23.6, y + 2]]], '#c3ccd6', 1.4)}
         ${lvl >= 4 ? `
-            <polygon points="${x+2},${y-14} ${x+8},${y-17} ${x+8},${y-3} ${x+5},${y-6.5} ${x+2},${y-4.5}" fill="#2c5aa0" stroke="#1d3c6e" stroke-width="0.6"/>
-            <circle cx="${x+5}" cy="${y-11.5}" r="1.5" fill="#f4c44d"/>
-            <line x1="${x-28}" y1="${y-15}" x2="${x}" y2="${y-2}" stroke="#f4c44d" stroke-width="1.4"/>
+            <!-- muster banner over the gate + a brazier lit at the door -->
+            ${_pg([[x + 2, y - 14], [x + 9, y - 17.5], [x + 9, y - 2], [x + 5.5, y - 6], [x + 2, y - 4]], '#2c5aa0', '#1d3c6e', 0.6)}
+            ${_pg([[x + 2, y - 14], [x + 9, y - 17.5], [x + 9, y - 14.6], [x + 2, y - 11.1]], 'rgba(255,255,255,0.22)')}
+            <circle cx="${x + 5.5}" cy="${y - 9.5}" r="1.6" fill="#f4c44d"/>
+            ${_ln([x - 29, y + 18], [x - 29, y + 11], '#4f5663', 1.4)}
+            ${_pg([[x - 33, y + 11], [x - 25, y + 11], [x - 26.5, y + 7.5], [x - 31.5, y + 7.5]], '#3f434a', OUTLINE, 0.6)}
+            <path d="M ${x - 31} ${y + 7.5} q 1.6 -4.6 3 -1.6 q 1.4 -3.4 2.6 1.6 Z" fill="#f59e2d" stroke="#b3402e" stroke-width="0.5">
+                <animate attributeName="opacity" values="0.7;1;0.7" dur="0.9s" repeatCount="indefinite"/>
+            </path>
+            <ellipse cx="${x - 29}" cy="${y + 6}" rx="5" ry="4" fill="#ffca5f" opacity="0.16">
+                <animate attributeName="opacity" values="0.08;0.24;0.08" dur="0.9s" repeatCount="indefinite"/>
+            </ellipse>
         ` : ''}
         ${lvl >= 7 ? `
-            <polygon points="${x-33.5},${y-46} ${x-31},${y-52} ${x-28.5},${y-46} ${x-31},${y-44}" fill="#f4c44d" stroke="#a8791f" stroke-width="0.5"/>
-            <polygon points="${x+33.5},${y-46} ${x+31},${y-52} ${x+28.5},${y-46} ${x+31},${y-44}" fill="#f4c44d" stroke="#a8791f" stroke-width="0.5"/>
-            ${LIT_WINDOW(x - 3.2, y - 26, 6.5, 7)}
+            <!-- gilded finials and eave trim on all three roofs -->
+            ${_seg([[[x - 30, y - 22], [x, y - 7]], [[x, y - 7], [x + 30, y - 22]]], '#f4c44d', 1.5)}
+            <circle cx="${x}" cy="${y - 49.5}" r="2" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.6"/>
+            ${_pg([[x - 37.5, y - 57], [x - 35, y - 63], [x - 32.5, y - 57], [x - 35, y - 55]], '#f4c44d', '#a8791f', 0.5)}
+            ${_pg([[x + 37.5, y - 57], [x + 35, y - 63], [x + 32.5, y - 57], [x + 35, y - 55]], '#f4c44d', '#a8791f', 0.5)}
+            ${ISO_WIN(x - 16, y - 16, 0.5, 5, 7, {})}
         ` : ''}
     `,
 
@@ -1335,7 +1719,7 @@ const VILLAGER_VARIANTS = [
     { body: '#0891b2', bodyDark: '#155e75', hat: '#22d3ee', skin: '#f5d6a8' }         // teal scholar
 ];
 
-function villagerSVG(id, variant) {
+function villagerSVG(id, variant, tool) {
     const v = VILLAGER_VARIANTS[variant % VILLAGER_VARIANTS.length];
     return `<g class="villager villager-${id}">
         <ellipse cx="0" cy="3" rx="4" ry="1.2" fill="rgba(0,0,0,0.45)"/>
@@ -1348,7 +1732,31 @@ function villagerSVG(id, variant) {
         <rect x="-3" y="-10" width="6" height="0.8" fill="#3a2010"/>
         <rect x="-2.5" y="-1" width="1.5" height="4" fill="${v.bodyDark}"/>
         <rect x="1" y="-1" width="1.5" height="4" fill="${v.bodyDark}"/>
+        ${villagerTool(tool)}
     </g>`;
+}
+
+// The prop that tells you what a villager DOES at a glance. Held in the right
+// hand; the swinging ones animate so work reads as ongoing, not posed.
+function villagerTool(tool) {
+    switch (tool) {
+        case 'axe':    return `<g class="tool-swing"><line x1="3.4" y1="-4" x2="6.2" y2="-9.5" stroke="#6b4520" stroke-width="0.9"/>
+            <path d="M 5.4 -9.2 L 8.2 -11 L 8.6 -8.2 L 6.1 -7.6 Z" fill="#c3ccd4" stroke="#4b5259" stroke-width="0.4"/></g>`;
+        case 'pick':   return `<g class="tool-swing"><line x1="3.4" y1="-4" x2="6" y2="-9.6" stroke="#6b4520" stroke-width="0.9"/>
+            <path d="M 3.6 -10.6 q 2.6 -1.6 5.2 0.2" stroke="#9aa3ab" stroke-width="1.3" fill="none" stroke-linecap="round"/></g>`;
+        case 'hoe':    return `<g class="tool-swing"><line x1="3.4" y1="-4" x2="6.4" y2="-9.8" stroke="#6b4520" stroke-width="0.9"/>
+            <path d="M 6.4 -9.8 l 2.6 0.8 l -0.6 2 l -2.4 -1 Z" fill="#8d949c" stroke="#4b5259" stroke-width="0.4"/></g>`;
+        case 'spear':  return `<line x1="3.6" y1="2.5" x2="4.6" y2="-13" stroke="#6b4520" stroke-width="0.9"/>
+            <path d="M 4.6 -13 l -1.1 2.4 l 2.4 0 Z" fill="#cbd5e1" stroke="#4b5259" stroke-width="0.35"/>`;
+        case 'crate':  return `<g class="tool-bob"><rect x="2.8" y="-5.6" width="5" height="4.4" fill="#c99a5e" stroke="#5a3818" stroke-width="0.45"/>
+            <line x1="2.8" y1="-3.4" x2="7.8" y2="-3.4" stroke="#5a3818" stroke-width="0.35"/></g>`;
+        case 'tome':   return `<g class="tool-bob"><rect x="2.8" y="-6" width="4.6" height="3.6" rx="0.4" fill="#2a4a72" stroke="#0e1e33" stroke-width="0.45"/>
+            <line x1="5.1" y1="-6" x2="5.1" y2="-2.4" stroke="#7fd8ff" stroke-width="0.4"/></g>`;
+        case 'ledger': return `<g class="tool-bob"><rect x="2.8" y="-6" width="4.4" height="3.4" fill="#f0e6d2" stroke="#8a5a2b" stroke-width="0.45"/>
+            <line x1="3.5" y1="-4.9" x2="6.5" y2="-4.9" stroke="#8a5a2b" stroke-width="0.3"/>
+            <line x1="3.5" y1="-3.9" x2="6.1" y2="-3.9" stroke="#8a5a2b" stroke-width="0.3"/></g>`;
+        default:       return '';
+    }
 }
 
 // kind: 'trade' (cargo cog — click to open the Harbor), 'patrol' (naval guard
@@ -1762,15 +2170,50 @@ function renderIsoWorld() {
         }
     }
 
-    // Villagers — each wanders RANDOMLY (JS-driven, no looped keyframes)
+    // WORKERS — every villager has a JOB tied to a real building, works beside
+    // it with the right tool, and says what they do on hover. Previously they
+    // were interchangeable bodies wandering at random, which made the village
+    // feel like a screensaver instead of a place where people live and labour.
     let workerSvg = '';
-    const villagerCount = Math.min(6, 2 + state.buildings.length);
-    for (let i = 0; i < villagerCount; i++) {
-        const b = state.buildings[i % Math.max(1, state.buildings.length)];
-        let gx = 6, gy = 5;
-        if (b) { gx = b.pos % ISO.GW; gy = Math.floor(b.pos / ISO.GW); }
-        const { x, y } = iso(gx, gy);
-        workerSvg += `<g class="villager-wrap" data-vid="${i}" data-hx="${x}" data-hy="${y - 8}" style="transform:translate(${x}px,${y - 8}px)">${villagerSVG(i, i)}</g>`;
+    {
+        const JOBS = {
+            farm:       { variant: 1, tool: 'hoe',    title: 'Farmhand',   verb: 'tending the crops' },
+            lumbermill: { variant: 2, tool: 'axe',    title: 'Woodcutter', verb: 'splitting logs' },
+            goldmine:   { variant: 0, tool: 'pick',   title: 'Miner',      verb: 'working the gold seam' },
+            ironmine:   { variant: 0, tool: 'pick',   title: 'Miner',      verb: 'hauling iron ore' },
+            coinmint:   { variant: 3, tool: 'ledger', title: 'Minter',     verb: 'striking coins' },
+            harbor:     { variant: 3, tool: 'crate',  title: 'Dockhand',   verb: 'loading the trade ship' },
+            researchlab:{ variant: 4, tool: 'tome',   title: 'Scholar',    verb: 'poring over research' },
+            storage:    { variant: 3, tool: 'crate',  title: 'Stevedore',  verb: 'stacking the stores' },
+            barracks:   { variant: 5, tool: 'spear',  title: 'Drill Sgt.', verb: 'drilling recruits' },
+            stable:     { variant: 1, tool: 'hoe',    title: 'Groom',      verb: 'brushing the horses' },
+            townhall:   { variant: 5, tool: 'ledger', title: 'Steward',    verb: 'keeping the ledgers' },
+            archertower:{ variant: 5, tool: 'spear',  title: 'Watchman',   verb: 'scanning the horizon' },
+            cannon:     { variant: 0, tool: 'pick',   title: 'Gunner',     verb: 'swabbing the barrel' },
+            fortress:   { variant: 5, tool: 'spear',  title: 'Guard',      verb: 'standing watch' }
+        };
+        let n = 0;
+        for (const b of state.buildings) {
+            if (n >= 9) break;                       // keep the scene readable
+            const job = JOBS[b.type];
+            if (!job || b.constructing) continue;
+            const gx = b.pos % ISO.GW, gy = Math.floor(b.pos / ISO.GW);
+            const { x, y } = iso(gx, gy);
+            // stand just off the building's doorstep, deterministic per position
+            const jr = _tRand(b.pos * 13 + 5);
+            const ox = -18 + jr * 30, oy = 8 + _tRand(b.pos * 7) * 7;
+            workerSvg += `<g class="villager-wrap worker-job" data-vid="${n}" data-hx="${x + ox}" data-hy="${y + oy}" data-home="${b.pos}" style="transform:translate(${x + ox}px,${y + oy}px)">
+                <title>${job.title} — ${job.verb}</title>${villagerSVG(n, job.variant, job.tool)}</g>`;
+            n++;
+        }
+        // If nothing is built yet, a couple of settlers survey the empty land.
+        if (n === 0) {
+            const c = iso(Math.floor(ISO.GW / 2), Math.floor(ISO.GH / 2));
+            for (let i = 0; i < 2; i++) {
+                workerSvg += `<g class="villager-wrap" data-vid="${i}" data-hx="${c.x + i * 22 - 11}" data-hy="${c.y + 10}" style="transform:translate(${c.x + i * 22 - 11}px,${c.y + 10}px)">
+                    <title>Settler — waiting for you to build</title>${villagerSVG(i, i, null)}</g>`;
+            }
+        }
     }
 
     // Cow grazing
@@ -1859,7 +2302,7 @@ function renderIsoWorld() {
         } else {
             iconSVG = `<text x="0" y="4" text-anchor="middle" font-size="14"></text>`;
         }
-        prodSVG += `<g class="prod-indicator" data-pos="${b.pos}" style="cursor:pointer" transform="translate(${x}, ${y - 70})">
+        prodSVG += `<g class="prod-indicator" data-pos="${b.pos}" style="cursor:pointer" transform="translate(${x}, ${y - 44}) scale(0.62)">
             <circle cx="0" cy="0" r="14" fill="#1a1a2e" stroke="#fbbf24" stroke-width="2" opacity="0.95"/>
             <circle cx="0" cy="0" r="14" fill="none" stroke="#fbbf24" stroke-width="1" opacity="0.5">
                 <animate attributeName="r" values="14;20;14" dur="1.6s" repeatCount="indefinite"/>

@@ -1070,19 +1070,24 @@ function renderGrid() {
 // Shared drag state at module scope so the window-level move/up listeners can be
 // attached exactly ONCE (renderGrid re-runs this on every rebuild; re-adding
 // window listeners each time leaked handlers and glitched dragging).
-const _cam = { svg: null, dragging: false, sx: 0, sy: 0, startSpin: 0, startTilt: 0, moved: false };
+// Dragging PANS the camera. It used to spin and tilt the whole island, which
+// broke the illusion of a real place — you could rotate your kingdom into a
+// diamond on its corner. The iso angle is now fixed, like every shipped
+// isometric builder; drag moves the camera over the world instead.
+const _cam = { svg: null, dragging: false, sx: 0, sy: 0, startX: 0, startY: 0, moved: false };
 function _camBegin(cx, cy) {
     _cam.dragging = true; _cam.moved = false;
-    _cam.sx = cx; _cam.sy = cy; _cam.startSpin = VIEW.spin; _cam.startTilt = VIEW.tilt;
+    _cam.sx = cx; _cam.sy = cy; _cam.startX = CAM.x; _cam.startY = CAM.y;
     if (_cam.svg) _cam.svg.style.cursor = 'grabbing';
 }
 function _camMove(cx, cy) {
     if (!_cam.dragging || !_cam.svg) return;
     const dx = cx - _cam.sx, dy = cy - _cam.sy;
     if (Math.abs(dx) + Math.abs(dy) > 4) _cam.moved = true;
-    VIEW.spin = Math.max(-62, Math.min(62, _cam.startSpin + dx * 0.30));
-    VIEW.tilt = Math.max(-8, Math.min(58, _cam.startTilt + dy * 0.28));
-    applyView(_cam.svg);
+    // divide by zoom so panning feels 1:1 with the cursor at any zoom level
+    CAM.x = _cam.startX + dx / (CAM.zoom || 1);
+    CAM.y = _cam.startY + dy / (CAM.zoom || 1);
+    applyCamera(_cam.svg);
 }
 function _camEnd() { if (_cam.dragging) { _cam.dragging = false; if (_cam.svg) _cam.svg.style.cursor = 'grab'; } }
 
@@ -1138,10 +1143,11 @@ function setupCameraControls(grid) {
     if (!resetBtn) {
         resetBtn = document.createElement('button');
         resetBtn.id = 'view-reset-btn';
-        resetBtn.title = 'Reset view angle';
+        resetBtn.title = 'Recentre view';
         resetBtn.textContent = '⟳';
         document.getElementById('view-village').appendChild(resetBtn);
-        resetBtn.onclick = () => { VIEW.spin = 0; VIEW.tilt = 0; CAM.zoom = 1; CAM.x = 0; CAM.y = 0; const s = document.querySelector('#iso-svg'); if (s) { applyView(s); applyCamera(s); } };
+        resetBtn.title = 'Recentre view';
+        resetBtn.onclick = () => { CAM.zoom = 1; CAM.x = 0; CAM.y = 0; const s = document.querySelector('#iso-svg'); if (s) applyCamera(s); };
     }
 
     // Zoom controls — obvious, always-there +/- buttons (wheel & pinch still work)

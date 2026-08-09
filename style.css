@@ -196,30 +196,38 @@ body {
     margin: 0 auto;
     border-radius: 18px;
     padding: 0;
-    border: 6px solid #20503a;
+    /* A slim dark frame instead of the fat green webpage border — the eye should
+       fall through the opening to the world, not land on a UI edge. */
+    border: 1px solid rgba(244,196,77,0.22);
     box-shadow:
-        inset 0 0 40px rgba(0,25,55,0.10),
-        0 14px 36px rgba(0,0,0,0.6);
+        inset 0 0 90px rgba(0,20,45,0.35),
+        inset 0 2px 0 rgba(255,255,255,0.06),
+        0 18px 44px rgba(0,0,0,0.7);
     position: relative;
     overflow: hidden;
     perspective: 1500px;
     perspective-origin: 50% 42%;
     /* ONE flat ocean blue — just a soft sun glint over a single solid colour, so
        there are no light-centre / dark-edge shades. */
+    /* Water with DEPTH: pale turquoise shallows around the island falling away
+       to deep ocean at the edges, plus a warm sun glint near the horizon. */
     background:
-        radial-gradient(ellipse 70% 45% at 50% 12%, rgba(255,247,200,0.20), transparent 60%),
-        #3579b8;
+        radial-gradient(ellipse 70% 45% at 50% 10%, rgba(255,247,200,0.18), transparent 58%),
+        radial-gradient(ellipse 58% 52% at 50% 52%, #4e9ac9 0%, #3579b8 42%, #23578e 78%, #1a4372 100%);
 }
 #village-grid::after {
     content: '';
     position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    /* Soft, wide swell instead of the old hard 2px diagonal hatching, which read
+       as scratched glass rather than water. */
     background:
-        repeating-linear-gradient(98deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 26px),
-        repeating-linear-gradient(82deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 34px);
-    opacity: 0.5;
-    animation: oceanRipple 9s linear infinite;
+        repeating-linear-gradient(96deg, rgba(255,255,255,0.030) 0 10px, transparent 10px 52px),
+        repeating-linear-gradient(84deg, rgba(255,255,255,0.022) 0 14px, transparent 14px 74px);
+    filter: blur(0.6px);
+    opacity: 0.75;
+    animation: oceanRipple 22s linear infinite;
 }
-@keyframes oceanRipple { from { background-position: 0 0, 0 0; } to { background-position: 120px 0, -120px 0; } }
+@keyframes oceanRipple { from { background-position: 0 0, 0 0; } to { background-position: 160px 0, -200px 0; } }
 
 /* Expanding ocean wave rings + shoreline foam shimmer */
 .ocean-wave { transform-box: fill-box; transform-origin: center; animation: oceanWave 5.1s ease-out infinite; }
@@ -4454,3 +4462,10 @@ h2 *, h3 *, .view h2 *, .hero-section-title * { -webkit-text-fill-color: current
     box-shadow: 0 0 0 #131a28, 0 2px 6px rgba(0,0,0,0.5), inset 0 2px 6px rgba(0,0,0,0.5);
 }
 @media (max-width: 768px) { #zoom-controls { right: 10px; bottom: 84px; } }
+
+/* Workers actually working — tools swing / bob so labour reads as ongoing */
+.tool-swing { transform-box: fill-box; transform-origin: 20% 90%; animation: toolSwing 1.9s ease-in-out infinite; }
+@keyframes toolSwing { 0%,100% { transform: rotate(-14deg); } 50% { transform: rotate(16deg); } }
+.tool-bob { transform-box: fill-box; transform-origin: center; animation: toolBob 2.6s ease-in-out infinite; }
+@keyframes toolBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.4px); } }
+.worker-job { cursor: help; }
