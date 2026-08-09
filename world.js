@@ -1255,10 +1255,18 @@ const BUILDING_RENDERERS = {
         <polygon points="${x-24},${y-34} ${x},${y-22} ${x},${y+10} ${x-24},${y-2}" fill="#2c5aa0" stroke="#2a1a0e" stroke-width="0.9"/>
         <polygon points="${x+24},${y-34} ${x},${y-22} ${x},${y+10} ${x+24},${y-2}" fill="#1d3c6e" stroke="#2a1a0e" stroke-width="0.9"/>
         <line x1="${x-24}" y1="${y-34}" x2="${x}" y2="${y-22}" stroke="rgba(255,255,255,0.4)" stroke-width="0.8"/>
-        <line x1="${x-24}" y1="${y-24}" x2="${x}" y2="${y-12}" stroke="#24488a" stroke-width="0.6"/>
-        <line x1="${x}" y1="${y-12}" x2="${x+24}" y2="${y-24}" stroke="#16305a" stroke-width="0.6"/>
-        <line x1="${x-24}" y1="${y-13}" x2="${x}" y2="${y-1}" stroke="#24488a" stroke-width="0.6"/>
-        <line x1="${x}" y1="${y-1}" x2="${x+24}" y2="${y-13}" stroke="#16305a" stroke-width="0.6"/>
+        <!-- coursed ashlar: mortar lines every 5px with staggered vertical joints,
+             so the tower reads as cut stone rather than a painted blue box -->
+        ${[5,10,15,20,25,30].map((d,i) => `
+            <line x1="${x-24}" y1="${y-34+d}" x2="${x}" y2="${y-22+d}" stroke="#24488a" stroke-width="0.55" opacity="0.9"/>
+            <line x1="${x}" y1="${y-22+d}" x2="${x+24}" y2="${y-34+d}" stroke="#16305a" stroke-width="0.55" opacity="0.9"/>
+            ${[0.3,0.66].map(f => `
+                <line x1="${x-24+24*((f+i*0.17)%1)}" y1="${y-34+d+12*((f+i*0.17)%1)}" x2="${x-24+24*((f+i*0.17)%1)}" y2="${y-29+d+12*((f+i*0.17)%1)}" stroke="#24488a" stroke-width="0.45" opacity="0.7"/>
+                <line x1="${x+24-24*((f+i*0.23)%1)}" y1="${y-34+d+12*((f+i*0.23)%1)}" x2="${x+24-24*((f+i*0.23)%1)}" y2="${y-29+d+12*((f+i*0.23)%1)}" stroke="#16305a" stroke-width="0.45" opacity="0.7"/>
+            `).join('')}
+        `).join('')}
+        <!-- corner quoins down the leading edge -->
+        ${[0,1,2,3,4,5].map(i => `<rect x="${x-2}" y="${y-22+i*5.4}" width="4" height="3.4" fill="#4a7cc4" opacity="0.55"/>`).join('')}
         <!-- glowing arcane windows -->
         ${[[-16, -14], [-16, 1]].map(([dx, dy]) => `
             <rect x="${x + dx - 2.6}" y="${y + dy - 6.5}" width="5.2" height="9" rx="2.6" fill="#10213c" stroke="#2a1a0e" stroke-width="0.6"/>
@@ -1409,15 +1417,31 @@ const BUILDING_RENDERERS = {
             <line x1="${x-36}" y1="${y-12+d}" x2="${x}" y2="${y+6+d}" stroke="#6f4722" stroke-width="0.5"/>
             <line x1="${x}" y1="${y+6+d}" x2="${x+36}" y2="${y-12+d}" stroke="#54371a" stroke-width="0.5"/>
         `).join('')}
-        <!-- straw hip roof -->
+        <!-- thatched hip roof: courses laid parallel to the eave, ragged fringe,
+             darker in the valleys — a real thatch reads as many bound bundles,
+             not a flat triangle with three scratches on it. -->
         <polygon points="${x-42},${y-12} ${x},${y-44} ${x},${y+4}" fill="#e6bc63" stroke="#2a1a0e" stroke-width="1"/>
         <polygon points="${x+42},${y-12} ${x},${y-44} ${x},${y+4}" fill="#b98a35" stroke="#2a1a0e" stroke-width="1"/>
-        <path d="M ${x-30} ${y-21} L ${x} ${y-7}" stroke="#c9a047" stroke-width="0.7"/>
-        <path d="M ${x-19} ${y-30} L ${x} ${y-21}" stroke="#c9a047" stroke-width="0.7"/>
-        <path d="M ${x-9} ${y-38} L ${x} ${y-33}" stroke="#c9a047" stroke-width="0.7"/>
-        <path d="M ${x+30} ${y-21} L ${x} ${y-7}" stroke="#9c732c" stroke-width="0.7"/>
-        <path d="M ${x+19} ${y-30} L ${x} ${y-21}" stroke="#9c732c" stroke-width="0.7"/>
-        <line x1="${x}" y1="${y-44}" x2="${x}" y2="${y+4}" stroke="rgba(255,246,214,0.5)" stroke-width="0.9"/>
+        ${[0.13,0.27,0.41,0.55,0.69,0.83].map(t => `
+            <line x1="${x-42+42*t}" y1="${y-12-32*t}" x2="${x}" y2="${y+4-48*t}" stroke="#c39a44" stroke-width="1.5" opacity="0.85"/>
+            <line x1="${x-42+42*t}" y1="${y-12-32*t+1.1}" x2="${x}" y2="${y+4-48*t+1.1}" stroke="#8a6420" stroke-width="0.6" opacity="0.5"/>
+            <line x1="${x+42-42*t}" y1="${y-12-32*t}" x2="${x}" y2="${y+4-48*t}" stroke="#9c732c" stroke-width="1.5" opacity="0.85"/>
+            <line x1="${x+42-42*t}" y1="${y-12-32*t+1.1}" x2="${x}" y2="${y+4-48*t+1.1}" stroke="#6d4d16" stroke-width="0.6" opacity="0.5"/>
+        `).join('')}
+        <!-- fine straw strands running down the slope -->
+        ${[0.2,0.35,0.5,0.65,0.8].map(s => `
+            <line x1="${x-42*s}" y1="${y-12-(1-s)*0+(-12+16*s)}" x2="${x-42*s*0.55}" y2="${y-6+10*s}" stroke="#d3a950" stroke-width="0.5" opacity="0.55"/>
+            <line x1="${x+42*s}" y1="${y-12+16*s}" x2="${x+42*s*0.55}" y2="${y-6+10*s}" stroke="#8f6a26" stroke-width="0.5" opacity="0.5"/>
+        `).join('')}
+        <!-- ragged eave fringe -->
+        ${[0.15,0.3,0.45,0.6,0.75,0.9].map(s => `
+            <path d="M ${x-42+42*s} ${y-12+16*s} l -0.6 ${2.2+((s*37)%2)} " stroke="#a87c2e" stroke-width="0.9" stroke-linecap="round"/>
+            <path d="M ${x+42-42*s} ${y-12+16*s} l 0.6 ${2.2+((s*53)%2)}" stroke="#7d5a1c" stroke-width="0.9" stroke-linecap="round"/>
+        `).join('')}
+        <!-- ridge cap + moss in the valley -->
+        <line x1="${x}" y1="${y-44}" x2="${x}" y2="${y+4}" stroke="#7d5a1c" stroke-width="2.6"/>
+        <line x1="${x}" y1="${y-44}" x2="${x}" y2="${y+4}" stroke="rgba(255,246,214,0.45)" stroke-width="0.9"/>
+        <ellipse cx="${x-6}" cy="${y-16}" rx="3.4" ry="1.6" fill="#5e7a34" opacity="0.4"/>
         <!-- two dutch stall doors on lit face -->
         ${[[-27, 0], [-13, 6]].map(([dx, dy]) => `
             <path d="M ${x + dx - 4.5} ${y + dy + 4.5} L ${x + dx - 4.5} ${y + dy - 7} L ${x + dx + 4.5} ${y + dy - 2.5} L ${x + dx + 4.5} ${y + dy + 9} Z" fill="#4a2e16" stroke="#2a1a0e" stroke-width="0.8"/>
@@ -1536,11 +1560,20 @@ const BUILDING_RENDERERS = {
         <polygon points="${x-36},${y-6} ${x},${y+12} ${x},${y+22} ${x-36},${y+4}" fill="#9aa3ab" stroke="#2a1a0e" stroke-width="0.9"/>
         <polygon points="${x+36},${y-6} ${x},${y+12} ${x},${y+22} ${x+36},${y+4}" fill="#6b7280" stroke="#2a1a0e" stroke-width="0.9"/>
         <line x1="${x-36}" y1="${y-6}" x2="${x}" y2="${y+12}" stroke="rgba(255,255,255,0.45)" stroke-width="0.8"/>
-        <!-- stone block joints -->
-        <line x1="${x-30}" y1="${y+1}" x2="${x-8}" y2="${y+12}" stroke="#7d8790" stroke-width="0.5"/>
-        <line x1="${x-22}" y1="${y-1}" x2="${x-22}" y2="${y+6}" stroke="#7d8790" stroke-width="0.5"/>
-        <line x1="${x+8}" y1="${y+13}" x2="${x+30}" y2="${y+2}" stroke="#565f6a" stroke-width="0.5"/>
-        <line x1="${x+20}" y1="${y+3}" x2="${x+20}" y2="${y+9.5}" stroke="#565f6a" stroke-width="0.5"/>
+        <!-- coursed masonry: two mortar courses per face with staggered vertical
+             joints, so the rampart reads as stacked blocks instead of a grey slab -->
+        ${[3.5, 7].map((d, row) => `
+            <line x1="${x-36}" y1="${y-6+d+ (18-d)}" x2="${x}" y2="${y+12+d}" stroke="#7d8790" stroke-width="0.45" opacity="0"/>
+            <line x1="${x-36}" y1="${y-6+18+d}" x2="${x}" y2="${y+12+d}" stroke="#828c96" stroke-width="0.5"/>
+            <line x1="${x}" y1="${y+12+d}" x2="${x+36}" y2="${y-6+18+d}" stroke="#5b646e" stroke-width="0.5"/>
+            ${[0.18,0.42,0.66,0.9].map(f => `
+                <line x1="${x-36+36*((f+row*0.14)%1)}" y1="${y+12-18*(1-((f+row*0.14)%1))+d}" x2="${x-36+36*((f+row*0.14)%1)}" y2="${y+15.5-18*(1-((f+row*0.14)%1))+d}" stroke="#828c96" stroke-width="0.42"/>
+                <line x1="${x+36-36*((f+row*0.26)%1)}" y1="${y+12-18*(1-((f+row*0.26)%1))+d}" x2="${x+36-36*((f+row*0.26)%1)}" y2="${y+15.5-18*(1-((f+row*0.26)%1))+d}" stroke="#5b646e" stroke-width="0.42"/>
+            `).join('')}
+        `).join('')}
+        <!-- weathering: damp staining at the footing -->
+        <polygon points="${x-36},${y+1} ${x},${y+19} ${x},${y+22} ${x-36},${y+4}" fill="#4e5761" opacity="0.35"/>
+        <polygon points="${x},${y+19} ${x+36},${y+1} ${x+36},${y+4} ${x},${y+22}" fill="#3f4750" opacity="0.4"/>
         <!-- walkway inset on top -->
         <polygon points="${x-29},${y-6.5} ${x},${y-21} ${x+29},${y-6.5} ${x},${y+8}" fill="#9aa3ab" stroke="#79828c" stroke-width="0.6"/>
         <!-- merlons marching along both top edges -->
