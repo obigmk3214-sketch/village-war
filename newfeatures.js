@@ -66,7 +66,7 @@ function tickBuilders() {
             b.constructing = false; delete b.endsAt;
             changed = true;
             toast(`${BUILDING_DEFS[b.type].name} construction complete!`, 'success');
-            try { Audio.upgrade(); track('buildingsBuilt'); track('totalBuilt'); } catch(e) {}
+            try { Audio.upgrade(); Audio.stinger && Audio.stinger('build'); track('buildingsBuilt'); track('totalBuilt'); } catch(e) {}
             notifyUser('Construction complete', `${BUILDING_DEFS[b.type].name} is ready!`);
         }
         if (b.upgrading && now >= b.upgrading.endsAt) {
@@ -75,7 +75,7 @@ function tickBuilders() {
             delete b.upgrading;
             changed = true;
             toast(`${BUILDING_DEFS[b.type].name} upgraded to Lv${b.level}!`, 'success');
-            try { Audio.upgrade(); track('buildingsUpgraded'); } catch(e) {}
+            try { Audio.upgrade(); Audio.stinger && Audio.stinger('build'); track('buildingsUpgraded'); } catch(e) {}
             notifyUser('Upgrade complete', `${BUILDING_DEFS[b.type].name} is now level ${b.level}!`);
         }
     }

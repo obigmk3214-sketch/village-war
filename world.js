@@ -2144,6 +2144,38 @@ function renderIsoWorld() {
         // is what makes hand-painted terrain look organic.
         const jit = _tileShade(topFill, gx, gy);
         tilesSVG += `<polygon points="${topPts}" fill="${jit}" shape-rendering="crispEdges"/>`;
+        // TERRAIN BLENDING — where two ground types meet, feather the boundary by
+        // bleeding the neighbour's colour a little way across the shared edge in
+        // two fading steps. Hard diamond seams between grass/path/sand were the
+        // last thing making the ground read as tiles rather than land.
+        {
+            const _tt = (nx, ny) => (nx >= 0 && nx < ISO.GW && ny >= 0 && ny < ISO.GH && _own(nx, ny)) ? TERRAIN[ny][nx] : null;
+            // corners: N(x,y-TH) E(x+TW,y) S(x,y+TH) W(x-TW,y)
+            const edges = [
+                [_tt(gx + 1, gy), [x, y + TH], [x + TW, y]],   // SE
+                [_tt(gx, gy + 1), [x - TW, y], [x, y + TH]],   // SW
+                [_tt(gx - 1, gy), [x, y - TH], [x - TW, y]],   // NW
+                [_tt(gx, gy - 1), [x + TW, y], [x, y - TH]]    // NE
+            ];
+            for (const [nt, A, B] of edges) {
+                if (nt == null || nt === type || nt === 3) continue;
+                const np = PAL[nt]; if (!np) continue;
+                // two feathered steps so the bleed fades out instead of banding
+                for (const [depth, op] of [[0.30, 0.55], [0.52, 0.22]]) {
+                    const ax = A[0] + (x - A[0]) * depth, ay = A[1] + (y - A[1]) * depth;
+                    const bx = B[0] + (x - B[0]) * depth, by = B[1] + (y - B[1]) * depth;
+                    tilesSVG += `<polygon points="${A[0]},${A[1]} ${B[0]},${B[1]} ${bx},${by} ${ax},${ay}" fill="${np.top}" opacity="${op}" pointer-events="none"/>`;
+                }
+                // a scatter of the neighbour's material spilling over the line
+                for (let k = 0; k < 3; k++) {
+                    const f = 0.22 + _tRand(gx * 5 + gy * 9 + k * 17 + nt) * 0.56;
+                    const ex = A[0] + (B[0] - A[0]) * f, ey = A[1] + (B[1] - A[1]) * f;
+                    const inward = 0.18 + _tRand(k * 31 + gx + gy) * 0.3;
+                    const px = ex + (x - ex) * inward, py = ey + (y - ey) * inward;
+                    tilesSVG += `<ellipse cx="${px}" cy="${py}" rx="${2.2 + _tRand(k + gx) * 2.6}" ry="${1.1 + _tRand(k + gy) * 1.2}" fill="${np.top}" opacity="0.4" pointer-events="none"/>`;
+                }
+            }
+        }
         // BEACH FRINGE — a soft sand band on just the edges that meet open water.
         // Corners of the top diamond: N(x,y-TH) E(x+TW,y) S(x,y+TH) W(x-TW,y).
         // Neighbour->edge mapping in iso: gx+1 = SE, gy+1 = SW, gx-1 = NW, gy-1 = NE.

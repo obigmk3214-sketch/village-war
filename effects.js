@@ -115,16 +115,47 @@ const Audio = (() => {
     // Build a play order that maximises contrast: randomise, then greedily pick so
     // each next track has a different `vibe` from the previous one. Also avoids
     // starting the new cycle on the track that just finished.
+    // The village runs a 4-minute day/night cycle. Score the calm playlist against
+    // the current hour so quiet pieces surface at night and lively ones at midday
+    // — the score still leaves plenty of variety, it just biases the order.
+    function dayPhase() {
+        const t = (Date.now() / 1000 / 240) % 1;
+        return (Math.sin(t * 2 * Math.PI) + 1) / 2;   // 0 = deep night, 1 = midday
+    }
+    function vibeFit(vibe, sun) {
+        if (vibe === 'soft')   return 1 - sun;        // night
+        if (vibe === 'lively') return sun;            // day
+        if (vibe === 'grand')  return 1 - Math.abs(sun - 0.5) * 2;  // dawn/dusk
+        return 0.5;
+    }
     function buildQueue(mode) {
-        const remaining = shuffle((mode === 'epic' ? EPIC : CALM).slice());
+        const pool = (mode === 'epic' ? EPIC : CALM).slice();
         const order = [];
-        let prevVibe = lastPlayedIdx >= 0 ? PLAYLIST[lastPlayedIdx].vibe : null;
-        while (remaining.length) {
-            let at = remaining.findIndex(i => PLAYLIST[i].vibe !== prevVibe);
-            if (at < 0) at = 0;
-            const idx = remaining.splice(at, 1)[0];
-            order.push(idx);
-            prevVibe = PLAYLIST[idx].vibe;
+        if (mode === 'epic') {
+            // battle: pure contrast, no time-of-day weighting
+            const remaining = shuffle(pool);
+            let prevVibe = lastPlayedIdx >= 0 ? PLAYLIST[lastPlayedIdx].vibe : null;
+            while (remaining.length) {
+                let at = remaining.findIndex(i => PLAYLIST[i].vibe !== prevVibe);
+                if (at < 0) at = 0;
+                const idx = remaining.splice(at, 1)[0];
+                order.push(idx);
+                prevVibe = PLAYLIST[idx].vibe;
+            }
+        } else {
+            const sun = dayPhase();
+            // weight by time-of-day fit, keep a strong random component so the
+            // order never feels deterministic, then still avoid vibe repeats
+            const remaining = pool.map(i => ({ i, w: vibeFit(PLAYLIST[i].vibe, sun) * 0.65 + Math.random() * 0.35 }))
+                                  .sort((a, b) => b.w - a.w).map(o => o.i);
+            let prevVibe = lastPlayedIdx >= 0 ? PLAYLIST[lastPlayedIdx].vibe : null;
+            while (remaining.length) {
+                let at = remaining.findIndex(i => PLAYLIST[i].vibe !== prevVibe);
+                if (at < 0) at = 0;
+                const idx = remaining.splice(at, 1)[0];
+                order.push(idx);
+                prevVibe = PLAYLIST[idx].vibe;
+            }
         }
         // don't immediately replay the track that just ended
         if (order.length > 1 && order[0] === lastPlayedIdx) order.push(order.shift());
@@ -344,6 +375,56 @@ const Audio = (() => {
         if (ambientNodes) { try { ambientNodes.src.stop(); ambientNodes.swell.stop(); } catch (e) {} ambientNodes = null; }
     }
 
+    // ============================================================
+    // STINGERS & DUCKING — short musical phrases for real moments,
+    // played in the SAME key family as the score (D natural minor /
+    // F major) so they read as part of the music rather than a beep
+    // over it. The bed briefly ducks so the phrase has room.
+    // ============================================================
+    let duckTimer = null;
+    function duckMusic(depth = 0.45, holdMs = 1400) {
+        if (!musicAudio) return;
+        const a = musicAudio;
+        const full = MUSIC_VOL * ((PLAYLIST[musicTrackIdx] && PLAYLIST[musicTrackIdx].trim) || 1);
+        if (duckTimer) { clearTimeout(duckTimer); duckTimer = null; }
+        fadeTo(a, full * (1 - depth), 220);
+        duckTimer = setTimeout(() => {
+            duckTimer = null;
+            if (musicAudio === a && musicPlaying) fadeTo(a, full, 900);
+        }, holdMs);
+    }
+    // one plucked/bowed note with a soft attack — reads as an instrument
+    function note(freq, when, dur, vol, type = 'triangle') {
+        const c = init(); if (!c) return;
+        const t0 = c.currentTime + when;
+        const o = c.createOscillator(), g = c.createGain(), lp = c.createBiquadFilter();
+        o.type = type; o.frequency.setValueAtTime(freq, t0);
+        lp.type = 'lowpass'; lp.frequency.setValueAtTime(Math.max(900, freq * 4), t0);
+        g.gain.setValueAtTime(0, t0);
+        g.gain.linearRampToValueAtTime(vol, t0 + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        o.connect(lp).connect(g).connect(c.destination);
+        o.start(t0); o.stop(t0 + dur + 0.05);
+    }
+    const STINGERS = {
+        // D minor rising arpeggio, settles on the octave — "something finished"
+        build:    { notes: [[293.66, 0], [349.23, 0.10], [440.00, 0.20], [587.33, 0.32]], dur: 0.85, vol: 0.075 },
+        // F major triad with an added 9th — brighter, "you grew"
+        levelup:  { notes: [[349.23, 0], [440.00, 0.09], [523.25, 0.18], [698.46, 0.28], [783.99, 0.40]], dur: 1.1, vol: 0.085 },
+        // short two-note lift — "claimed"
+        reward:   { notes: [[440.00, 0], [659.25, 0.11]], dur: 0.6, vol: 0.065 },
+        // low falling third — "lost / fell"
+        loss:     { notes: [[293.66, 0], [246.94, 0.16], [196.00, 0.34]], dur: 1.0, vol: 0.07, type: 'sine' }
+    };
+    function stinger(kind) {
+        if (sfxMuted) return;
+        const s = STINGERS[kind]; if (!s) return;
+        duckMusic(kind === 'levelup' ? 0.55 : 0.4, kind === 'levelup' ? 1800 : 1200);
+        for (const [f, at] of s.notes) note(f, at, s.dur, s.vol, s.type || 'triangle');
+        // a soft fifth underneath the first note gives the phrase body
+        note(s.notes[0][0] / 2, 0, s.dur * 1.2, s.vol * 0.5, 'sine');
+    }
+
     function startMusic() {
         if (musicPlaying) return;
         musicPlaying = true; failCount = 0; usingFallback = false;
@@ -388,7 +469,7 @@ const Audio = (() => {
         getCurrentTrack,
         onTrackChange: (cb) => { onTrackChange = cb; if (typeof ProcMusic !== 'undefined') ProcMusic.onChange(cb); },
         setBattleMusic: (on) => { setMusicMode(on ? 'epic' : 'calm'); },
-        startAmbient, stopAmbient,
+        startAmbient, stopAmbient, stinger, duckMusic,
         preloadMusic: () => { try { preloadFirst(); } catch (e) {} },
         fanfare: () => {},   // entry is now the real recorded theme (no synth flourish)
         enableMusic: () => { musicEnabled = true; startMusic(); return true; },

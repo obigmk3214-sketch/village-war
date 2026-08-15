@@ -809,6 +809,8 @@ function recordFallen(ids, fellTo) {
             fellTo: fellTo || 'battle', at: Date.now()
         });
         adjustMorale(rankIndex(s) >= 2 ? -6 : -2);
+        // a veteran falling deserves a musical beat, not just a number
+        if (rankIndex(s) >= 2) { try { Audio.stinger && Audio.stinger('loss'); } catch (e) {} }
     }
     // Cap at 80: prune oldest non-Legends first, then oldest.
     while (state.memorial.length > 80) {
@@ -955,6 +957,7 @@ function addXP(amount) {
         toast(`Level Up! You are now level ${state.level}!`, 'success');
         try {
             Audio.levelup();
+            Audio.stinger && Audio.stinger('levelup');
             confetti(50, 2000);
             popup(`LEVEL ${state.level}!`, { big: true, color: '#fbbf24' });
             track('levelReached', 1);
@@ -3038,6 +3041,7 @@ function claimQuest(id) {
     if (typeof addGems === 'function') addGems(2);
     if (typeof Audio !== 'undefined') Audio.coin();
     if (typeof confetti !== 'undefined') confetti(30, 1500);
+        try { Audio.stinger && Audio.stinger('reward'); } catch(e) {}
     toast(`Reward claimed!`, 'success');
     renderQuestsView();
     updateResources();
