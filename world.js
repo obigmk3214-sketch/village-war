@@ -14,7 +14,7 @@ const ISO = {
 };
 
 // Camera state — pan/zoom (SVG transform) + 3D view angle (CSS transform)
-const CAM = { x: 0, y: 0, zoom: 1.55, minZoom: 0.5, maxZoom: 4.0 };
+const CAM = { x: 0, y: 0, zoom: 3.1, minZoom: 0.5, maxZoom: 6.0 };
 const VIEW = { spin: 0, tilt: 0 };  // LOCKED — the iso angle never changes (drag pans instead)
 
 // Compute final viewbox & offset so everything is centered
@@ -165,29 +165,56 @@ const treeSVG = (gx, gy, variant) => {
     const { x, y } = iso(gx, gy);
     const variants = [
         // Pine
-        `<ellipse cx="${x + 2}" cy="${y + 4}" rx="14" ry="3" fill="rgba(0,0,0,0.35)"/>
-         <rect x="${x - 2}" y="${y - 12}" width="4" height="18" fill="#5a3818" stroke="#3a2010" stroke-width="0.4"/>
-         <polygon points="${x - 14},${y - 8} ${x + 14},${y - 8} ${x},${y - 38}" fill="#1e6e2e" stroke="#0e3818" stroke-width="0.6"/>
-         <polygon points="${x - 11},${y - 16} ${x + 11},${y - 16} ${x},${y - 40}" fill="#27873a" stroke="#0e3818" stroke-width="0.4"/>
-         <polygon points="${x - 8},${y - 24} ${x + 8},${y - 24} ${x},${y - 44}" fill="#33a04a" stroke="#0e3818" stroke-width="0.4"/>`,
-        // Oak
-        `<ellipse cx="${x + 2}" cy="${y + 5}" rx="18" ry="4" fill="rgba(0,0,0,0.35)"/>
-         <rect x="${x - 3}" y="${y - 10}" width="6" height="16" fill="#6b4520" stroke="#3a2010" stroke-width="0.4"/>
-         <line x1="${x}" y1="${y - 10}" x2="${x - 8}" y2="${y - 18}" stroke="#5a3818" stroke-width="1.5"/>
-         <line x1="${x}" y1="${y - 10}" x2="${x + 8}" y2="${y - 18}" stroke="#5a3818" stroke-width="1.5"/>
-         <circle cx="${x}" cy="${y - 22}" r="18" fill="#2e8b30" stroke="#1a5e1c" stroke-width="0.6"/>
-         <circle cx="${x - 10}" cy="${y - 18}" r="11" fill="#33a04a" stroke="#1a5e1c" stroke-width="0.5"/>
-         <circle cx="${x + 11}" cy="${y - 16}" r="10" fill="#33a04a" stroke="#1a5e1c" stroke-width="0.5"/>
-         <circle cx="${x + 2}" cy="${y - 30}" r="9" fill="#3eb95a" stroke="#1a5e1c" stroke-width="0.5"/>
-         <circle cx="${x - 5}" cy="${y - 25}" r="4" fill="#5ad078" opacity="0.6"/>`,
-        // Cherry
-        `<ellipse cx="${x + 2}" cy="${y + 4}" rx="15" ry="3" fill="rgba(0,0,0,0.3)"/>
-         <rect x="${x - 2}" y="${y - 8}" width="4" height="14" fill="#5a3818"/>
-         <circle cx="${x}" cy="${y - 18}" r="14" fill="#f7a5c4" stroke="#a04a78" stroke-width="0.6"/>
-         <circle cx="${x - 8}" cy="${y - 14}" r="8" fill="#fcc4d8" stroke="#a04a78" stroke-width="0.4"/>
-         <circle cx="${x + 9}" cy="${y - 14}" r="9" fill="#fcc4d8" stroke="#a04a78" stroke-width="0.4"/>
-         <circle cx="${x}" cy="${y - 24}" r="6" fill="#ffd0e0"/>
-         <circle cx="${x - 4}" cy="${y - 22}" r="1.2" fill="#fff" opacity="0.7"/>`
+        // PINE — tapered bark trunk with root flare, drooping needle tiers with
+        // ragged edges (a real conifer sags outward and down, it isn't a stack
+        // of clean triangles), lit on the upper-left, deep shade on the right.
+        `<ellipse cx="${x + 3}" cy="${y + 4}" rx="13" ry="3.2" fill="rgba(0,0,0,0.35)"/>
+         <path d="M ${x - 3.4} ${y + 6} q 1.1 -3 0.9 -8 l 0.4 -10 l 4.2 0 l 0.4 10 q -0.2 5 0.9 8 Z" fill="#5a3818" stroke="#2a1a0e" stroke-width="0.45"/>
+         <path d="M ${x + 0.5} ${y + 6} l 0.4 -18 l 2.6 0 l 0.4 10 q -0.2 5 0.9 8 Z" fill="#3d2410" opacity="0.55"/>
+         ${[[-8, 14, '#1c6a2c'], [-16, 11.5, '#227a33'], [-24, 9, '#2b8f3d'], [-31, 6.5, '#34a447']].map(([dy, w, c]) => `
+            <path d="M ${x - w} ${y + dy} q ${w * 0.35} 1.6 ${w * 0.55} -1.2 q ${w * 0.2} 2 ${w * 0.45} -0.6 L ${x} ${y + dy - 11}
+                     q ${w * 0.45} 4.4 ${w * 0.9} 10.6 q -${w * 0.25} -2.6 -${w * 0.45} 0.6 q -${w * 0.2} -2.8 -${w * 0.55} 1.2 Z"
+                  fill="${c}" stroke="#0e3818" stroke-width="0.4"/>
+            <path d="M ${x} ${y + dy - 11} q ${w * 0.45} 4.4 ${w * 0.9} 10.6 q -${w * 0.25} -2.6 -${w * 0.45} 0.6 Z" fill="#000" opacity="0.14"/>
+         `).join('')}
+         <path d="M ${x - 4} ${y - 33} q 1.6 -4 4 -5.5 q 2.4 1.5 4 5.5 q -4 -2 -8 0 Z" fill="#3aae4d" stroke="#0e3818" stroke-width="0.35"/>`,
+        // OAK — a real crown: forking limbs, then overlapping leaf CLUSTERS with
+        // scalloped edges (never plain circles) in three depth tones.
+        `<ellipse cx="${x + 3}" cy="${y + 5}" rx="17" ry="3.8" fill="rgba(0,0,0,0.35)"/>
+         <path d="M ${x - 5} ${y + 6} q 1.8 -4 1.4 -9 l 0.5 -6 l 6.2 0 l 0.5 6 q -0.4 5 1.4 9 Z" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.5"/>
+         <path d="M ${x + 1} ${y + 6} l 0.5 -15 l 3.1 0 l 0.5 6 q -0.4 5 1.4 9 Z" fill="#452a10" opacity="0.5"/>
+         ${[[-3.5, -6], [-2, -3], [1, -5]].map(([tx, ty]) => `<line x1="${x + tx}" y1="${y + ty}" x2="${x + tx * 0.4}" y2="${y + ty - 4}" stroke="#3d2410" stroke-width="0.45" opacity="0.6"/>`).join('')}
+         <path d="M ${x - 1} ${y - 9} q -3.5 -3 -7 -7" stroke="#5a3818" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+         <path d="M ${x + 1} ${y - 9} q 3.5 -3.5 7.5 -6" stroke="#5a3818" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+         <path d="M ${x} ${y - 10} q 0.5 -5 0.5 -9" stroke="#5a3818" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+         ${[[0, -23, 17, '#26762c'], [-10, -18, 10.5, '#2e8b34'], [11, -17, 9.5, '#2e8b34'], [2, -30, 9, '#3aa845'], [-6, -27, 7, '#3aa845']].map(([cx0, cy0, r, c]) => {
+            let d = '';
+            for (let k = 0; k < 9; k++) {
+                const a = (k / 9) * Math.PI * 2;
+                const rr = r * (k % 2 ? 0.80 : 1);
+                const px = x + cx0 + Math.cos(a) * rr, py = y + cy0 + Math.sin(a) * rr * 0.86;
+                d += (k ? ' Q ' : 'M ') + (k ? `${x + cx0 + Math.cos(a - 0.35) * r * 1.06} ${y + cy0 + Math.sin(a - 0.35) * r * 0.92} ${px} ${py}` : `${px} ${py}`);
+            }
+            return `<path d="${d} Z" fill="${c}" stroke="#154d18" stroke-width="0.45"/>`;
+         }).join('')}
+         <path d="M ${x - 14} ${y - 26} q 6 -5 13 -4.5 q -7 1.5 -13 4.5 Z" fill="#5ad078" opacity="0.45"/>
+         <path d="M ${x + 6} ${y - 12} q 8 2 11 -3 q -3 6 -11 3 Z" fill="#0e3818" opacity="0.28"/>`,
+        // CHERRY — blossom clusters with visible petal lobes and drifting petals.
+        `<ellipse cx="${x + 2}" cy="${y + 4}" rx="14" ry="3" fill="rgba(0,0,0,0.3)"/>
+         <path d="M ${x - 3.2} ${y + 6} q 1.2 -3.4 1 -8 l 0.4 -5 l 3.6 0 l 0.4 5 q -0.2 4.6 1 8 Z" fill="#5a3818" stroke="#2a1a0e" stroke-width="0.45"/>
+         <path d="M ${x - 0.5} ${y - 7} q -3 -2.5 -6 -5" stroke="#4a2e16" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+         <path d="M ${x + 0.5} ${y - 7} q 3 -3 6.5 -4.5" stroke="#4a2e16" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+         ${[[0, -19, 13, '#f4a0c0'], [-8, -14, 8, '#f9bad2'], [9, -14, 8.5, '#f9bad2'], [1, -26, 7, '#ffd0e0']].map(([cx0, cy0, r, c]) => {
+            let d = '';
+            for (let k = 0; k < 8; k++) {
+                const a = (k / 8) * Math.PI * 2;
+                const rr = r * (k % 2 ? 0.78 : 1);
+                const px = x + cx0 + Math.cos(a) * rr, py = y + cy0 + Math.sin(a) * rr * 0.85;
+                d += (k ? ' Q ' : 'M ') + (k ? `${x + cx0 + Math.cos(a - 0.38) * r * 1.08} ${y + cy0 + Math.sin(a - 0.38) * r * 0.9} ${px} ${py}` : `${px} ${py}`);
+            }
+            return `<path d="${d} Z" fill="${c}" stroke="#b8608c" stroke-width="0.4"/>`;
+         }).join('')}
+         ${[[-11, -6], [8, -3], [-4, -1]].map(([px, py], i) => `<ellipse cx="${x + px}" cy="${y + py}" rx="1.5" ry="0.85" fill="#ffd0e0" opacity="0.85" transform="rotate(${i * 40 - 30} ${x + px} ${y + py})"/>`).join('')}`
     ];
     return variants[variant % variants.length];
 };
@@ -247,7 +274,7 @@ function buildingTile(gx, gy, type, level, pos) {
     const S = 0.58;
     return `<g class="bld bld-${type}" data-pos="${pos}" style="cursor:pointer">
         <g transform="translate(${x},${y}) scale(${S}) translate(${-x},${-y})">${fn(x, y, level)}</g>
-        <g class="bld-badge" transform="translate(${x + 10}, ${y - 4})">
+        <g class="bld-badge" transform="translate(${x + 7}, ${y - 3}) scale(0.55)">
             <rect x="0" y="0" width="22" height="13" rx="6" fill="#1a1a2e" stroke="#fbbf24" stroke-width="1"/>
             <text x="11" y="9.5" text-anchor="middle" font-size="9" font-weight="900" fill="#fbbf24" font-family="Inter, sans-serif">${level}</text>
         </g>
@@ -1754,17 +1781,46 @@ const VILLAGER_VARIANTS = [
 
 function villagerSVG(id, variant, tool) {
     const v = VILLAGER_VARIANTS[variant % VILLAGER_VARIANTS.length];
+    // A PERSON, not a circle on a rectangle. Built the way a figure actually
+    // reads at close zoom: boots -> tapered legs -> belted tunic that flares at
+    // the hem -> shoulders -> arms with hands -> neck -> head with hair, brow,
+    // eyes and mouth. Light from upper-left, so the right side of every mass
+    // carries a shade pass.
+    const hair = v.hair || '#4a3018';
     return `<g class="villager villager-${id}">
-        <ellipse cx="0" cy="3" rx="4" ry="1.2" fill="rgba(0,0,0,0.45)"/>
-        <rect x="-3" y="-5" width="6" height="8" fill="${v.body}" stroke="${v.bodyDark}" stroke-width="0.4"/>
-        <rect x="-3" y="-5" width="6" height="2" fill="${v.bodyDark}"/>
-        <circle cx="0" cy="-8" r="2.6" fill="${v.skin}" stroke="#5a3818" stroke-width="0.3"/>
-        <circle cx="-0.7" cy="-8" r="0.3" fill="#000"/>
-        <circle cx="0.7" cy="-8" r="0.3" fill="#000"/>
-        <rect x="-2.5" y="-12" width="5" height="2.5" fill="${v.hat}" stroke="#3a2010" stroke-width="0.3"/>
-        <rect x="-3" y="-10" width="6" height="0.8" fill="#3a2010"/>
-        <rect x="-2.5" y="-1" width="1.5" height="4" fill="${v.bodyDark}"/>
-        <rect x="1" y="-1" width="1.5" height="4" fill="${v.bodyDark}"/>
+        <ellipse cx="0.3" cy="3.4" rx="4.2" ry="1.3" fill="rgba(0,0,0,0.42)"/>
+        <!-- boots -->
+        <path d="M -2.7 3.2 l 0 -1.6 l 1.9 0 l 0 1.6 q -0.95 0.5 -1.9 0 Z" fill="#3a2a18" stroke="#241608" stroke-width="0.28"/>
+        <path d="M 0.8 3.2 l 0 -1.6 l 1.9 0 l 0 1.6 q -0.95 0.5 -1.9 0 Z" fill="#2f2213" stroke="#241608" stroke-width="0.28"/>
+        <!-- legs, tapered -->
+        <path d="M -2.5 1.7 l 0.35 -3.3 l 1.5 0 l -0.15 3.3 Z" fill="${v.bodyDark}" stroke="#241608" stroke-width="0.25"/>
+        <path d="M 0.65 1.7 l 0.15 -3.3 l 1.5 0 l -0.35 3.3 Z" fill="#2c2318" stroke="#241608" stroke-width="0.25"/>
+        <!-- tunic: narrow at the shoulder, flaring to the hem -->
+        <path d="M -2.5 -6.2 q 2.5 -0.8 5 0 l 0.85 6.1 q -3.35 1.05 -6.7 0 Z" fill="${v.body}" stroke="${v.bodyDark}" stroke-width="0.35"/>
+        <path d="M 0 -6.5 l 2.5 0.3 l 0.85 6.1 q -1.65 0.5 -3.35 0.5 Z" fill="${v.bodyDark}" opacity="0.45"/>
+        <!-- belt + buckle -->
+        <path d="M -2.9 -2.1 q 2.9 0.85 5.8 0 l 0.12 0.95 q -3.02 0.85 -6.04 0 Z" fill="#4a3018" stroke="#241608" stroke-width="0.25"/>
+        <rect x="-0.5" y="-2.05" width="1" height="0.95" fill="#c9a227"/>
+        <!-- collar -->
+        <path d="M -1.5 -6.35 q 1.5 0.75 3 0 l -1.5 1.5 Z" fill="${v.bodyDark}"/>
+        <!-- arms + hands -->
+        <path d="M -2.6 -5.9 q -1.5 1.9 -1.15 4.5 l 1.15 0.2 q 0.15 -2.4 1 -3.9 Z" fill="${v.body}" stroke="${v.bodyDark}" stroke-width="0.3"/>
+        <circle cx="-3.5" cy="-1.1" r="0.75" fill="${v.skin}" stroke="#5a3818" stroke-width="0.22"/>
+        <path d="M 2.6 -5.9 q 1.5 1.9 1.15 4.5 l -1.15 0.2 q -0.15 -2.4 -1 -3.9 Z" fill="${v.bodyDark}" stroke="#241608" stroke-width="0.3"/>
+        <circle cx="3.5" cy="-1.1" r="0.75" fill="${v.skin}" stroke="#5a3818" stroke-width="0.22"/>
+        <!-- neck -->
+        <rect x="-0.7" y="-7.2" width="1.4" height="1.2" fill="${v.skin}" stroke="#5a3818" stroke-width="0.2"/>
+        <!-- head: rounded jaw, not a circle -->
+        <path d="M -2.2 -9.1 q 0 -2.5 2.2 -2.5 q 2.2 0 2.2 2.5 q 0 2.1 -2.2 2.4 q -2.2 -0.3 -2.2 -2.4 Z" fill="${v.skin}" stroke="#5a3818" stroke-width="0.3"/>
+        <path d="M 0 -11.6 q 2.2 0 2.2 2.5 q 0 2.1 -2.2 2.4 Z" fill="#000" opacity="0.1"/>
+        <!-- hair sweeping over the brow -->
+        <path d="M -2.25 -9.4 q 0.2 -2.35 2.25 -2.35 q 2.05 0 2.25 2.35 q -1.1 -1.1 -2.25 -0.9 q -1.15 -0.2 -2.25 0.9 Z" fill="${hair}" stroke="#241608" stroke-width="0.22"/>
+        <!-- face -->
+        <circle cx="-0.75" cy="-9.15" r="0.3" fill="#2a1a0e"/>
+        <circle cx="0.75" cy="-9.15" r="0.3" fill="#2a1a0e"/>
+        <path d="M -0.6 -7.95 q 0.6 0.45 1.2 0" stroke="#8a5a3a" stroke-width="0.25" fill="none" stroke-linecap="round"/>
+        ${v.hat ? `<path d="M -2.9 -10.7 q 2.9 -1.1 5.8 0 q -0.5 0.55 -1.15 0.55 l -3.5 0 q -0.65 0 -1.15 -0.55 Z" fill="${v.hat}" stroke="#3a2010" stroke-width="0.28"/>
+        <path d="M -2 -10.75 q 2 -2.1 4 0 Z" fill="${v.hat}" stroke="#3a2010" stroke-width="0.25"/>` : ''}
         ${villagerTool(tool)}
     </g>`;
 }
@@ -2106,18 +2162,59 @@ function renderIsoWorld() {
         // upper-half highlight for a soft 3D sheen
         tilesSVG += `<polygon points="${x},${y - TH} ${x + TW * 0.5},${y - TH * 0.5} ${x},${y} ${x - TW * 0.5},${y - TH * 0.5}" fill="${topHi}" opacity="0.45" pointer-events="none"/>`;
         // ground texture: grass tufts on green tiles, pebbles/ripples on sand & path
+        // At close zoom a tile fills a third of the screen, so one lonely tuft
+        // left it reading as a flat colour field. Every tile now carries mottled
+        // patches plus a dozen scattered details, all seeded so nothing shimmers
+        // between renders. Points are rejected outside the diamond so texture
+        // never bleeds over a tile edge.
         {
-            const r1 = _tRand(gx * 7 + gy * 13), r2 = _tRand(gx * 31 + gy * 17), r3 = _tRand(gx * 53 + gy * 29);
-            const tuft = (tx, ty, c) => `<path d="M ${tx} ${ty} l -1.6 -3 M ${tx} ${ty} l 0 -3.8 M ${tx} ${ty} l 1.7 -2.9" stroke="${c}" stroke-width="0.8" fill="none" stroke-linecap="round" opacity="0.55" pointer-events="none"/>`;
-            const px1 = x - TW * 0.35 + r1 * TW * 0.7, py1 = y + (r2 - 0.5) * TH * 0.9;
-            const px2 = x - TW * 0.3 + r3 * TW * 0.6, py2 = y + (r1 - 0.5) * TH * 0.8;
-            if (type === 0 || type === 1) {
-                tilesSVG += tuft(px1, py1, '#3f8226') + (r3 > 0.55 ? tuft(px2, py2, '#4f9c31') : '');
-            } else if (type === 4 || (isEdge && type === 0)) {
-                tilesSVG += `<ellipse cx="${px1}" cy="${py1}" rx="1.5" ry="0.7" fill="#c4aa70" opacity="0.5" pointer-events="none"/>`;
-            } else if (type === 2 && r2 > 0.5) {
-                tilesSVG += `<ellipse cx="${px1}" cy="${py1}" rx="2" ry="0.9" fill="#ac8a52" opacity="0.45" pointer-events="none"/>`;
+            const inDiamond = (dx, dy) => Math.abs(dx) / TW + Math.abs(dy) / TH <= 0.92;
+            let tex = '';
+            // soft colour mottling — two irregular patches per tile
+            for (let m = 0; m < 2; m++) {
+                const a = _tRand(gx * 11 + gy * 23 + m * 91), b = _tRand(gx * 37 + gy * 5 + m * 47);
+                const dx = (a - 0.5) * TW * 1.1, dy = (b - 0.5) * TH * 1.1;
+                if (!inDiamond(dx, dy)) continue;
+                const rr = 7 + _tRand(gx + gy + m * 13) * 11;
+                const mc = (type === 0 || type === 1) ? (m ? '#57a838' : '#3f8226')
+                         : (type === 2) ? '#c29a5e' : (type === 4) ? '#dcc48a' : '#5fa8dc';
+                tex += `<ellipse cx="${x + dx}" cy="${y + dy}" rx="${rr}" ry="${rr * 0.5}" fill="${mc}" opacity="0.13" pointer-events="none"/>`;
             }
+            if (type === 0 || type === 1) {
+                const tuft = (tx, ty, c, s) => `<path d="M ${tx} ${ty} l ${-1.5 * s} ${-2.8 * s} M ${tx} ${ty} l 0 ${-3.6 * s} M ${tx} ${ty} l ${1.6 * s} ${-2.7 * s}" stroke="${c}" stroke-width="${0.75 * s}" fill="none" stroke-linecap="round" opacity="0.6" pointer-events="none"/>`;
+                for (let k = 0; k < 12; k++) {
+                    const a = _tRand(gx * 7 + gy * 13 + k * 29), b = _tRand(gx * 31 + gy * 17 + k * 53);
+                    const dx = (a - 0.5) * TW * 1.5, dy = (b - 0.5) * TH * 1.5;
+                    if (!inDiamond(dx, dy)) continue;
+                    const s = 0.75 + _tRand(k * 7 + gx + gy) * 0.6;
+                    tex += tuft(x + dx, y + dy, k % 3 === 0 ? '#356f1f' : (k % 3 === 1 ? '#4f9c31' : '#5fb03c'), s);
+                }
+                // a few tiny wildflowers
+                for (let k = 0; k < 2; k++) {
+                    const a = _tRand(gx * 61 + gy * 3 + k * 17), b = _tRand(gx * 5 + gy * 71 + k * 41);
+                    const dx = (a - 0.5) * TW * 1.3, dy = (b - 0.5) * TH * 1.3;
+                    if (!inDiamond(dx, dy) || _tRand(gx + gy * 3 + k) < 0.55) continue;
+                    const fc = ['#f5d76e', '#e8738f', '#cfd8ff'][(gx + gy + k) % 3];
+                    tex += `<circle cx="${x + dx}" cy="${y + dy}" r="0.95" fill="${fc}" opacity="0.9" pointer-events="none"/>`;
+                }
+            } else if (type === 4) {
+                for (let k = 0; k < 9; k++) {
+                    const a = _tRand(gx * 17 + gy * 43 + k * 31), b = _tRand(gx * 23 + gy * 11 + k * 59);
+                    const dx = (a - 0.5) * TW * 1.5, dy = (b - 0.5) * TH * 1.5;
+                    if (!inDiamond(dx, dy)) continue;
+                    tex += `<ellipse cx="${x + dx}" cy="${y + dy}" rx="${1 + a}" ry="${0.5 + a * 0.4}" fill="#c4aa70" opacity="0.45" pointer-events="none"/>`;
+                }
+            } else if (type === 2) {
+                // packed-earth path: wheel ruts + scattered pebbles
+                tex += `<path d="M ${x - TW * 0.55} ${y - TH * 0.1} Q ${x} ${y + TH * 0.12} ${x + TW * 0.55} ${y - TH * 0.08}" stroke="#a8834c" stroke-width="1.6" fill="none" opacity="0.35" pointer-events="none"/>`;
+                for (let k = 0; k < 8; k++) {
+                    const a = _tRand(gx * 13 + gy * 29 + k * 37), b = _tRand(gx * 47 + gy * 19 + k * 23);
+                    const dx = (a - 0.5) * TW * 1.5, dy = (b - 0.5) * TH * 1.5;
+                    if (!inDiamond(dx, dy)) continue;
+                    tex += `<ellipse cx="${x + dx}" cy="${y + dy}" rx="${1.2 + a * 0.9}" ry="${0.6 + a * 0.4}" fill="${k % 2 ? '#8f6d3e' : '#c2a06a'}" opacity="0.45" pointer-events="none"/>`;
+                }
+            }
+            tilesSVG += tex;
         }
         if (type === 3) tilesSVG += `<polygon points="${topPts}" fill="#7cc8f8" opacity="0.2" pointer-events="none"><animate attributeName="opacity" values="0.08;0.32;0.08" dur="3.2s" repeatCount="indefinite"/></polygon>`;
     }
