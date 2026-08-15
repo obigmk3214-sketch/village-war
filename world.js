@@ -1951,6 +1951,75 @@ function cowSVG() {
 // MAIN RENDER
 // ============================================================
 
+// ============================================================
+// WORKERS — every villager has a JOB tied to a real building, works
+// beside it with the right tool, and names their trade on hover.
+// Returned as depth-sorted entities so buildings correctly occlude
+// them (a worker must never appear standing on a neighbour's roof).
+// ============================================================
+const WORKER_JOBS = {
+    farm:       { variant: 1, tool: 'hoe',    title: 'Farmhand',   verb: 'tending the crops' },
+    lumbermill: { variant: 2, tool: 'axe',    title: 'Woodcutter', verb: 'splitting logs' },
+    goldmine:   { variant: 0, tool: 'pick',   title: 'Miner',      verb: 'working the gold seam' },
+    ironmine:   { variant: 0, tool: 'pick',   title: 'Miner',      verb: 'hauling iron ore' },
+    coinmint:   { variant: 3, tool: 'ledger', title: 'Minter',     verb: 'striking coins' },
+    harbor:     { variant: 3, tool: 'crate',  title: 'Dockhand',   verb: 'loading the trade ship' },
+    researchlab:{ variant: 4, tool: 'tome',   title: 'Scholar',    verb: 'poring over research' },
+    storage:    { variant: 3, tool: 'crate',  title: 'Stevedore',  verb: 'stacking the stores' },
+    barracks:   { variant: 5, tool: 'spear',  title: 'Drill Sgt.', verb: 'drilling recruits' },
+    stable:     { variant: 1, tool: 'hoe',    title: 'Groom',      verb: 'brushing the horses' },
+    townhall:   { variant: 5, tool: 'ledger', title: 'Steward',    verb: 'keeping the ledgers' },
+    archertower:{ variant: 5, tool: 'spear',  title: 'Watchman',   verb: 'scanning the horizon' },
+    cannon:     { variant: 0, tool: 'pick',   title: 'Gunner',     verb: 'swabbing the barrel' },
+    fortress:   { variant: 5, tool: 'spear',  title: 'Guard',      verb: 'standing watch' }
+};
+// Villagers are drawn at full size but buildings render at BLD_SCALE, so a
+// worker must be scaled to match or they tower over the architecture.
+const WORKER_SCALE = 0.62;
+
+function buildWorkerEntities() {
+    const out = [];
+    let n = 0;
+    for (const b of state.buildings) {
+        if (n >= 9) break;                       // keep the scene readable
+        const job = WORKER_JOBS[b.type];
+        if (!job || b.constructing) continue;
+        const gx = b.pos % ISO.GW, gy = Math.floor(b.pos / ISO.GW);
+        const { x, y } = iso(gx, gy);
+        // Stand at the FRONT (south) edge of the plot, not mid-tile. Building
+        // roofs are taller than one tile, so a worker sitting mid-tile can be
+        // reached over by a diagonal neighbour's roof and read as standing on
+        // it. Seated forward, they're clearly on open ground in front.
+        const ox = -8 + _tRand(b.pos * 13 + 5) * 16;
+        const oy = 15 + _tRand(b.pos * 7) * 5;
+        const wx = x + ox, wy = y + oy;
+        out.push({
+            kind: 'worker', gx, gy, depth: gx + gy + 0.6,
+            svg: `<g class="villager-wrap worker-job" data-vid="${n}" data-hx="${wx}" data-hy="${wy}" data-home="${b.pos}" style="transform:translate(${wx}px,${wy}px)">
+                    <title>${job.title} — ${job.verb}</title>
+                    <g transform="scale(${WORKER_SCALE})">${villagerSVG(n, job.variant, job.tool)}</g>
+                  </g>`
+        });
+        n++;
+    }
+    // Nothing built yet: a couple of settlers survey the empty land.
+    if (n === 0) {
+        const cgx = Math.floor(ISO.GW / 2), cgy = Math.floor(ISO.GH / 2);
+        const c = iso(cgx, cgy);
+        for (let i = 0; i < 2; i++) {
+            const wx = c.x + i * 20 - 10, wy = c.y + 9;
+            out.push({
+                kind: 'worker', gx: cgx, gy: cgy, depth: cgx + cgy + 0.6,
+                svg: `<g class="villager-wrap" data-vid="${i}" data-hx="${wx}" data-hy="${wy}" style="transform:translate(${wx}px,${wy}px)">
+                        <title>Settler — waiting for you to build</title>
+                        <g transform="scale(${WORKER_SCALE})">${villagerSVG(i, i, null)}</g>
+                      </g>`
+            });
+        }
+    }
+    return out;
+}
+
 function renderIsoWorld() {
     if (!TERRAIN) TERRAIN = genTerrain();
     if (!DECORATIONS) DECORATIONS = genDecorations();
@@ -1969,6 +2038,13 @@ function renderIsoWorld() {
         const gy = Math.floor(b.pos / ISO.GW);
         entities.push({ gx, gy, type: b.type, level: b.level, depth: gx + gy + 0.5, kind: 'bld', pos: b.pos });
     });
+    // WORKERS join the SAME depth-sorted stream as buildings and decorations.
+    // They used to render in a separate layer painted after everything, so a
+    // villager always drew on top of whatever was in front of them — which is
+    // why workers appeared to stand on their neighbour's roof. Sorting at
+    // gx+gy+0.6 puts each worker just in front of their own building while
+    // still letting anything a row further south correctly occlude them.
+    for (const w of buildWorkerEntities()) entities.push(w);
     entities.sort((a, b) => a.depth - b.depth);
 
     // ===== 3D EXTRUDED ISLAND =====
@@ -2289,6 +2365,10 @@ function renderIsoWorld() {
                     : new Set(state.clearedDecos || []);
     let entSVG = '';
     for (const e of entities) {
+        if (e.kind === 'worker') {
+            entSVG += e.svg;
+            continue;
+        }
         if (e.kind === 'deco') {
             const key = e.gx + ',' + e.gy;
             if (cleared.has(key)) continue;                       // already cleared
@@ -2340,51 +2420,9 @@ function renderIsoWorld() {
         }
     }
 
-    // WORKERS — every villager has a JOB tied to a real building, works beside
-    // it with the right tool, and says what they do on hover. Previously they
-    // were interchangeable bodies wandering at random, which made the village
-    // feel like a screensaver instead of a place where people live and labour.
-    let workerSvg = '';
-    {
-        const JOBS = {
-            farm:       { variant: 1, tool: 'hoe',    title: 'Farmhand',   verb: 'tending the crops' },
-            lumbermill: { variant: 2, tool: 'axe',    title: 'Woodcutter', verb: 'splitting logs' },
-            goldmine:   { variant: 0, tool: 'pick',   title: 'Miner',      verb: 'working the gold seam' },
-            ironmine:   { variant: 0, tool: 'pick',   title: 'Miner',      verb: 'hauling iron ore' },
-            coinmint:   { variant: 3, tool: 'ledger', title: 'Minter',     verb: 'striking coins' },
-            harbor:     { variant: 3, tool: 'crate',  title: 'Dockhand',   verb: 'loading the trade ship' },
-            researchlab:{ variant: 4, tool: 'tome',   title: 'Scholar',    verb: 'poring over research' },
-            storage:    { variant: 3, tool: 'crate',  title: 'Stevedore',  verb: 'stacking the stores' },
-            barracks:   { variant: 5, tool: 'spear',  title: 'Drill Sgt.', verb: 'drilling recruits' },
-            stable:     { variant: 1, tool: 'hoe',    title: 'Groom',      verb: 'brushing the horses' },
-            townhall:   { variant: 5, tool: 'ledger', title: 'Steward',    verb: 'keeping the ledgers' },
-            archertower:{ variant: 5, tool: 'spear',  title: 'Watchman',   verb: 'scanning the horizon' },
-            cannon:     { variant: 0, tool: 'pick',   title: 'Gunner',     verb: 'swabbing the barrel' },
-            fortress:   { variant: 5, tool: 'spear',  title: 'Guard',      verb: 'standing watch' }
-        };
-        let n = 0;
-        for (const b of state.buildings) {
-            if (n >= 9) break;                       // keep the scene readable
-            const job = JOBS[b.type];
-            if (!job || b.constructing) continue;
-            const gx = b.pos % ISO.GW, gy = Math.floor(b.pos / ISO.GW);
-            const { x, y } = iso(gx, gy);
-            // stand just off the building's doorstep, deterministic per position
-            const jr = _tRand(b.pos * 13 + 5);
-            const ox = -18 + jr * 30, oy = 8 + _tRand(b.pos * 7) * 7;
-            workerSvg += `<g class="villager-wrap worker-job" data-vid="${n}" data-hx="${x + ox}" data-hy="${y + oy}" data-home="${b.pos}" style="transform:translate(${x + ox}px,${y + oy}px)">
-                <title>${job.title} — ${job.verb}</title>${villagerSVG(n, job.variant, job.tool)}</g>`;
-            n++;
-        }
-        // If nothing is built yet, a couple of settlers survey the empty land.
-        if (n === 0) {
-            const c = iso(Math.floor(ISO.GW / 2), Math.floor(ISO.GH / 2));
-            for (let i = 0; i < 2; i++) {
-                workerSvg += `<g class="villager-wrap" data-vid="${i}" data-hx="${c.x + i * 22 - 11}" data-hy="${c.y + 10}" style="transform:translate(${c.x + i * 22 - 11}px,${c.y + 10}px)">
-                    <title>Settler — waiting for you to build</title>${villagerSVG(i, i, null)}</g>`;
-            }
-        }
-    }
+    // Workers live in the depth-sorted entity stream (buildWorkerEntities),
+    // so this legacy layer stays empty.
+    const workerSvg = '';
 
     // Cow grazing
     let animals = '';
