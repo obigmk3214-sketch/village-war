@@ -62,7 +62,7 @@ function _tRand(n) { const v = Math.sin(n * 91.7 + 41.3) * 21753.19; return v - 
 function _tileShade(hex, gx, gy) {
     const h = hex.replace('#', '');
     if (h.length !== 6) return hex;
-    const d = (_tRand(gx * 3 + gy * 11) - 0.5) * 16;   // ±8 per channel
+    const d = (_tRand(gx * 3 + gy * 11) - 0.5) * 7;    // ±3.5 per channel — subtle
     const ch = (i) => {
         const v = Math.round(parseInt(h.substr(i, 2), 16) + d);
         return Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
@@ -2143,7 +2143,7 @@ function renderIsoWorld() {
         // as a flat checkerboard of blocks; a few percent of variation per tile
         // is what makes hand-painted terrain look organic.
         const jit = _tileShade(topFill, gx, gy);
-        tilesSVG += `<polygon points="${topPts}" fill="${jit}" stroke="${p.lip}" stroke-width="0.5" stroke-opacity="0.35"/>`;
+        tilesSVG += `<polygon points="${topPts}" fill="${jit}" shape-rendering="crispEdges"/>`;
         // BEACH FRINGE — a soft sand band on just the edges that meet open water.
         // Corners of the top diamond: N(x,y-TH) E(x+TW,y) S(x,y+TH) W(x-TW,y).
         // Neighbour->edge mapping in iso: gx+1 = SE, gy+1 = SW, gx-1 = NW, gy-1 = NE.
@@ -2159,8 +2159,9 @@ function renderIsoWorld() {
             if (!_own(gx - 1, gy)) tilesSVG += band(x, y - TH, x - TW, y);          // NW
             if (!_own(gx, gy - 1)) tilesSVG += band(x + TW, y, x, y - TH);          // NE
         }
-        // upper-half highlight for a soft 3D sheen
-        tilesSVG += `<polygon points="${x},${y - TH} ${x + TW * 0.5},${y - TH * 0.5} ${x},${y} ${x - TW * 0.5},${y - TH * 0.5}" fill="${topHi}" opacity="0.45" pointer-events="none"/>`;
+        // (No per-tile highlight wedge: an identical bright triangle stamped on
+        //  every diamond is what made the ground read as tiles instead of land.
+        //  Depth now comes from the mottling below plus the cliff faces.)
         // ground texture: grass tufts on green tiles, pebbles/ripples on sand & path
         // At close zoom a tile fills a third of the screen, so one lonely tuft
         // left it reading as a flat colour field. Every tile now carries mottled
@@ -2175,19 +2176,26 @@ function renderIsoWorld() {
                 const a = _tRand(gx * 11 + gy * 23 + m * 91), b = _tRand(gx * 37 + gy * 5 + m * 47);
                 const dx = (a - 0.5) * TW * 1.1, dy = (b - 0.5) * TH * 1.1;
                 if (!inDiamond(dx, dy)) continue;
-                const rr = 7 + _tRand(gx + gy + m * 13) * 11;
+                const rr = 14 + _tRand(gx + gy + m * 13) * 20;
                 const mc = (type === 0 || type === 1) ? (m ? '#57a838' : '#3f8226')
                          : (type === 2) ? '#c29a5e' : (type === 4) ? '#dcc48a' : '#5fa8dc';
-                tex += `<ellipse cx="${x + dx}" cy="${y + dy}" rx="${rr}" ry="${rr * 0.5}" fill="${mc}" opacity="0.13" pointer-events="none"/>`;
+                tex += `<ellipse cx="${x + dx}" cy="${y + dy}" rx="${rr}" ry="${rr * 0.5}" fill="${mc}" opacity="0.3" pointer-events="none"/>`;
             }
             if (type === 0 || type === 1) {
-                const tuft = (tx, ty, c, s) => `<path d="M ${tx} ${ty} l ${-1.5 * s} ${-2.8 * s} M ${tx} ${ty} l 0 ${-3.6 * s} M ${tx} ${ty} l ${1.6 * s} ${-2.7 * s}" stroke="${c}" stroke-width="${0.75 * s}" fill="none" stroke-linecap="round" opacity="0.6" pointer-events="none"/>`;
-                for (let k = 0; k < 12; k++) {
+                // Curved blades springing from a common base, not three straight
+                // ticks — the old version read as scratches scattered on paint.
+                const tuft = (tx, ty, c, s) => `<path d="M ${tx} ${ty} q ${-1.1 * s} ${-1.9 * s} ${-2.1 * s} ${-3.1 * s}
+                    M ${tx} ${ty} q ${0.35 * s} ${-2.2 * s} ${-0.2 * s} ${-4.2 * s}
+                    M ${tx} ${ty} q ${1.2 * s} ${-1.8 * s} ${2.3 * s} ${-2.9 * s}"
+                    stroke="${c}" stroke-width="${0.5 * s}" fill="none" stroke-linecap="round" opacity="0.32" pointer-events="none"/>`;
+                for (let k = 0; k < 7; k++) {
                     const a = _tRand(gx * 7 + gy * 13 + k * 29), b = _tRand(gx * 31 + gy * 17 + k * 53);
-                    const dx = (a - 0.5) * TW * 1.5, dy = (b - 0.5) * TH * 1.5;
+                    const dx = (a - 0.5) * TW * 1.4, dy = (b - 0.5) * TH * 1.4;
                     if (!inDiamond(dx, dy)) continue;
-                    const s = 0.75 + _tRand(k * 7 + gx + gy) * 0.6;
-                    tex += tuft(x + dx, y + dy, k % 3 === 0 ? '#356f1f' : (k % 3 === 1 ? '#4f9c31' : '#5fb03c'), s);
+                    // clumps grow in patches, so skip roughly a third at random
+                    if (_tRand(k * 3 + gx * 2 + gy) < 0.32) continue;
+                    const s = 0.55 + _tRand(k * 7 + gx + gy) * 0.4;
+                    tex += tuft(x + dx, y + dy, k % 3 === 0 ? '#3d7a24' : (k % 3 === 1 ? '#4f9c31' : '#59a836'), s);
                 }
                 // a few tiny wildflowers
                 for (let k = 0; k < 2; k++) {
