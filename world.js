@@ -692,18 +692,47 @@ const BUILDING_RENDERERS = {
 
     goldmine: (x, y, lvl) => `
         ${SHADOW(x, y, 40)}
-        <!-- faceted rock hill -->
+        <!-- CRAGGY ROCK FACE. Was five flat polygons — the flattest surface left
+             in the village. Now built like real stone: broad facet planes, then
+             bedding strata following each plane's dip, fracture lines cutting
+             across them, chipped scree at the foot, and lichen where damp
+             collects. Light from upper-left throughout. -->
         <path d="M ${x-38} ${y+4} L ${x-28} ${y-20} L ${x-10} ${y-36} L ${x+8} ${y-38} L ${x+26} ${y-26} L ${x+38} ${y+4} L ${x+18} ${y+17} L ${x-18} ${y+17} Z" fill="#857b6e" stroke="#2a1a0e" stroke-width="0.9"/>
         <path d="M ${x-28} ${y-20} L ${x-10} ${y-36} L ${x+8} ${y-38} L ${x-2} ${y-14} Z" fill="#a89d8b"/>
         <path d="M ${x-38} ${y+4} L ${x-28} ${y-20} L ${x-2} ${y-14} L ${x-18} ${y+10} Z" fill="#958b7b"/>
         <path d="M ${x+8} ${y-38} L ${x+26} ${y-26} L ${x+38} ${y+4} L ${x+14} ${y-6} Z" fill="#6a6156"/>
         <path d="M ${x+14} ${y-6} L ${x+38} ${y+4} L ${x+18} ${y+17} Z" fill="#5d554b"/>
-        <line x1="${x-28}" y1="${y-20}" x2="${x-10}" y2="${y-36}" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
-        <line x1="${x-10}" y1="${y-36}" x2="${x+8}" y2="${y-38}" stroke="rgba(255,255,255,0.3)" stroke-width="0.8"/>
+        <!-- extra facets break the big planes into crags -->
+        <path d="M ${x-10} ${y-36} L ${x-2} ${y-14} L ${x-14} ${y-18} Z" fill="#b3a794" opacity="0.7"/>
+        <path d="M ${x+26} ${y-26} L ${x+38} ${y+4} L ${x+27} ${y-2} Z" fill="#595147" opacity="0.75"/>
+        <path d="M ${x+8} ${y-38} L ${x+14} ${y-6} L ${x+3} ${y-20} Z" fill="#7d7367" opacity="0.75"/>
+        <path d="M ${x-38} ${y+4} L ${x-18} ${y+10} L ${x-18} ${y+17} Z" fill="#6f665b" opacity="0.8"/>
+        <!-- bedding strata: parallel bands dipping with each face -->
+        ${[0,1,2,3,4].map(i => {
+            const t = 0.18 + i * 0.17;
+            return `<path d="M ${x-36+8*t} ${y+2-24*t} q 10 ${-2-2*i} 20 ${-1-i}" stroke="#6d6459" stroke-width="0.5" fill="none" opacity="${(0.5-i*0.06).toFixed(2)}"/>
+                    <path d="M ${x+12+6*t} ${y-6-20*t} q 9 ${2+i} 17 ${1+i}" stroke="#4e463c" stroke-width="0.5" fill="none" opacity="${(0.5-i*0.06).toFixed(2)}"/>`;
+        }).join('')}
+        <!-- fracture lines cutting across the bedding -->
+        <path d="M ${x-24} ${y-18} l 5 9 l -3 7" stroke="#5d554b" stroke-width="0.6" fill="none" opacity="0.7"/>
+        <path d="M ${x+4} ${y-32} l -4 8 l 3 6" stroke="#5d554b" stroke-width="0.55" fill="none" opacity="0.6"/>
+        <path d="M ${x+22} ${y-20} l 4 10" stroke="#443d34" stroke-width="0.55" fill="none" opacity="0.65"/>
+        <!-- rim light along the sunlit ridges -->
+        <line x1="${x-28}" y1="${y-20}" x2="${x-10}" y2="${y-36}" stroke="rgba(255,255,255,0.42)" stroke-width="0.9"/>
+        <line x1="${x-10}" y1="${y-36}" x2="${x+8}" y2="${y-38}" stroke="rgba(255,255,255,0.34)" stroke-width="0.9"/>
+        <line x1="${x-38}" y1="${y+4}" x2="${x-28}" y2="${y-20}" stroke="rgba(255,255,255,0.22)" stroke-width="0.7"/>
+        <!-- lichen where damp collects on the shaded side -->
+        <ellipse cx="${x+20}" cy="${y-13}" rx="4.5" ry="2.4" fill="#5e7a34" opacity="0.3"/>
+        <ellipse cx="${x-30}" cy="${y-6}" rx="3.2" ry="1.8" fill="#6b8a3c" opacity="0.26"/>
+        <!-- scree: chipped rock fallen to the foot -->
+        ${[[-32,13,2.6],[-25,15,1.9],[30,12,2.3],[34,15,1.6],[-9,16,1.7],[9,16.5,2.0]].map(([dx,dy,r], i) =>
+            `<path d="M ${x+dx} ${y+dy} l ${r} ${-r*0.7} l ${r*0.9} ${r*0.5} l ${-r*0.6} ${r*0.8} Z" fill="${i%2?'#7d7367':'#6a6156'}" stroke="#3a342c" stroke-width="0.35"/>`).join('')}
         <!-- gold veins glinting in the rock -->
         <path d="M ${x-20} ${y-13} q 4 -3 3 -8 q 4 1 6 -5" stroke="#f4c44d" stroke-width="1.1" fill="none" opacity="0.9"/>
         <path d="M ${x+15} ${y-16} q 3 4 8 4" stroke="#d9a94a" stroke-width="1" fill="none" opacity="0.8"/>
+        <path d="M ${x-30} ${y-2} q 3 -4 7 -3" stroke="#d9a94a" stroke-width="0.8" fill="none" opacity="0.7"/>
         <circle cx="${x-11}" cy="${y-26}" r="1.1" fill="#ffd76b"/>
+        <circle cx="${x+19}" cy="${y-22}" r="0.8" fill="#ffd76b" opacity="0.85"/>
         <!-- timber portal frame -->
         <rect x="${x-17}" y="${y-16}" width="4" height="21" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.7"/>
         <rect x="${x+13}" y="${y-16}" width="4" height="21" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.7"/>
