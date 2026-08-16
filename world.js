@@ -1494,60 +1494,70 @@ const BUILDING_RENDERERS = {
 
     stable: (x, y, lvl) => `
         ${SHADOW(x, y, 44)}
-        <!-- long timber stable (iso box) -->
-        <polygon points="${x-36},${y-12} ${x},${y-30} ${x+36},${y-12} ${x},${y+6}" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x-36},${y-12} ${x},${y+6} ${x},${y+20} ${x-36},${y+2}" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.9"/>
-        <polygon points="${x+36},${y-12} ${x},${y+6} ${x},${y+20} ${x+36},${y+2}" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.9"/>
-        <line x1="${x-36}" y1="${y-12}" x2="${x}" y2="${y+6}" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
-        ${[5, 10].map(d => `
-            <line x1="${x-36}" y1="${y-12+d}" x2="${x}" y2="${y+6+d}" stroke="#6f4722" stroke-width="0.5"/>
-            <line x1="${x}" y1="${y+6+d}" x2="${x+36}" y2="${y-12+d}" stroke="#54371a" stroke-width="0.5"/>
+        <!-- PROPORTION FIX: the roof used to be 2.3x the wall height, so the
+             building read as a giant hat over a sliver of wall. A stable needs
+             headroom for horses: walls are now the dominant mass and the roof
+             sits at a low, working pitch over them. -->
+        <!-- stone footing course -->
+        <polygon points="${x-36},${y-2} ${x},${y+16} ${x},${y+21} ${x-36},${y+3}" fill="#8d857a" stroke="#2a1a0e" stroke-width="0.7"/>
+        <polygon points="${x+36},${y-2} ${x},${y+16} ${x},${y+21} ${x+36},${y+3}" fill="#6f675d" stroke="#2a1a0e" stroke-width="0.7"/>
+        ${[0.25,0.5,0.75].map(f => `<line x1="${x-36+36*f}" y1="${y-2+18*f}" x2="${x-36+36*f}" y2="${y+3+18*f}" stroke="#6f675d" stroke-width="0.4"/>
+            <line x1="${x+36-36*f}" y1="${y-2+18*f}" x2="${x+36-36*f}" y2="${y+3+18*f}" stroke="#544d45" stroke-width="0.4"/>`).join('')}
+        <!-- timber plank walls (tall) -->
+        <polygon points="${x-36},${y-22} ${x},${y-40} ${x+36},${y-22} ${x},${y-4}" fill="#9a6a35" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x-36},${y-22} ${x},${y-4} ${x},${y+16} ${x-36},${y-2}" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.9"/>
+        <polygon points="${x+36},${y-22} ${x},${y-4} ${x},${y+16} ${x+36},${y-2}" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.9"/>
+        <!-- individual planks with seams and a couple of knots -->
+        ${[4,8,12,16].map(d => `
+            <line x1="${x-36}" y1="${y-22+d}" x2="${x}" y2="${y-4+d}" stroke="#6f4722" stroke-width="0.5"/>
+            <line x1="${x}" y1="${y-4+d}" x2="${x+36}" y2="${y-22+d}" stroke="#54371a" stroke-width="0.5"/>
         `).join('')}
-        <!-- thatched hip roof: courses laid parallel to the eave, ragged fringe,
-             darker in the valleys — a real thatch reads as many bound bundles,
-             not a flat triangle with three scratches on it. -->
-        <polygon points="${x-42},${y-12} ${x},${y-44} ${x},${y+4}" fill="#e6bc63" stroke="#2a1a0e" stroke-width="1"/>
-        <polygon points="${x+42},${y-12} ${x},${y-44} ${x},${y+4}" fill="#b98a35" stroke="#2a1a0e" stroke-width="1"/>
-        ${[0.13,0.27,0.41,0.55,0.69,0.83].map(t => `
-            <line x1="${x-42+42*t}" y1="${y-12-32*t}" x2="${x}" y2="${y+4-48*t}" stroke="#c39a44" stroke-width="1.5" opacity="0.85"/>
-            <line x1="${x-42+42*t}" y1="${y-12-32*t+1.1}" x2="${x}" y2="${y+4-48*t+1.1}" stroke="#8a6420" stroke-width="0.6" opacity="0.5"/>
-            <line x1="${x+42-42*t}" y1="${y-12-32*t}" x2="${x}" y2="${y+4-48*t}" stroke="#9c732c" stroke-width="1.5" opacity="0.85"/>
-            <line x1="${x+42-42*t}" y1="${y-12-32*t+1.1}" x2="${x}" y2="${y+4-48*t+1.1}" stroke="#6d4d16" stroke-width="0.6" opacity="0.5"/>
+        <ellipse cx="${x-22}" cy="${y-6}" rx="1.1" ry="0.7" fill="#6f4722" opacity="0.8"/>
+        <ellipse cx="${x+17}" cy="${y-3}" rx="1" ry="0.6" fill="#4a2e16" opacity="0.8"/>
+        <line x1="${x-36}" y1="${y-22}" x2="${x}" y2="${y-4}" stroke="rgba(255,255,255,0.32)" stroke-width="0.8"/>
+        <!-- corner posts -->
+        <rect x="${x-1.6}" y="${y-4}" width="3.2" height="20" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.5"/>
+        <!-- two dutch stall doors, lower halves shut -->
+        ${[[-26,-6],[-11,1]].map(([dx,dy]) => `
+            <path d="M ${x+dx-5} ${y+dy+7} L ${x+dx-5} ${y+dy-7} L ${x+dx+5} ${y+dy-2} L ${x+dx+5} ${y+dy+12} Z" fill="#3f2712" stroke="#2a1a0e" stroke-width="0.8"/>
+            <path d="M ${x+dx-5} ${y+dy+1} L ${x+dx+5} ${y+dy+6} L ${x+dx+5} ${y+dy+12} L ${x+dx-5} ${y+dy+7} Z" fill="#5a3a18" stroke="#2a1a0e" stroke-width="0.7"/>
+            <line x1="${x+dx-5}" y1="${y+dy+4}" x2="${x+dx+5}" y2="${y+dy+9}" stroke="#734a1e" stroke-width="0.5"/>
+            <circle cx="${x+dx+3}" cy="${y+dy+4.5}" r="0.7" fill="#c9a227"/>
         `).join('')}
-        <!-- fine straw strands running down the slope -->
-        ${[0.2,0.35,0.5,0.65,0.8].map(s => `
-            <line x1="${x-42*s}" y1="${y-12-(1-s)*0+(-12+16*s)}" x2="${x-42*s*0.55}" y2="${y-6+10*s}" stroke="#d3a950" stroke-width="0.5" opacity="0.55"/>
-            <line x1="${x+42*s}" y1="${y-12+16*s}" x2="${x+42*s*0.55}" y2="${y-6+10*s}" stroke="#8f6a26" stroke-width="0.5" opacity="0.5"/>
+        <!-- LOW-PITCH thatched hip roof with a deep overhang -->
+        <polygon points="${x-44},${y-22} ${x},${y-46} ${x},${y-2}" fill="#e6bc63" stroke="#2a1a0e" stroke-width="1"/>
+        <polygon points="${x+44},${y-22} ${x},${y-46} ${x},${y-2}" fill="#b98a35" stroke="#2a1a0e" stroke-width="1"/>
+        ${[0.14,0.29,0.44,0.59,0.74,0.88].map(t => `
+            <line x1="${x-44+44*t}" y1="${y-22-24*t}" x2="${x}" y2="${y-2-44*t}" stroke="#c39a44" stroke-width="1.5" opacity="0.85"/>
+            <line x1="${x-44+44*t}" y1="${y-21+(-24*t)}" x2="${x}" y2="${y-1-44*t}" stroke="#8a6420" stroke-width="0.6" opacity="0.45"/>
+            <line x1="${x+44-44*t}" y1="${y-22-24*t}" x2="${x}" y2="${y-2-44*t}" stroke="#9c732c" stroke-width="1.5" opacity="0.85"/>
+            <line x1="${x+44-44*t}" y1="${y-21+(-24*t)}" x2="${x}" y2="${y-1-44*t}" stroke="#6d4d16" stroke-width="0.6" opacity="0.45"/>
         `).join('')}
-        <!-- ragged eave fringe -->
-        ${[0.15,0.3,0.45,0.6,0.75,0.9].map(s => `
-            <path d="M ${x-42+42*s} ${y-12+16*s} l -0.6 ${2.2+((s*37)%2)} " stroke="#a87c2e" stroke-width="0.9" stroke-linecap="round"/>
-            <path d="M ${x+42-42*s} ${y-12+16*s} l 0.6 ${2.2+((s*53)%2)}" stroke="#7d5a1c" stroke-width="0.9" stroke-linecap="round"/>
+        <!-- ragged eave fringe under the overhang -->
+        ${[0.16,0.34,0.52,0.7,0.88].map(f => `
+            <path d="M ${x-44+44*f} ${y-22+20*f} l -0.6 ${2.4+((f*31)%2)}" stroke="#a87c2e" stroke-width="0.9" stroke-linecap="round"/>
+            <path d="M ${x+44-44*f} ${y-22+20*f} l 0.6 ${2.4+((f*47)%2)}" stroke="#7d5a1c" stroke-width="0.9" stroke-linecap="round"/>
         `).join('')}
-        <!-- ridge cap + moss in the valley -->
-        <line x1="${x}" y1="${y-44}" x2="${x}" y2="${y+4}" stroke="#7d5a1c" stroke-width="2.6"/>
-        <line x1="${x}" y1="${y-44}" x2="${x}" y2="${y+4}" stroke="rgba(255,246,214,0.45)" stroke-width="0.9"/>
-        <ellipse cx="${x-6}" cy="${y-16}" rx="3.4" ry="1.6" fill="#5e7a34" opacity="0.4"/>
-        <!-- two dutch stall doors on lit face -->
-        ${[[-27, 0], [-13, 6]].map(([dx, dy]) => `
-            <path d="M ${x + dx - 4.5} ${y + dy + 4.5} L ${x + dx - 4.5} ${y + dy - 7} L ${x + dx + 4.5} ${y + dy - 2.5} L ${x + dx + 4.5} ${y + dy + 9} Z" fill="#4a2e16" stroke="#2a1a0e" stroke-width="0.8"/>
-            <line x1="${x + dx - 4.5}" y1="${y + dy - 1}" x2="${x + dx + 4.5}" y2="${y + dy + 3.5}" stroke="#2a1a0e" stroke-width="0.7"/>
-            <line x1="${x + dx - 3.2}" y1="${y + dy - 4.6}" x2="${x + dx + 3.2}" y2="${y + dy - 1.4}" stroke="#6e4a24" stroke-width="0.6"/>
-        `).join('')}
-        <!-- horse peeking out, gently nodding -->
+        <line x1="${x}" y1="${y-46}" x2="${x}" y2="${y-2}" stroke="#7d5a1c" stroke-width="2.6"/>
+        <line x1="${x}" y1="${y-46}" x2="${x}" y2="${y-2}" stroke="rgba(255,246,214,0.45)" stroke-width="0.9"/>
+        <ellipse cx="${x-8}" cy="${y-26}" rx="3.4" ry="1.6" fill="#5e7a34" opacity="0.4"/>
+        <!-- eave shadow cast onto the wall below -->
+        <polygon points="${x-36},${y-22} ${x},${y-4} ${x},${y-1} ${x-36},${y-19}" fill="#000" opacity="0.14"/>
+        <polygon points="${x},${y-4} ${x+36},${y-22} ${x+36},${y-19} ${x},${y-1}" fill="#000" opacity="0.2"/>
+        <!-- horse looking over the near stall door -->
         <g class="flag-wave">
-            <path d="M ${x - 29.5} ${y - 6} q -1.2 -6 2.4 -8.2 q 3.4 -1.6 4.6 1.6 q 0.8 2.4 -0.6 4.4 q 2 1.4 1.4 3.4 Z" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.7"/>
-            <path d="M ${x - 27.6} ${y - 14.4} q -0.4 -2 1 -2.6 q 1 1 0.8 2.6 Z" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.5"/>
-            <path d="M ${x - 25.2} ${y - 14.6} q 0.2 -2 1.6 -2.2 q 0.7 1.2 0.1 2.6 Z" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.5"/>
-            <path d="M ${x - 27.9} ${y - 13.8} q 2.2 -1.4 3.4 0.4" stroke="#4a2e16" stroke-width="1.4" fill="none"/>
-            <circle cx="${x - 26.2}" cy="${y - 10.8}" r="0.7" fill="#2a1a0e"/>
-            <ellipse cx="${x - 23.6}" cy="${y - 6.4}" rx="1" ry="0.6" fill="#4a2e16"/>
+            <path d="M ${x-27} ${y-6} q -1.2 -6 2.4 -8.2 q 3.4 -1.6 4.6 1.6 q 0.8 2.4 -0.6 4.4 q 2 1.4 1.4 3.4 Z" fill="#8a5a2b" stroke="#2a1a0e" stroke-width="0.7"/>
+            <path d="M ${x-25.1} ${y-14.4} q -0.4 -2 1 -2.6 q 1 1 0.8 2.6 Z" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.5"/>
+            <path d="M ${x-22.7} ${y-14.6} q 0.2 -2 1.6 -2.2 q 0.7 1.2 0.1 2.6 Z" fill="#6b4520" stroke="#2a1a0e" stroke-width="0.5"/>
+            <path d="M ${x-25.4} ${y-13.8} q 2.2 -1.4 3.4 0.4" stroke="#4a2e16" stroke-width="1.4" fill="none"/>
+            <circle cx="${x-23.7}" cy="${y-10.8}" r="0.7" fill="#2a1a0e"/>
+            <ellipse cx="${x-21.1}" cy="${y-6.4}" rx="1" ry="0.6" fill="#4a2e16"/>
         </g>
         <!-- swinging horseshoe sign -->
-        <line x1="${x + 10}" y1="${y - 1}" x2="${x + 17}" y2="${y - 4.5}" stroke="#6b4520" stroke-width="1.4"/>
+        <line x1="${x + 10}" y1="${y - 14}" x2="${x + 17}" y2="${y - 17.5}" stroke="#6b4520" stroke-width="1.4"/>
         <g class="flag-wave">
-            <line x1="${x + 14}" y1="${y - 2.5}" x2="${x + 14}" y2="${y + 2}" stroke="#4a4438" stroke-width="0.6"/>
-            <path d="M ${x + 11.5} ${y + 6.5} a 3 3 0 1 1 5 0 l -1.2 -0.6 a 1.7 1.7 0 1 0 -2.6 0 Z" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.6"/>
+            <line x1="${x + 14}" y1="${y - 15.5}" x2="${x + 14}" y2="${y - 11}" stroke="#4a4438" stroke-width="0.6"/>
+            <path d="M ${x + 11.5} ${y - 6.5} a 3 3 0 1 1 5 0 l -1.2 -0.6 a 1.7 1.7 0 1 0 -2.6 0 Z" fill="#8b95a0" stroke="#2a1a0e" stroke-width="0.6"/>
         </g>
         <!-- hay bales + pitchfork -->
         <ellipse cx="${x + 27}" cy="${y + 13}" rx="7.5" ry="2.6" fill="rgba(30,20,10,0.25)"/>
@@ -1558,16 +1568,16 @@ const BUILDING_RENDERERS = {
         <line x1="${x + 36}" y1="${y + 12}" x2="${x + 41}" y2="${y - 2}" stroke="#8a5a2b" stroke-width="1.2"/>
         ${[0, 1.8, 3.6].map(d => `<line x1="${x + 39.2 + d * 0.5}" y1="${y - 1}" x2="${x + 40 + d * 0.5}" y2="${y - 6}" stroke="#8b95a0" stroke-width="0.7"/>`).join('')}
         ${lvl >= 4 ? `
-            ${FLAG(x - 40, y - 10, '#2c5aa0')}
+            ${FLAG(x - 42, y - 20, '#2c5aa0')}
             <ellipse cx="${x + 12}" cy="${y + 15}" rx="4.5" ry="1.6" fill="rgba(30,20,10,0.22)"/>
             <path d="M ${x + 8} ${y + 10} q -1 3 0 5.5 q 4 1.8 8 0 q 1 -2.5 0 -5.5 q -4 -1.8 -8 0 Z" fill="#d9a94a" stroke="#2a1a0e" stroke-width="0.6"/>
             <ellipse cx="${x + 12}" cy="${y + 10}" rx="4" ry="1.4" fill="#eec86a" stroke="#a8791f" stroke-width="0.4"/>
         ` : ''}
         ${lvl >= 7 ? `
-            <line x1="${x-42}" y1="${y-12}" x2="${x}" y2="${y+4}" stroke="#f4c44d" stroke-width="1.6"/>
-            <line x1="${x}" y1="${y+4}" x2="${x+42}" y2="${y-12}" stroke="#c2912c" stroke-width="1.6"/>
-            <path d="M ${x - 2.5} ${y - 47.5} a 3 3 0 1 1 5 0 l -1.2 -0.6 a 1.7 1.7 0 1 0 -2.6 0 Z" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.6"/>
-            ${LIT_WINDOW(x + 12, y - 22, 5, 6)}
+            <line x1="${x-44}" y1="${y-22}" x2="${x}" y2="${y-2}" stroke="#f4c44d" stroke-width="1.6"/>
+            <line x1="${x}" y1="${y-2}" x2="${x+44}" y2="${y-22}" stroke="#c2912c" stroke-width="1.6"/>
+            <path d="M ${x - 2.5} ${y - 49.5} a 3 3 0 1 1 5 0 l -1.2 -0.6 a 1.7 1.7 0 1 0 -2.6 0 Z" fill="#f4c44d" stroke="#2a1a0e" stroke-width="0.6"/>
+            ${LIT_WINDOW(x + 14, y - 14, 5, 6)}
         ` : ''}
     `,
 
