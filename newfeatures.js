@@ -331,10 +331,18 @@ const DAILY_REWARDS = [
 ];
 function checkDailyReward() {
     ensureMeta();
-    // Never pop a blocking modal over the tutorial — its overlay would swallow
-    // the player's taps and the tutorial could never be completed. Wait it out.
-    if ((typeof tutorialActive !== 'undefined' && tutorialActive) ||
-        (document.getElementById('tutorial-overlay') && !document.getElementById('tutorial-overlay').classList.contains('hidden'))) {
+    // Never pop a blocking modal over something the player is in the middle of.
+    // The old guard only checked tutorialActive, which is still false while the
+    // welcome dialog is up, and ignored placement entirely — so the reward could
+    // land on top of "click an empty tile to place the building" and eat the tap.
+    const tutOverlay = document.getElementById('tutorial-overlay');
+    const modal = document.getElementById('modal-overlay');
+    const busy =
+        (typeof tutorialActive !== 'undefined' && tutorialActive) ||
+        (tutOverlay && !tutOverlay.classList.contains('hidden')) ||
+        (typeof placingBuilding !== 'undefined' && placingBuilding) ||
+        (modal && !modal.classList.contains('hidden'));      // some other modal is open
+    if (busy) {
         setTimeout(checkDailyReward, 2500);
         return;
     }

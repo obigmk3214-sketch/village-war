@@ -1156,6 +1156,9 @@ function toggleSetting(k, v) {
 }
 function confirmHardReset() {
     if (!confirm('Really reset ALL progress? This cannot be undone.')) return;
+    // Block saves first — otherwise a tick during the reload window rewrites
+    // the save we are about to delete and the reset appears to do nothing.
+    if (typeof _wipingSave !== 'undefined') _wipingSave = true;
     try { localStorage.removeItem('villagewar_save'); } catch (e) {}
     location.reload();
 }

@@ -557,7 +557,12 @@ function clearDeco(key, type) {
     saveGame();
 }
 
+// Set while a hard reset is in flight. location.reload() does NOT stop the
+// page: timers keep firing until the new document loads, so an autosave tick
+// could rewrite the file we just deleted and silently undo the reset.
+let _wipingSave = false;
 function saveGame() {
+    if (_wipingSave) return;
     try { localStorage.setItem('villagewar_save', JSON.stringify(state)); } catch(e) {}
 }
 
@@ -1253,19 +1258,44 @@ function startPlacement(pos) {
     if (placingBuilding) {
         placeBuilding(placingBuilding, pos);
         placingBuilding = null;
+        restorePlacementZoom();
     }
+}
+
+// Placement needs to SEE the land. At the default close zoom only ~8% of the
+// board is on screen, and with the tutorial panel covering the top a new player
+// can be left with nowhere visible to tap. Pull back while placing, restore after.
+let _preplaceZoom = null;
+function enterPlacementZoom() {
+    if (_preplaceZoom != null) return;
+    _preplaceZoom = { z: CAM.zoom, x: CAM.x, y: CAM.y };
+    CAM.zoom = Math.min(CAM.zoom, 1.15);
+    CAM.x = 0; CAM.y = 0;
+    const s = document.querySelector('#iso-svg');
+    if (s) applyCamera(s);
+}
+function restorePlacementZoom() {
+    if (_preplaceZoom == null) return;
+    CAM.zoom = _preplaceZoom.z; CAM.x = _preplaceZoom.x; CAM.y = _preplaceZoom.y;
+    _preplaceZoom = null;
+    const s = document.querySelector('#iso-svg');
+    if (s) applyCamera(s);
 }
 
 // ---- Multi-tile footprints: big buildings occupy 2x2 ----
 const FOOTPRINT_2X2 = { townhall: true, fortress: true, barracks: true };
 function buildingFootprint(type, anchorPos) {
-    const GW = 14;
+    // Must follow the LIVE map size. These were hardcoded to the old 14x10
+    // grid, so after the map grew to 20x14 a 2x2 building reserved only its
+    // two horizontal tiles — another building could be dropped straight
+    // through the Town Hall from below.
+    const GW = MAP_W, GH = MAP_H;
     if (!FOOTPRINT_2X2[type]) return [anchorPos];
     const gx = anchorPos % GW, gy = Math.floor(anchorPos / GW);
     const tiles = [anchorPos];
     if (gx + 1 < GW) tiles.push(anchorPos + 1);
-    if (gy + 1 < 10) tiles.push(anchorPos + GW);
-    if (gx + 1 < GW && gy + 1 < 10) tiles.push(anchorPos + GW + 1);
+    if (gy + 1 < GH) tiles.push(anchorPos + GW);
+    if (gx + 1 < GW && gy + 1 < GH) tiles.push(anchorPos + GW + 1);
     return tiles;
 }
 function tileOccupiedBy(pos) {
@@ -1550,6 +1580,7 @@ function renderBuildView() {
                 card.onclick = () => {
                     placingBuilding = type;
                     switchView('village');
+                    enterPlacementZoom();   // pull back so the board is actually visible
                     toast('Click an empty tile to place the building', 'info');
                 };
             } else {
@@ -3171,7 +3202,8 @@ function updateAdvisor() {
     const host = document.getElementById('view-village');
     if (!host) return;
     let chip = document.getElementById('advisor-chip');
-    const obj = (state.tutorialDone || state.tutorialSeen) ? nextObjective() : null;
+    const tutRunning = (typeof tutorialActive !== 'undefined') && tutorialActive;
+    const obj = (!tutRunning && (state.tutorialDone || state.tutorialSeen)) ? nextObjective() : null;
     if (!obj) { if (chip) chip.remove(); return; }
     if (!chip) {
         chip = document.createElement('button');
@@ -4094,11 +4126,14 @@ function initGame() {
 
     if (state.buildings.length === 0) {
         // Central positions (all within the starter owned block around (7,5)).
-        const GW = 14;
         // Nothing starts pre-built EXCEPT the Town Hall (the heart of the island —
         // everything anchors on it and it can't be built from the menu). Every
         // resource & military building is built by the player during the tutorial.
-        state.buildings.push({ type: 'townhall',   level: 1, pos: 7 + 4 * GW, hp: 500 }); // (7,4)
+        // Centre it on the LIVE grid, and mark the save as already current so the
+        // legacy 14x10 -> 20x14 migration doesn't shift a correct position.
+        const cx = Math.floor(MAP_W / 2), cy = Math.floor(MAP_H / 2) - 1;
+        state.buildings.push({ type: 'townhall', level: 1, pos: cx + cy * MAP_W, hp: 500 });
+        state._gridV = 2;
         saveGame();
     }
 
