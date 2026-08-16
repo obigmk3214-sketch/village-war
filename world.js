@@ -5,8 +5,13 @@
 // ============================================================
 
 const ISO = {
-    TW: 48,        // tile half-width
-    TH: 24,        // tile half-height
+    // Tile size drives how much room each building gets. At 48x24 the art
+    // (57-62px) crowded its plot: 12 overlapping pairs, worst 45% of a
+    // building hidden. Measured 66x33 (same 2:1 projection every building
+    // base is drawn against) down to a single 20% pair, which also frees us
+    // to draw the buildings LARGER rather than shrinking them.
+    TW: 66,        // tile half-width
+    TH: 33,        // tile half-height
     GW: 20,        // grid width (cols) — matches MAP_W
     GH: 14,        // grid height (rows) — matches MAP_H
     OFFSET_X: 0,
@@ -271,7 +276,7 @@ function buildingTile(gx, gy, type, level, pos) {
     // authored, but at full size neighbouring buildings collide into one mass.
     // Scaling about the anchor keeps every building seated on its own tile with
     // breathing room around it — footprint reads clearly, detail survives.
-    const S = 0.58;
+    const S = 0.64;
     return `<g class="bld bld-${type}" data-pos="${pos}" style="cursor:pointer">
         <g transform="translate(${x},${y}) scale(${S}) translate(${-x},${-y})">${fn(x, y, level)}</g>
         <g class="bld-badge" transform="translate(${x + 7}, ${y - 3}) scale(0.55)">
