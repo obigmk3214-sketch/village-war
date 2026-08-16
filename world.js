@@ -1139,15 +1139,40 @@ const BUILDING_RENDERERS = {
         <!-- X-brace on lit face -->
         <line x1="${x-34}" y1="${y-12}" x2="${x-14}" y2="${y+13}" stroke="#6b4520" stroke-width="1.6"/>
         <line x1="${x-34}" y1="${y+3}" x2="${x-14}" y2="${y-2}" stroke="#6b4520" stroke-width="1.6"/>
-        <!-- big shingle roof (pyramid, wide) -->
+        <!-- Shingled pyramid roof drawn as OVERLAPPING COURSES rather than five
+             scratch lines: 7 rows per plane, each row half-offset from the one
+             above, with a shadow line under every course and individual shingle
+             tabs picked out. This roof was the flattest surface in the village. -->
         <polygon points="${x-44},${y-14} ${x},${y-48} ${x},${y+3}" fill="#a8763f" stroke="#2a1a0e" stroke-width="1"/>
         <polygon points="${x+44},${y-14} ${x},${y-48} ${x},${y+3}" fill="#7c521f" stroke="#2a1a0e" stroke-width="1"/>
-        <path d="M ${x-31} ${y-24} L ${x} ${y-9}" stroke="#8d6231" stroke-width="0.7"/>
-        <path d="M ${x-20} ${y-33} L ${x} ${y-23}" stroke="#8d6231" stroke-width="0.7"/>
-        <path d="M ${x-9} ${y-41} L ${x} ${y-36}" stroke="#8d6231" stroke-width="0.7"/>
-        <path d="M ${x+31} ${y-24} L ${x} ${y-9}" stroke="#684418" stroke-width="0.7"/>
-        <path d="M ${x+20} ${y-33} L ${x} ${y-23}" stroke="#684418" stroke-width="0.7"/>
+        ${[0.12,0.25,0.38,0.51,0.64,0.77,0.90].map((t, ri) => {
+            // left plane: eave (x-44,y-14)->(x,y+3), apex (x,y-48)
+            const lex = -44 + 44 * t, ley = -14 - 34 * t;      // along the sloping ridge edge
+            const lcx = 0, lcy = 3 - 51 * t;                    // along the centre ridge
+            const rex = 44 - 44 * t, rey = -14 - 34 * t;
+            const tabs = [];
+            for (let k = 0; k < 6; k++) {
+                const f = (k + (ri % 2 ? 0.5 : 0)) / 6;
+                if (f > 0.97) continue;
+                const lx = lex + (lcx - lex) * f, ly = ley + (lcy - ley) * f;
+                const rx = rex + (lcx - rex) * f, ry = rey + (lcy - rey) * f;
+                tabs.push(`<line x1="${x + lx}" y1="${y + ly}" x2="${x + lx}" y2="${y + ly + 3.2}" stroke="#7a5426" stroke-width="0.45" opacity="0.7"/>`);
+                tabs.push(`<line x1="${x + rx}" y1="${y + ry}" x2="${x + rx}" y2="${y + ry + 3.2}" stroke="#5a3a14" stroke-width="0.45" opacity="0.7"/>`);
+            }
+            return `
+            <line x1="${x + lex}" y1="${y + ley}" x2="${x + lcx}" y2="${y + lcy}" stroke="#b98a52" stroke-width="1.7" opacity="0.85"/>
+            <line x1="${x + lex}" y1="${y + ley + 1.3}" x2="${x + lcx}" y2="${y + lcy + 1.3}" stroke="#66421a" stroke-width="0.7" opacity="0.55"/>
+            <line x1="${x + rex}" y1="${y + rey}" x2="${x + lcx}" y2="${y + lcy}" stroke="#8b5f28" stroke-width="1.7" opacity="0.85"/>
+            <line x1="${x + rex}" y1="${y + rey + 1.3}" x2="${x + lcx}" y2="${y + lcy + 1.3}" stroke="#4d3010" stroke-width="0.7" opacity="0.55"/>
+            ${tabs.join('')}`;
+        }).join('')}
+        <!-- ridge cap + eave fascia -->
+        <line x1="${x}" y1="${y-48}" x2="${x}" y2="${y+3}" stroke="#6b4520" stroke-width="2.4"/>
         <line x1="${x}" y1="${y-48}" x2="${x}" y2="${y+3}" stroke="rgba(255,240,210,0.4)" stroke-width="0.9"/>
+        <line x1="${x-44}" y1="${y-14}" x2="${x}" y2="${y+3}" stroke="#5a3a14" stroke-width="1.3"/>
+        <line x1="${x}" y1="${y+3}" x2="${x+44}" y2="${y-14}" stroke="#452a0e" stroke-width="1.3"/>
+        <!-- moss creeping up the shaded valley -->
+        <ellipse cx="${x+14}" cy="${y-12}" rx="5" ry="2.4" fill="#5e7a34" opacity="0.35"/>
         <!-- patched shingle -->
         <polygon points="${x-24},${y-22} ${x-17},${y-19} ${x-18},${y-15} ${x-25},${y-18}" fill="#c99a5e" stroke="#2a1a0e" stroke-width="0.5"/>
         <!-- hoist beam + sack -->
