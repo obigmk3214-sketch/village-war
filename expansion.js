@@ -132,6 +132,11 @@ function openCredits() {
             <p style="color:var(--text2);margin:4px 0 8px">${kml.join(' • ')}</p>
             <p>Additional bundled tracks: Village Green, Dancing at the Inn, The Britons,
                Rogue Meadow, Beyond New Horizons, Toward the Mountains.</p>
+            <p><b>Village Theme</b> is an original composition written for this game. It is
+               performed using individual notes sampled from the Kevin MacLeod tracks above
+               (Angevin, Minstrel Guild, Teller of the Tales, Thatched Villagers), so it is an
+               <b>adaptation of those recordings, modified</b>, and is offered under the same
+               CC BY 4.0 terms. Some tracks have also been edited for length and tone.</p>
             <p style="color:var(--gold);font-weight:700;margin-top:10px">Art &amp; Code</p>
             <p>Custom SVG icon set, building &amp; troop sprites, isometric and 3D village
                rendering, UI and all game systems built for <b>Village War</b>.</p>

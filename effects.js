@@ -73,6 +73,11 @@ const Audio = (() => {
     // so no piece jumps out louder or falls into the background.
     const PLAYLIST = [
         // Calm — village / exploration
+        // 'Village Theme' — melody written for this game (see tools/compose.py),
+        // performed with single notes sampled out of the CC-BY tracks below. The
+        // tune is original; the timbre is sampled, so it is an ADAPTATION and is
+        // credited as such in openCredits(). Do not remove that credit.
+        { title: 'Village Theme',       mood: 'calm', vibe: 'soft',   url: BASE + 'village-theme.m4a', original: true, trim: 1.15 },
         { title: 'Enchanted Journey',   mood: 'calm', vibe: 'soft',   url: BASE + 'kml-enchanted.m4a', eqLo: 0.5, eqHi: -0.3, trim: 0.876 },
         { title: 'Rogue Meadow',        mood: 'calm', vibe: 'soft',   url: BASE + 'rogue-meadow.m4a', trim: 0.972 },
         { title: 'Teller of the Tales', mood: 'calm', vibe: 'soft',   url: BASE + 'kml-teller.m4a', trim: 1.09 },
@@ -80,23 +85,23 @@ const Audio = (() => {
         { title: 'Thatched Villagers',  mood: 'calm', vibe: 'soft',   url: BASE + 'kml-thatched.m4a', eqLo: 1.6, eqHi: -0.9, trim: 0.953 },
         // Calm — lively tavern / folk
         { title: 'Dancing at the Inn',  mood: 'calm', vibe: 'lively', url: BASE + 'tavern-dance.m4a', eqLo: 2.9, eqHi: -1.5, trim: 1.033 },
-        { title: 'Fiddles McGinty',     mood: 'calm', vibe: 'lively', url: BASE + 'kml-fiddles.m4a', eqLo: 3.1, eqHi: -1.6, trim: 1.073 },
+        { title: 'Fiddles McGinty',     mood: 'calm', vibe: 'lively', url: BASE + 'kml-fiddles.m4a', eqBite: -4.5, eqLo: 3.1, eqHi: -1.6, trim: 1.073 },
         { title: 'The Path of the Goblin King', mood: 'calm', vibe: 'lively', url: BASE + 'kml-goblinking.m4a', eqLo: 0.5, eqHi: -0.3, trim: 0.914 },
-        { title: 'Master of the Feast', mood: 'calm', vibe: 'lively', url: BASE + 'kml-feast.m4a', eqLo: 1.8, eqHi: -0.9, trim: 1.056 },
+        { title: 'Master of the Feast', mood: 'calm', vibe: 'lively', url: BASE + 'kml-feast.m4a', endAt: 72, eqLo: 1.8, eqHi: -0.9, trim: 1.056 },
         { title: 'Wizardtorium',        mood: 'calm', vibe: 'lively', url: BASE + 'kml-wizardtorium.m4a', eqLo: 4.0, eqHi: -2.1, trim: 0.971 },
         // Calm — grand / stately
         { title: 'The Britons',         mood: 'calm', vibe: 'grand',  url: BASE + 'the-britons.m4a', trim: 1.04 },
-        { title: 'Angevin',             mood: 'calm', vibe: 'grand',  url: BASE + 'kml-angevin.m4a', eqLo: 1.0, eqHi: -0.5, trim: 0.888 },
+        { title: 'Angevin',             mood: 'calm', vibe: 'grand',  url: BASE + 'kml-angevin.m4a', endAt: 55, eqLo: 1.0, eqHi: -0.5, trim: 0.888 },
         { title: 'Minstrel Guild',      mood: 'calm', vibe: 'grand',  url: BASE + 'kml-minstrel.m4a', eqLo: 4.2, eqHi: -2.2, trim: 1.01 },
         // Epic — battle
-        { title: 'Beyond New Horizons', mood: 'epic', vibe: 'epicA',  url: BASE + 'epic-horizons.m4a', eqLo: 1.7, eqHi: -0.9, trim: 0.92 },
-        { title: 'Clash Defiant',       mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-clash.m4a', trim: 0.992 },
+        { title: 'Beyond New Horizons', mood: 'calm', vibe: 'grand',  url: BASE + 'epic-horizons.m4a', eqLo: 1.7, eqHi: -0.9, trim: 0.92 },
+        { title: 'Clash Defiant',       mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-clash.m4a', endAt: 65, trim: 0.992 },
         { title: 'Heroic Age',          mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-heroic.m4a', eqLo: 1.6, eqHi: -0.9, trim: 0.813 },
         { title: 'Toward the Mountains',mood: 'epic', vibe: 'epicB',  url: BASE + 'mountains.m4a', eqLo: 1.2, eqHi: -0.6, trim: 0.978 },
-        { title: 'Anguish',             mood: 'epic', vibe: 'epicB',  url: BASE + 'kml-anguish.m4a', trim: 0.9 }
+        { title: 'Anguish',             mood: 'epic', vibe: 'epicB',  url: BASE + 'kml-anguish.m4a', endAt: 38, trim: 0.9 }
     ];
-    const CALM = PLAYLIST.map((t, i) => i).filter(i => PLAYLIST[i].mood === 'calm');
-    const EPIC = PLAYLIST.map((t, i) => i).filter(i => PLAYLIST[i].mood === 'epic');
+    const CALM = PLAYLIST.map((t, i) => i).filter(i => PLAYLIST[i].mood === 'calm' && !PLAYLIST[i].retired);
+    const EPIC = PLAYLIST.map((t, i) => i).filter(i => PLAYLIST[i].mood === 'epic' && !PLAYLIST[i].retired);
     let lastPlayedIdx = -1;
 
     const MUSIC_VOL = 0.55;
@@ -115,6 +120,7 @@ const Audio = (() => {
             musicEQ.lo.gain.cancelScheduledValues(now);
             musicEQ.hi.gain.cancelScheduledValues(now);
             musicEQ.lo.gain.linearRampToValueAtTime(t.eqLo || 0, now + 1.2);
+            if (musicEQ.bite) musicEQ.bite.gain.linearRampToValueAtTime(t.eqBite || 0, now + 1.2);
             musicEQ.hi.gain.linearRampToValueAtTime(t.eqHi || 0, now + 1.2);
         } catch (e) {}
     }
@@ -213,8 +219,11 @@ const Audio = (() => {
         // and blend — a true crossfade, instead of a gap then a fade-in.
         a.addEventListener('timeupdate', () => {
             if (!musicPlaying || a !== musicAudio || a._xfStarted) return;
+            // `endAt` lets a track bow out at its strongest point instead of
+            // playing on into a section that sags. Falls back to real duration.
             const dur = a.duration;
-            if (dur && isFinite(dur) && dur > CROSSFADE_SEC * 2 && dur - a.currentTime <= CROSSFADE_SEC) {
+            const out = (a._endAt && isFinite(a._endAt)) ? a._endAt : dur;
+            if (out && isFinite(out) && out > CROSSFADE_SEC * 2 && out - a.currentTime <= CROSSFADE_SEC) {
                 a._xfStarted = true;
                 playNext();
             }
@@ -271,15 +280,19 @@ const Audio = (() => {
             // energy): the thin ones read as tinny next to the full ones. These
             // shelves are retuned on every track change (see applyTrackEQ).
             const loShelf = c.createBiquadFilter(); loShelf.type = 'lowshelf'; loShelf.frequency.value = 220; loShelf.gain.value = 0;
+            // Harshness notch: bowed/reedy instruments bite hardest around 3kHz.
+            // Per-track `eqBite` dips just that band so a grating timbre softens
+            // while the melody and everything around it stay intact.
+            const bite = c.createBiquadFilter(); bite.type = 'peaking'; bite.frequency.value = 3000; bite.Q.value = 1.1; bite.gain.value = 0;
             const hiShelf = c.createBiquadFilter(); hiShelf.type = 'highshelf'; hiShelf.frequency.value = 5200; hiShelf.gain.value = 0;
-            musicEQ = { lo: loShelf, hi: hiShelf };
+            musicEQ = { lo: loShelf, bite: bite, hi: hiShelf };
             const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 13500; lp.Q.value = 0.4;
             const dry = c.createGain(); dry.gain.value = 1;
             const conv = c.createConvolver(); conv.buffer = makeIR(c, 2.6, 2.4);
             const wet = c.createGain(); wet.gain.value = 0.10;
             const master = c.createGain(); master.gain.value = 1;
             // routing: in -> lowpass -> (dry + reverb) -> master -> out
-            inGain.connect(loShelf).connect(hiShelf).connect(lp);
+            inGain.connect(loShelf).connect(bite).connect(hiShelf).connect(lp);
             lp.connect(dry).connect(master);
             lp.connect(conv).connect(wet).connect(master);
             master.connect(c.destination);
@@ -320,6 +333,13 @@ const Audio = (() => {
         if (preloadEl && preloadEl._idx === idx) { a = preloadEl; preloadEl = null; }
         else { a = new window.Audio(); a.preload = 'auto'; a.src = PLAYLIST[idx].url; }
         a.volume = 0;
+        // Per-track playable window (see startAt/endAt in the PLAYLIST).
+        const _t = PLAYLIST[idx];
+        a._endAt = _t.endAt || 0;
+        if (_t.startAt) {
+            const seek = () => { try { if (a.currentTime < _t.startAt) a.currentTime = _t.startAt; } catch (e) {} };
+            if (a.readyState >= 1) seek(); else a.addEventListener('loadedmetadata', seek, { once: true });
+        }
         attachHandlers(a);
         routeThroughChain(a);
         musicAudio = a; musicTrackIdx = idx; lastPlayedIdx = idx;
