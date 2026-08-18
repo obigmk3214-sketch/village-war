@@ -73,11 +73,6 @@ const Audio = (() => {
     // so no piece jumps out louder or falls into the background.
     const PLAYLIST = [
         // Calm — village / exploration
-        // 'Village Theme' — melody written for this game (see tools/compose.py),
-        // performed with single notes sampled out of the CC-BY tracks below. The
-        // tune is original; the timbre is sampled, so it is an ADAPTATION and is
-        // credited as such in openCredits(). Do not remove that credit.
-        { title: 'Village Theme',       mood: 'calm', vibe: 'soft',   url: BASE + 'village-theme.m4a', original: true, trim: 1.15 },
         { title: 'Enchanted Journey',   mood: 'calm', vibe: 'soft',   url: BASE + 'kml-enchanted.m4a', eqLo: 0.5, eqHi: -0.3, trim: 0.876 },
         { title: 'Rogue Meadow',        mood: 'calm', vibe: 'soft',   url: BASE + 'rogue-meadow.m4a', trim: 0.972 },
         { title: 'Teller of the Tales', mood: 'calm', vibe: 'soft',   url: BASE + 'kml-teller.m4a', trim: 1.09 },
