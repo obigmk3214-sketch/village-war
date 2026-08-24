@@ -5,3 +5,8 @@ __pycache__/
 .DS_Store
 .claude/
 .github/
+
+# Untouched source audio. Kept on disk as a working backup; the same files
+# are already preserved in git history, so tracking 71MB again is wasteful.
+# Integrity is verifiable via music-originals.sha256.
+music-original/
