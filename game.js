@@ -507,6 +507,14 @@ function buyableTiles() {
 
 function buyLand(pos) {
     ensureLand();
+    // During the (now mandatory) tutorial, the claim-land "+" flags sit right next
+    // to the building-placement tiles. A stray tap on one used to silently spend
+    // coins and not advance the step — confusing, and it drained the starter coins
+    // the tutorial hands out. Claiming land isn't part of the tutorial, so block it.
+    if (typeof tutorialActive !== 'undefined' && tutorialActive) {
+        toast('Tap the highlighted tile to place your building.', 'info');
+        return;
+    }
     if (isTileOwned(pos)) return;
     if (!landAdjacent(pos)) { toast('You can only claim land next to your kingdom.', 'error'); return; }
     if (state.ownedTiles.length >= landCap()) {
@@ -3868,6 +3876,41 @@ const TUTORIAL_STEPS = [
 let tutorialActive = false;
 let tutorialStep = 0;
 let tutorialDelegateAttached = false;
+let tutorialWatchdog = null;   // safety timer: a mandatory tutorial must never trap the player
+
+// A target counts as reachable only if it's in the DOM, laid out (non-zero size),
+// and actually visible. A build card that's still in the DOM after its panel closed
+// reports a 0x0 rect — treating that as "present" is what used to soft-lock the
+// tutorial, which is unacceptable now that it can't be skipped.
+function tutTargetReachable(el) {
+    if (!el) return false;
+    if (el.offsetParent === null && getComputedStyle(el).position !== 'fixed') return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 1 && r.height > 1;
+}
+
+// Centered "way forward" card used whenever an action step's target can't be
+// reached. Guarantees the mandatory tutorial can always be advanced by hand.
+function showTutorialContinue(progressHTML, cta, msg) {
+    const tip = document.getElementById('tutorial-tip');
+    const spotlight = document.getElementById('tutorial-spotlight');
+    const arrow = document.getElementById('tutorial-arrow');
+    const ring = document.getElementById('tutorial-ring');
+    spotlight.style.display = 'none';
+    arrow.style.display = 'none';
+    ring.style.display = 'none';
+    tip.classList.add('center-modal');
+    tip.style.left = '50%';
+    tip.style.top = '50%';
+    tip.innerHTML = `
+        ${progressHTML}
+        <div class="tutorial-tip-content">
+            <div class="tutorial-step-hint">${msg}</div>
+            <button class="btn btn-gold tutorial-cta">${cta} →</button>
+        </div>
+    `;
+    tip.querySelector('.tutorial-cta').onclick = advanceTutorial;
+}
 
 // Map step targets to extra selectors that should also count
 const TUTORIAL_TARGET_ALIASES = {
@@ -3921,6 +3964,7 @@ function showTutorialStep() {
         return;
     }
     const step = TUTORIAL_STEPS[tutorialStep];
+    step._recovered = false;   // fresh entry — allow one auto-recovery if the target is missing
 
     if (step.autoSwitch) switchView(step.autoSwitch);
 
@@ -3971,26 +4015,35 @@ function renderTutorialStep(step) {
 
     // ----- Action step: spotlight + arrow + tip near target -----
     tip.classList.remove('center-modal');
-    const target = step.target ? document.querySelector(step.target) : null;
-    if (!target) {
-        // Show generic continue tip
-        spotlight.style.display = 'none';
-        arrow.style.display = 'none';
-        ring.style.display = 'none';
-        tip.style.left = '50%';
-        tip.style.top = '50%';
-        tip.classList.add('center-modal');
-        tip.innerHTML = `
-            ${progressHTML}
-            <div class="tutorial-tip-content">
-                <div class="tutorial-title">Hmm…</div>
-                <div class="tutorial-text">Target not visible right now. Click Continue.</div>
-                <button class="btn btn-gold tutorial-cta">Continue →</button>
-            </div>
-        `;
-        tip.querySelector('.tutorial-cta').onclick = advanceTutorial;
+    clearTimeout(tutorialWatchdog);
+    // Resolve through the same alias table the click handler uses, so the spotlight
+    // and the accepted click always refer to the same element(s).
+    const sel = (typeof TUTORIAL_TARGET_ALIASES !== 'undefined' && TUTORIAL_TARGET_ALIASES[step.target]) || step.target;
+    const target = sel ? document.querySelector(sel) : null;
+    if (!tutTargetReachable(target)) {
+        // The target isn't on screen. First try to recover automatically by
+        // re-opening the view this step needs (e.g. a build card whose panel was
+        // closed), then re-render once.
+        if (step.autoSwitch && !step._recovered) {
+            step._recovered = true;
+            try { switchView(step.autoSwitch); } catch (e) {}
+            setTimeout(() => { if (tutorialActive && TUTORIAL_STEPS[tutorialStep] === step) renderTutorialStep(step); }, 320);
+            return;
+        }
+        // Recovery didn't bring it back — never leave the player stuck.
+        showTutorialContinue(progressHTML, "Keep going", "That button isn't on screen right now — tap to continue.");
         return;
     }
+    step._recovered = false;   // reachable; reset so a later re-entry can recover again
+
+    // Safety watchdog: if the target later vanishes and the player is stuck, the
+    // re-render surfaces the manual Continue card above. Only acts when unreachable,
+    // so a player simply taking their time is never interrupted.
+    tutorialWatchdog = setTimeout(function () {
+        if (tutorialActive && TUTORIAL_STEPS[tutorialStep] === step && !tutTargetReachable(document.querySelector(sel))) {
+            renderTutorialStep(step);
+        }
+    }, 9000);
 
     const rect = target.getBoundingClientRect();
 
@@ -4019,25 +4072,41 @@ function renderTutorialStep(step) {
         </div>
     `;
 
-    // Position tip near target — but never covering it
-    const tipW = 340, tipH = 160;
-    let tx = rect.left + rect.width / 2 - tipW / 2;
-    let ty = rect.bottom + 40;  // default below
-    if (step.position === 'right') { tx = rect.right + 30; ty = rect.top + rect.height / 2 - tipH / 2; }
-    else if (step.position === 'left') { tx = rect.left - tipW - 30; ty = rect.top + rect.height / 2 - tipH / 2; }
-    else if (step.position === 'top') { tx = rect.left + rect.width / 2 - tipW / 2; ty = rect.top - tipH - 40; }
-
-    // Clamp + auto-flip if it would overlap target
-    tx = Math.max(14, Math.min(window.innerWidth - tipW - 14, tx));
-    ty = Math.max(14, Math.min(window.innerHeight - tipH - 14, ty));
-
-    // Check overlap; if overlapping, try alt position
-    const tipRect = { left: tx, top: ty, right: tx + tipW, bottom: ty + tipH };
-    if (overlaps(tipRect, rect)) {
-        // Try below
-        ty = rect.bottom + 40;
-        if (ty + tipH > window.innerHeight - 14) ty = rect.top - tipH - 40;
-        ty = Math.max(14, Math.min(window.innerHeight - tipH - 14, ty));
+    // Position tip near target — try each side in turn and take the first that
+    // fits on screen WITHOUT covering the target. The old logic only flipped
+    // vertically, so a wide tip still overlapped the target horizontally (it sat
+    // on top of the very card it was pointing at). Testing all four sides fixes it.
+    const tipW = 340, tipH = 160, GAP = 24, M = 14;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const clamp1 = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const cx = rect.left + rect.width / 2 - tipW / 2;
+    const cy = rect.top + rect.height / 2 - tipH / 2;
+    const candidates = {
+        bottom: { x: cx, y: rect.bottom + GAP },
+        top:    { x: cx, y: rect.top - tipH - GAP },
+        right:  { x: rect.right + GAP, y: cy },
+        left:   { x: rect.left - tipW - GAP, y: cy }
+    };
+    const order = [step.position, 'bottom', 'top', 'right', 'left'].filter(Boolean);
+    let tx, ty, placed = false;
+    for (const pos of order) {
+        const c = candidates[pos];
+        if (!c) continue;
+        const x = clamp1(c.x, M, vw - tipW - M);
+        const y = clamp1(c.y, M, vh - tipH - M);
+        if (!overlaps({ left: x, top: y, right: x + tipW, bottom: y + tipH }, rect)) {
+            tx = x; ty = y; placed = true; break;
+        }
+    }
+    if (!placed) {
+        // Target hugs an edge and no side is fully clear — drop the tip into the
+        // largest surrounding margin so it still clears the target.
+        const gaps = { top: rect.top, bottom: vh - rect.bottom, left: rect.left, right: vw - rect.right };
+        const best = Object.keys(gaps).reduce((a, b) => (gaps[a] >= gaps[b] ? a : b));
+        if (best === 'top')         { tx = clamp1(cx, M, vw - tipW - M); ty = M; }
+        else if (best === 'bottom') { tx = clamp1(cx, M, vw - tipW - M); ty = vh - tipH - M; }
+        else if (best === 'left')   { tx = M; ty = clamp1(cy, M, vh - tipH - M); }
+        else                        { tx = vw - tipW - M; ty = clamp1(cy, M, vh - tipH - M); }
     }
 
     tip.style.left = tx + 'px';
@@ -4082,13 +4151,16 @@ function flashTarget(el) {
 }
 
 function advanceTutorial() {
+    clearTimeout(tutorialWatchdog);
     tutorialStep++;
     showTutorialStep();
 }
 
 function endTutorial() {
+    clearTimeout(tutorialWatchdog);
     tutorialActive = false;
     state.tutorialDone = true;
+    state.tutorialSeen = true;
     try { localStorage.setItem('villagewar_tutorial_done', '1'); } catch(e) {}  // persists even if save is wiped
     document.getElementById('tutorial-overlay').classList.add('hidden');
     saveGame();
