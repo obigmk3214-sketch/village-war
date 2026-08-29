@@ -3893,11 +3893,10 @@ function startTutorial() {
     tutorialActive = true;
     tutorialStep = 0;
     state.tutorialDone = false;
-    // Mark the tutorial as SEEN the moment it first opens, so it never auto-opens
-    // again — even if the player abandons it without finishing. Stored both on the
-    // device (localStorage) and in the saved game (so it follows the person/account).
-    state.tutorialSeen = true;
-    try { localStorage.setItem('villagewar_tutorial_done', '1'); } catch (e) {}
+    // The tutorial is MANDATORY: it is only marked seen/done when the player
+    // actually reaches the end (see endTutorial). We deliberately do NOT mark it
+    // here on open, so abandoning it — closing the tab, reloading — does not count
+    // as completing it; it will re-open on next load until it is genuinely finished.
     // Guarantee enough resources to finish the whole tutorial (lumber mill +
     // barracks + first troop). Math.max never reduces what you already have, and
     // the cost is still really deducted as you build — you just can't run dry.
@@ -3964,11 +3963,9 @@ function renderTutorialStep(step) {
                 <div class="tutorial-title">${step.title}</div>
                 <div class="tutorial-text">${step.text.replace(/\n/g, '<br>')}</div>
                 <button class="btn btn-gold btn-glow tutorial-cta">${step.cta || 'Continue'}</button>
-                <button class="tutorial-skip-link">Skip tutorial</button>
             </div>
         `;
         tip.querySelector('.tutorial-cta').onclick = advanceTutorial;
-        tip.querySelector('.tutorial-skip-link').onclick = skipTutorial;
         return;
     }
 
@@ -3989,11 +3986,9 @@ function renderTutorialStep(step) {
                 <div class="tutorial-title">Hmm…</div>
                 <div class="tutorial-text">Target not visible right now. Click Continue.</div>
                 <button class="btn btn-gold tutorial-cta">Continue →</button>
-                <button class="tutorial-skip-link">Skip tutorial</button>
             </div>
         `;
         tip.querySelector('.tutorial-cta').onclick = advanceTutorial;
-        tip.querySelector('.tutorial-skip-link').onclick = skipTutorial;
         return;
     }
 
@@ -4021,10 +4016,8 @@ function renderTutorialStep(step) {
             <div class="tutorial-step-action"><span class="tutorial-action-verb">${step.action}</span> ${step.label}</div>
             <div class="tutorial-step-hint">${step.hint || ''}</div>
             <div class="tutorial-step-arrow-note">↓ Look for the bouncing arrow ↓</div>
-            <button class="tutorial-skip-link">Skip tutorial</button>
         </div>
     `;
-    tip.querySelector('.tutorial-skip-link').onclick = skipTutorial;
 
     // Position tip near target — but never covering it
     const tipW = 340, tipH = 160;
