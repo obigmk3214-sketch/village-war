@@ -73,7 +73,7 @@ const Audio = (() => {
     // so no piece jumps out louder or falls into the background.
     const PLAYLIST = [
         // Calm — village / exploration
-        { title: 'Enchanted Journey',   mood: 'calm', vibe: 'soft',   url: BASE + 'kml-enchanted.m4a', eqLo: 0.5, eqHi: -0.3, trim: 0.876 },
+        { title: 'Enchanted Journey',   mood: 'calm', vibe: 'soft',   url: BASE + 'kml-enchanted-edit.m4a', eqLo: 0.5, eqHi: -0.3, trim: 0.92 },
         { title: 'Rogue Meadow',        mood: 'calm', vibe: 'soft',   url: BASE + 'rogue-meadow.m4a', trim: 0.972 },
         { title: 'Teller of the Tales', mood: 'calm', vibe: 'soft',   url: BASE + 'kml-teller.m4a', trim: 1.09 },
         { title: 'Skye Cuillin',        mood: 'calm', vibe: 'soft',   url: BASE + 'kml-skye.m4a', eqLo: 1.3, eqHi: -0.7, trim: 0.981 },
@@ -82,18 +82,18 @@ const Audio = (() => {
         { title: 'Dancing at the Inn',  mood: 'calm', vibe: 'lively', url: BASE + 'tavern-dance.m4a', eqLo: 2.9, eqHi: -1.5, trim: 1.033 },
         { title: 'Fiddles McGinty',     mood: 'calm', vibe: 'lively', url: BASE + 'kml-fiddles.m4a', eqBite: -4.5, eqLo: 3.1, eqHi: -1.6, trim: 1.073 },
         { title: 'The Path of the Goblin King', mood: 'calm', vibe: 'lively', url: BASE + 'kml-goblinking.m4a', eqLo: 0.5, eqHi: -0.3, trim: 0.914 },
-        { title: 'Master of the Feast', mood: 'calm', vibe: 'lively', url: BASE + 'kml-feast.m4a', endAt: 72, eqLo: 1.8, eqHi: -0.9, trim: 1.056 },
+        { title: 'Master of the Feast', mood: 'calm', vibe: 'lively', url: BASE + 'kml-feast-edit.m4a', eqLo: 1.8, eqHi: -0.9, trim: 1.03 },
         { title: 'Wizardtorium',        mood: 'calm', vibe: 'lively', url: BASE + 'kml-wizardtorium.m4a', eqLo: 4.0, eqHi: -2.1, trim: 0.971 },
         // Calm — grand / stately
         { title: 'The Britons',         mood: 'calm', vibe: 'grand',  url: BASE + 'the-britons.m4a', trim: 1.04 },
-        { title: 'Angevin',             mood: 'calm', vibe: 'grand',  url: BASE + 'kml-angevin.m4a', endAt: 55, eqLo: 1.0, eqHi: -0.5, trim: 0.888 },
+        { title: 'Angevin',             mood: 'calm', vibe: 'grand',  url: BASE + 'kml-angevin-edit.m4a', eqLo: 1.0, eqHi: -0.5, trim: 1.02 },
         { title: 'Minstrel Guild',      mood: 'calm', vibe: 'grand',  url: BASE + 'kml-minstrel.m4a', eqLo: 4.2, eqHi: -2.2, trim: 1.01 },
         // Epic — battle
         { title: 'Beyond New Horizons', mood: 'calm', vibe: 'grand',  url: BASE + 'epic-horizons.m4a', eqLo: 1.7, eqHi: -0.9, trim: 0.92 },
-        { title: 'Clash Defiant',       mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-clash.m4a', endAt: 65, trim: 0.992 },
+        { title: 'Clash Defiant',       mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-clash-edit.m4a', trim: 1.0 },
         { title: 'Heroic Age',          mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-heroic.m4a', eqLo: 1.6, eqHi: -0.9, trim: 0.813 },
         { title: 'Toward the Mountains',mood: 'epic', vibe: 'epicB',  url: BASE + 'mountains.m4a', eqLo: 1.2, eqHi: -0.6, trim: 0.978 },
-        { title: 'Anguish',             mood: 'epic', vibe: 'epicB',  url: BASE + 'kml-anguish.m4a', endAt: 38, trim: 0.9 }
+        { title: 'Anguish',             mood: 'epic', vibe: 'epicB',  url: BASE + 'kml-anguish.m4a', endAt: 90, trim: 0.9 }
     ];
     const CALM = PLAYLIST.map((t, i) => i).filter(i => PLAYLIST[i].mood === 'calm' && !PLAYLIST[i].retired);
     const EPIC = PLAYLIST.map((t, i) => i).filter(i => PLAYLIST[i].mood === 'epic' && !PLAYLIST[i].retired);
@@ -143,6 +143,20 @@ const Audio = (() => {
         if (vibe === 'grand')  return 1 - Math.abs(sun - 0.5) * 2;  // dawn/dusk
         return 0.5;
     }
+    // How many tracks have been started since each one last played. The queue is
+    // rebuilt from scratch every time the mode flips (village <-> battle), so a
+    // track that consistently sorts low is never reached before the rebuild and
+    // can go unheard for an entire session. 'grand' tracks were worst hit: their
+    // time-of-day fit is zero except around dawn/dusk, so they sank to the bottom
+    // on most rebuilds — which is why Beyond New Horizons effectively never
+    // played. Tracking staleness and boosting it lets every track surface.
+    const heardAt = {};
+    let playTick = 0;
+    function markHeard(idx) { heardAt[idx] = ++playTick; }
+    function staleness(idx) {
+        if (heardAt[idx] === undefined) return 1;          // never played yet
+        return Math.min(1, (playTick - heardAt[idx]) / 8); // 0..1 over 8 plays
+    }
     function buildQueue(mode) {
         const pool = (mode === 'epic' ? EPIC : CALM).slice();
         const order = [];
@@ -161,7 +175,11 @@ const Audio = (() => {
             const sun = dayPhase();
             // weight by time-of-day fit, keep a strong random component so the
             // order never feels deterministic, then still avoid vibe repeats
-            const remaining = pool.map(i => ({ i, w: vibeFit(PLAYLIST[i].vibe, sun) * 0.65 + Math.random() * 0.35 }))
+            // Staleness outweighs time-of-day fit so nothing can starve, while
+            // fit still shapes the order among tracks that are equally overdue.
+            const remaining = pool.map(i => ({ i, w: vibeFit(PLAYLIST[i].vibe, sun) * 0.34
+                                                    + staleness(i) * 0.42
+                                                    + Math.random() * 0.24 }))
                                   .sort((a, b) => b.w - a.w).map(o => o.i);
             let prevVibe = lastPlayedIdx >= 0 ? PLAYLIST[lastPlayedIdx].vibe : null;
             while (remaining.length) {
