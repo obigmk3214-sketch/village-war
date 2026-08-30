@@ -73,27 +73,27 @@ const Audio = (() => {
     // so no piece jumps out louder or falls into the background.
     const PLAYLIST = [
         // Calm — village / exploration
-        { title: 'Enchanted Journey',   mood: 'calm', vibe: 'soft',   url: BASE + 'kml-enchanted-edit.m4a', eqLo: 0.5, eqHi: -0.3, trim: 0.92 },
-        { title: 'Rogue Meadow',        mood: 'calm', vibe: 'soft',   url: BASE + 'rogue-meadow.m4a', trim: 0.972 },
-        { title: 'Teller of the Tales', mood: 'calm', vibe: 'soft',   url: BASE + 'kml-teller.m4a', trim: 1.09 },
-        { title: 'Skye Cuillin',        mood: 'calm', vibe: 'soft',   url: BASE + 'kml-skye.m4a', eqLo: 1.3, eqHi: -0.7, trim: 0.981 },
-        { title: 'Thatched Villagers',  mood: 'calm', vibe: 'soft',   url: BASE + 'kml-thatched.m4a', eqLo: 1.6, eqHi: -0.9, trim: 0.953 },
+        { title: 'Enchanted Journey',   mood: 'calm', vibe: 'soft',   url: BASE + 'kml-enchanted-edit.m4a', eqLo: 0.5, eqHi: -0.3, trim: 0.92 , secs: 52 },
+        { title: 'Rogue Meadow',        mood: 'calm', vibe: 'soft',   url: BASE + 'rogue-meadow.m4a', trim: 0.972 , secs: 159 },
+        { title: 'Teller of the Tales', mood: 'calm', vibe: 'soft',   url: BASE + 'kml-teller.m4a', trim: 1.09 , secs: 206 },
+        { title: 'Skye Cuillin',        mood: 'calm', vibe: 'soft',   url: BASE + 'kml-skye.m4a', eqLo: 1.3, eqHi: -0.7, trim: 0.981 , secs: 189 },
+        { title: 'Thatched Villagers',  mood: 'calm', vibe: 'soft',   url: BASE + 'kml-thatched.m4a', eqLo: 1.6, eqHi: -0.9, trim: 0.953 , secs: 245 },
         // Calm — lively tavern / folk
-        { title: 'Dancing at the Inn',  mood: 'calm', vibe: 'lively', url: BASE + 'tavern-dance.m4a', eqLo: 2.9, eqHi: -1.5, trim: 1.033 },
-        { title: 'Fiddles McGinty',     mood: 'calm', vibe: 'lively', url: BASE + 'kml-fiddles.m4a', eqBite: -4.5, eqLo: 3.1, eqHi: -1.6, trim: 1.073 },
-        { title: 'The Path of the Goblin King', mood: 'calm', vibe: 'lively', url: BASE + 'kml-goblinking.m4a', eqLo: 0.5, eqHi: -0.3, trim: 0.914 },
-        { title: 'Master of the Feast', mood: 'calm', vibe: 'lively', url: BASE + 'kml-feast-edit.m4a', eqLo: 1.8, eqHi: -0.9, trim: 1.03 },
-        { title: 'Wizardtorium',        mood: 'calm', vibe: 'lively', url: BASE + 'kml-wizardtorium.m4a', eqLo: 4.0, eqHi: -2.1, trim: 0.971 },
+        { title: 'Dancing at the Inn',  mood: 'calm', vibe: 'lively', url: BASE + 'tavern-dance.m4a', eqLo: 2.9, eqHi: -1.5, trim: 1.033 , secs: 154 },
+        { title: 'Fiddles McGinty',     mood: 'calm', vibe: 'lively', url: BASE + 'kml-fiddles.m4a', eqBite: -4.5, eqLo: 3.1, eqHi: -1.6, trim: 1.073 , secs: 204 },
+        { title: 'The Path of the Goblin King', mood: 'calm', vibe: 'lively', url: BASE + 'kml-goblinking.m4a', eqLo: 0.5, eqHi: -0.3, trim: 0.914 , secs: 206 },
+        { title: 'Master of the Feast', mood: 'calm', vibe: 'lively', url: BASE + 'kml-feast-edit.m4a', eqLo: 1.8, eqHi: -0.9, trim: 1.03 , secs: 81 },
+        { title: 'Wizardtorium',        mood: 'calm', vibe: 'lively', url: BASE + 'kml-wizardtorium.m4a', eqLo: 4.0, eqHi: -2.1, trim: 0.971 , secs: 205 },
         // Calm — grand / stately
-        { title: 'The Britons',         mood: 'calm', vibe: 'grand',  url: BASE + 'the-britons.m4a', trim: 1.04 },
-        { title: 'Angevin',             mood: 'calm', vibe: 'grand',  url: BASE + 'kml-angevin-edit.m4a', eqLo: 1.0, eqHi: -0.5, trim: 1.02 },
-        { title: 'Minstrel Guild',      mood: 'calm', vibe: 'grand',  url: BASE + 'kml-minstrel.m4a', eqLo: 4.2, eqHi: -2.2, trim: 1.01 },
+        { title: 'The Britons',         mood: 'calm', vibe: 'grand',  url: BASE + 'the-britons.m4a', trim: 1.04 , secs: 306 },
+        { title: 'Angevin',             mood: 'calm', vibe: 'grand',  url: BASE + 'kml-angevin-edit.m4a', eqLo: 1.0, eqHi: -0.5, trim: 1.02 , secs: 92 },
+        { title: 'Minstrel Guild',      mood: 'calm', vibe: 'grand',  url: BASE + 'kml-minstrel.m4a', eqLo: 4.2, eqHi: -2.2, trim: 1.01 , secs: 184 },
+        { title: 'Beyond New Horizons', mood: 'calm', vibe: 'grand',  url: BASE + 'epic-horizons.m4a', eqLo: 1.7, eqHi: -0.9, trim: 0.92 , secs: 76 },
         // Epic — battle
-        { title: 'Beyond New Horizons', mood: 'calm', vibe: 'grand',  url: BASE + 'epic-horizons.m4a', eqLo: 1.7, eqHi: -0.9, trim: 0.92 },
-        { title: 'Clash Defiant',       mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-clash-edit.m4a', trim: 1.0 },
-        { title: 'Heroic Age',          mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-heroic.m4a', eqLo: 1.6, eqHi: -0.9, trim: 0.813 },
-        { title: 'Toward the Mountains',mood: 'epic', vibe: 'epicB',  url: BASE + 'mountains.m4a', eqLo: 1.2, eqHi: -0.6, trim: 0.978 },
-        { title: 'Anguish',             mood: 'epic', vibe: 'epicB',  url: BASE + 'kml-anguish.m4a', endAt: 90, trim: 0.9 }
+        { title: 'Clash Defiant',       mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-clash-edit.m4a', trim: 1.0 , secs: 107 },
+        { title: 'Heroic Age',          mood: 'epic', vibe: 'epicA',  url: BASE + 'kml-heroic.m4a', eqLo: 1.6, eqHi: -0.9, trim: 0.813 , secs: 91 },
+        { title: 'Toward the Mountains',mood: 'epic', vibe: 'epicB',  url: BASE + 'mountains.m4a', eqLo: 1.2, eqHi: -0.6, trim: 0.978 , secs: 75 },
+        { title: 'Anguish',             mood: 'epic', vibe: 'epicB',  url: BASE + 'kml-anguish.m4a', endAt: 90, trim: 0.9 , secs: 90 }
     ];
     const CALM = PLAYLIST.map((t, i) => i).filter(i => PLAYLIST[i].mood === 'calm' && !PLAYLIST[i].retired);
     const EPIC = PLAYLIST.map((t, i) => i).filter(i => PLAYLIST[i].mood === 'epic' && !PLAYLIST[i].retired);
@@ -157,6 +157,20 @@ const Audio = (() => {
         if (heardAt[idx] === undefined) return 1;          // never played yet
         return Math.min(1, (playTick - heardAt[idx]) / 8); // 0..1 over 8 plays
     }
+    // 1 for the shortest track in the pool, 0 for the longest. Kept deliberately
+    // modest: measured in-game, a stronger boost fixes the short tracks but
+    // starves the long ones (The Britons fell to 1% of listening time at 0.20),
+    // which just moves the problem rather than solving it.
+    function lenBoost(idx, pool) {
+        let mn = Infinity, mx = 0;
+        for (const i of pool) {
+            const s = PLAYLIST[i].secs || 180;
+            if (s < mn) mn = s;
+            if (s > mx) mx = s;
+        }
+        if (mx <= mn) return 0.5;
+        return 1 - ((PLAYLIST[idx].secs || 180) - mn) / (mx - mn);
+    }
     function buildQueue(mode) {
         const pool = (mode === 'epic' ? EPIC : CALM).slice();
         const order = [];
@@ -175,11 +189,15 @@ const Audio = (() => {
             const sun = dayPhase();
             // weight by time-of-day fit, keep a strong random component so the
             // order never feels deterministic, then still avoid vibe repeats
-            // Staleness outweighs time-of-day fit so nothing can starve, while
-            // fit still shapes the order among tracks that are equally overdue.
-            const remaining = pool.map(i => ({ i, w: vibeFit(PLAYLIST[i].vibe, sun) * 0.34
-                                                    + staleness(i) * 0.42
-                                                    + Math.random() * 0.24 }))
+            // Staleness stops anything starving; `lenBoost` equalises listening
+            // TIME rather than play count. Without it the long tracks eat the
+            // clock: picking every track equally often gave The Britons (5:06)
+            // 13% of listening time and Beyond New Horizons (1:16) just 3.2%,
+            // which is why the short ones felt like they never played.
+            const remaining = pool.map(i => ({ i, w: vibeFit(PLAYLIST[i].vibe, sun) * 0.28
+                                                    + staleness(i) * 0.34
+                                                    + lenBoost(i, pool) * 0.13
+                                                    + Math.random() * 0.25 }))
                                   .sort((a, b) => b.w - a.w).map(o => o.i);
             let prevVibe = lastPlayedIdx >= 0 ? PLAYLIST[lastPlayedIdx].vibe : null;
             while (remaining.length) {
@@ -355,7 +373,7 @@ const Audio = (() => {
         }
         attachHandlers(a);
         routeThroughChain(a);
-        musicAudio = a; musicTrackIdx = idx; lastPlayedIdx = idx;
+        musicAudio = a; musicTrackIdx = idx; lastPlayedIdx = idx; markHeard(idx);
         const pr = a.play();
         if (pr && pr.catch) pr.catch(() => retryOnGesture(a));
         applyTrackEQ(idx);
