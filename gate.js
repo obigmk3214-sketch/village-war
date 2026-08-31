@@ -37,7 +37,7 @@
                 <h1 class="gate-title">Village War</h1>
                 <p class="gate-sub">This realm is sealed. Enter the password to play.</p>
                 <form id="gate-form" autocomplete="off">
-                    <input id="gate-input" type="password" placeholder="Password" autocomplete="off" autocapitalize="off" spellcheck="false" />
+                    <input id="gate-input" type="password" placeholder="Password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
                     <button id="gate-submit" type="submit">Enter</button>
                 </form>
                 <div id="gate-err" class="gate-err"></div>
@@ -56,7 +56,11 @@
             e.preventDefault();
             const now = Date.now();
             if (now < lockedUntil) { err.textContent = `Too many attempts — wait a moment.`; return; }
-            const val = input.value || '';
+            // Trim before hashing. Pasting the password from a message very often
+            // brings a trailing space or newline with it, and mobile keyboards can
+            // add one too — which failed silently and just looked like a wrong
+            // password. No real password here starts or ends with whitespace.
+            const val = (input.value || '').trim();
             let hex = '';
             try { hex = await sha256Hex(val); } catch (e2) { err.textContent = 'Your browser blocked the check.'; return; }
             if (hex === cfg.hash) {
@@ -65,7 +69,9 @@
                 setTimeout(() => g.remove(), 650);
             } else {
                 tries++;
-                err.textContent = 'Wrong password.';
+                err.textContent = tries >= 2
+                    ? 'Wrong password. Check for capitals — it is case-sensitive.'
+                    : 'Wrong password.';
                 input.value = '';
                 card.classList.remove('gate-shake'); void card.offsetWidth; card.classList.add('gate-shake');
                 if (tries >= 5) { lockedUntil = now + 5000; tries = 0; err.textContent = 'Too many attempts — locked for 5s.'; }
