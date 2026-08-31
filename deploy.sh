@@ -38,12 +38,12 @@ echo
 echo "==> Pushed. GitHub Pages takes 30-90s to build (longer on the very first"
 echo "    deploy, and it only starts once Pages is switched on in Settings)."
 
-# This file exists only in the new work, so seeing it proves the live site
-# actually rebuilt rather than serving a cached older copy.
-PROBE="$SITE/music/kml-angevin-edit.m4a"
+# Probe for THIS deploy's version stamp in index.html. Checking that some file
+# merely exists is useless — it was already there from the previous deploy and
+# reports success immediately (which it did, misleadingly).
+STAMP=$(git rev-parse --short HEAD)
 for i in $(seq 1 45); do
-    CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$PROBE?cb=$RANDOM" || echo 000)
-    if [ "$CODE" = "200" ]; then
+    if curl -s --max-time 10 "$SITE/?cb=$RANDOM" | grep -q "v=$STAMP"; then
         echo
         echo "==> LIVE with the newest work:"
         echo "    $SITE/"
