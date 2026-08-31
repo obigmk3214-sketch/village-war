@@ -15,6 +15,21 @@ cd "$(dirname "$0")"
 REMOTE="${1:-mine}"
 SITE="https://obigmk3214-sketch.github.io/village-war"
 
+# Stamp a cache-busting version onto every script/stylesheet tag. Without this,
+# browsers keep serving an old cached copy after a deploy — which once left the
+# game running a stale config.js and silently rejecting a correct password.
+STAMP=$(git rev-parse --short HEAD)
+if grep -q 'v=VWV' index.html || ! grep -q "v=$STAMP" index.html; then
+    sed -i '' -E "s/(\.js|\.css)\?v=[A-Za-z0-9]+/\1?v=$STAMP/g" index.html
+    if ! git diff --quiet index.html; then
+        git add index.html
+        git commit -q -m "Cache-bust assets for deploy $STAMP"
+        STAMP=$(git rev-parse --short HEAD)
+        sed -i '' -E "s/(\.js|\.css)\?v=[A-Za-z0-9]+/\1?v=$STAMP/g" index.html
+        git add index.html && git commit -q --amend --no-edit
+    fi
+fi
+
 AHEAD=$(git rev-list --count "$REMOTE/main..HEAD" 2>/dev/null || echo "all")
 echo "==> Pushing $AHEAD commits to '$REMOTE'..."
 git push -u "$REMOTE" main
