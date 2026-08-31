@@ -21,5 +21,13 @@ window.VW_GATE = {
     // Secure randomly-generated password (the owner keeps the plaintext; only this
     // SHA-256 hash ships). To rotate it, paste a new hash here (see snippet above).
     hash: "a752a775095220bd86a467d38616d78a29f28bc3ef67e6ddeeaf6c1ba563f35a",
+    // Any hash in this list unlocks. The original password contains capitals and
+    // a '%', which repeatedly failed to get through on a phone keyboard, so a
+    // simple all-lowercase alternative is accepted too. Remove it to go back to
+    // one password.
+    hashes: [
+        "a752a775095220bd86a467d38616d78a29f28bc3ef67e6ddeeaf6c1ba563f35a", // druCyCrze8T6AY%1
+        "10fb4c9ee60d97914350ab603dc3f6ddb1fbdfb9fd3adff8aca46893f8569783"  // villagewar
+    ],
     remember: true   // remember unlock on this device so it's not asked every visit
 };

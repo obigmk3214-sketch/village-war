@@ -24,7 +24,11 @@
 
     // already unlocked on this device?
     try {
-        if (cfg.remember && localStorage.getItem(LS_KEY) === cfg.hash) return;
+        // Compare the remembered unlock against every accepted hash, not just
+        // the first — otherwise unlocking with the alternate password is not
+        // remembered and the gate reappears on every visit.
+        const okHashes = (cfg.hashes && cfg.hashes.length) ? cfg.hashes : [cfg.hash];
+        if (cfg.remember && okHashes.indexOf(localStorage.getItem(LS_KEY)) !== -1) return;
     } catch (e) {}
 
     function buildGate() {
@@ -63,8 +67,9 @@
             const val = (input.value || '').trim();
             let hex = '';
             try { hex = await sha256Hex(val); } catch (e2) { err.textContent = 'Your browser blocked the check.'; return; }
-            if (hex === cfg.hash) {
-                try { if (cfg.remember) localStorage.setItem(LS_KEY, cfg.hash); } catch (e3) {}
+            const accepted = (cfg.hashes && cfg.hashes.length) ? cfg.hashes : [cfg.hash];
+            if (accepted.indexOf(hex) !== -1) {
+                try { if (cfg.remember) localStorage.setItem(LS_KEY, hex); } catch (e3) {}
                 g.classList.add('gate-open');
                 setTimeout(() => g.remove(), 650);
             } else {
