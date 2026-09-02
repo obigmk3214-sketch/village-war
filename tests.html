@@ -91,6 +91,25 @@ function run() {
     ok(s.name && s.name.includes(' '), 'has a two-part name');
     eq(s.kills, 0); eq(s.raids, 0);
   });
+  t('every highlighted placement tile is actually placeable', () => {
+    // Regression: the yellow "place here" highlight was drawn on ALL unoccupied
+    // tiles while the clickable hit-zone was only drawn on OWNED ones, so 252 of
+    // 276 glowing tiles silently swallowed the tap - the game looked broken to a
+    // new player during the tutorial's very first placement step.
+    G.eval('placingBuilding = "lumbermill"');
+    G.eval('renderGrid()');
+    const doc = G.document;
+    const highlighted = new Set(
+      [...doc.querySelectorAll('#village-grid .placement-tile')].map(e => e.getAttribute('data-pos')));
+    const clickable = new Set(
+      [...doc.querySelectorAll('#village-grid .tile-hit')].map(e => e.getAttribute('data-pos')));
+    const dead = [...highlighted].filter(pos => !clickable.has(pos));
+    G.eval('placingBuilding = null');
+    G.eval('renderGrid()');
+    if (dead.length) throw new Error(dead.length + ' highlighted tiles have no hit-zone');
+    if (!highlighted.size) throw new Error('no placement tiles rendered at all');
+  });
+
   t('rank thresholds: 0/1/3/7/15 raids', () => {
     const r = n => G.eval(`rankOf({raids:${n}}).name`);
     eq(r(0), 'Recruit'); eq(r(1), 'Regular'); eq(r(3), 'Veteran'); eq(r(7), 'Elite'); eq(r(15), 'Legend');

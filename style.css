@@ -1272,6 +1272,30 @@ body {
     color: #3a1a08;
 }
 
+/* During a placement step the tip sits over the map, and a fixed 340px card
+   covered most of the board: measured on an 800px-wide window, only 19 of the
+   81 on-screen placement tiles could actually be clicked — the rest silently
+   swallowed the tap, which reads as "the game is broken". Let pointer events
+   fall through to the tiles underneath, and re-enable them on the parts a
+   player actually needs to press. */
+body.placing #tutorial-tip {
+    pointer-events: none;
+    opacity: 0.94;
+}
+body.placing #tutorial-tip button,
+body.placing #tutorial-tip a,
+body.placing #tutorial-tip .tutorial-progress-pill {
+    pointer-events: auto;
+}
+/* Keep it out of the middle of the board while placing. */
+body.placing #tutorial-tip.center-modal {
+    top: auto;
+    bottom: 96px;
+    transform: translate(-50%, 0);
+    width: 330px;
+    padding: 12px 16px;
+}
+
 #tutorial-tip.center-modal {
     transform: translate(-50%, -50%);
     width: 420px;

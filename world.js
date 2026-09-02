@@ -2411,6 +2411,11 @@ function renderIsoWorld() {
             for (let gx = 0; gx < ISO.GW; gx++) {
                 const pos = gx + gy * ISO.GW;
                 if ((typeof tileOccupiedBy === 'function') ? tileOccupiedBy(pos) : state.buildings.find(b => b.pos === pos)) continue;
+                // Must match the .tile-hit filter below. This highlight used to be
+                // drawn on wild land too, so unowned tiles glowed "place here" but
+                // had no hit-zone underneath: the tap did nothing at all, with no
+                // building and no explanation. Highlight only what is placeable.
+                if (ownedTiles && !ownedTiles.has(pos)) continue;
                 const { x, y } = iso(gx, gy);
                 placementSVG += `<polygon points="${x},${y - ISO.TH} ${x + ISO.TW},${y} ${x},${y + ISO.TH} ${x - ISO.TW},${y}" fill="rgba(251,191,36,0.3)" stroke="#fbbf24" stroke-width="1" class="placement-tile" data-pos="${pos}" style="cursor:pointer"/>`;
             }

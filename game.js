@@ -1262,10 +1262,36 @@ function setupBuildingTooltips(grid) {
 
 let placingBuilding = null;
 
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') cancelPlacement();
+});
+
+// Nothing used to clear placingBuilding except actually placing the building, so
+// a player who tapped a card by mistake was trapped: the camera stayed pulled
+// back and every tap on the board dropped a building they no longer wanted.
+// The nav is a left sidebar on wide screens and a bottom bar under 768px, so
+// tutorial hints say {NAV} and get the right words substituted at render time.
+function navWord(text) {
+    if (!text) return '';
+    const word = window.matchMedia('(max-width: 768px)').matches
+        ? 'bottom menu bar' : 'left sidebar';
+    return text.replace(/\{NAV\}/g, word);
+}
+
+function cancelPlacement(quiet) {
+    if (!placingBuilding) return false;
+    placingBuilding = null;
+    document.body.classList.remove('placing');
+    restorePlacementZoom();
+    if (!quiet) toast('Placement cancelled', 'info');
+    return true;
+}
+
 function startPlacement(pos) {
     if (placingBuilding) {
         placeBuilding(placingBuilding, pos);
         placingBuilding = null;
+        document.body.classList.remove('placing');
         restorePlacementZoom();
     }
 }
@@ -1589,6 +1615,9 @@ function renderBuildView() {
                     placingBuilding = type;
                     switchView('village');
                     enterPlacementZoom();   // pull back so the board is actually visible
+                    // Lets the tutorial card stop swallowing taps aimed at tiles
+                    // underneath it (see body.placing in style.css).
+                    document.body.classList.add('placing');
                     toast('Click an empty tile to place the building', 'info');
                 };
             } else {
@@ -2821,6 +2850,9 @@ function switchView(view) {
         toast(`Unlocks at Town Hall ${FEATURE_GATES[view]} — keep building!`, 'info');
         return;
     }
+    // Leaving the village means the placement can't be completed, so drop it
+    // rather than leaving the player silently still in placement mode.
+    if (view !== 'village' && typeof cancelPlacement === 'function') cancelPlacement(true);
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(`view-${view}`).classList.add('active');
@@ -3710,7 +3742,7 @@ const TUTORIAL_STEPS = [
     {
         action: "TAP",
         label: "the Build button",
-        hint: "It's on the left sidebar — looks like a crane ️",
+        hint: "It's in the {NAV} — looks like a crane ️",
         target: '.nav-btn[data-view="build"]',
         position: 'right'
     },
@@ -4067,7 +4099,7 @@ function renderTutorialStep(step) {
         ${progressHTML}
         <div class="tutorial-tip-content">
             <div class="tutorial-step-action"><span class="tutorial-action-verb">${step.action}</span> ${step.label}</div>
-            <div class="tutorial-step-hint">${step.hint || ''}</div>
+            <div class="tutorial-step-hint">${navWord(step.hint || '')}</div>
             <div class="tutorial-step-arrow-note">↓ Look for the bouncing arrow ↓</div>
         </div>
     `;
