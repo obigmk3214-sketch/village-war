@@ -2407,15 +2407,25 @@ function renderIsoWorld() {
     // Highlight overlay for placement
     let placementSVG = '';
     if (placingBuilding) {
+    // A 2x2 building (Town Hall, Fortress, Barracks) needs all four of its tiles
+    // free and owned. Highlighting a single free tile without checking the rest
+    // told the player "place here" and then refused with an error - during the
+    // tutorial's Barracks step that reads as the game ignoring the tap.
+    const fitsHere = (pos) => {
+        const foot = (typeof buildingFootprint === 'function')
+            ? buildingFootprint(placingBuilding, pos) : [pos];
+        for (const fp of foot) {
+            if ((typeof tileOccupiedBy === 'function') ? tileOccupiedBy(fp)
+                : state.buildings.find(b => b.pos === fp)) return false;
+            if (ownedTiles && !ownedTiles.has(fp)) return false;
+        }
+        return foot.length === ((typeof FOOTPRINT_2X2 !== 'undefined' && FOOTPRINT_2X2[placingBuilding]) ? 4 : 1);
+    };
         for (let gy = 0; gy < ISO.GH; gy++) {
             for (let gx = 0; gx < ISO.GW; gx++) {
                 const pos = gx + gy * ISO.GW;
-                if ((typeof tileOccupiedBy === 'function') ? tileOccupiedBy(pos) : state.buildings.find(b => b.pos === pos)) continue;
-                // Must match the .tile-hit filter below. This highlight used to be
-                // drawn on wild land too, so unowned tiles glowed "place here" but
-                // had no hit-zone underneath: the tap did nothing at all, with no
-                // building and no explanation. Highlight only what is placeable.
-                if (ownedTiles && !ownedTiles.has(pos)) continue;
+                // Must match the .tile-hit filter below, footprint included.
+                if (!fitsHere(pos)) continue;
                 const { x, y } = iso(gx, gy);
                 placementSVG += `<polygon points="${x},${y - ISO.TH} ${x + ISO.TW},${y} ${x},${y + ISO.TH} ${x - ISO.TW},${y}" fill="rgba(251,191,36,0.3)" stroke="#fbbf24" stroke-width="1" class="placement-tile" data-pos="${pos}" style="cursor:pointer"/>`;
             }
@@ -2429,6 +2439,18 @@ function renderIsoWorld() {
             const pos = gx + gy * ISO.GW;
             if ((typeof tileOccupiedBy === 'function') ? tileOccupiedBy(pos) : state.buildings.find(b => b.pos === pos)) continue;
             if (ownedTiles && !ownedTiles.has(pos)) continue;  // can't place on wild land
+            // While placing, only offer tiles the building actually fits on.
+            if (placingBuilding && typeof buildingFootprint === 'function') {
+                const foot = buildingFootprint(placingBuilding, pos);
+                const need = (typeof FOOTPRINT_2X2 !== 'undefined' && FOOTPRINT_2X2[placingBuilding]) ? 4 : 1;
+                if (foot.length !== need) continue;
+                let ok = true;
+                for (const fp of foot) {
+                    if (((typeof tileOccupiedBy === 'function') ? tileOccupiedBy(fp) : state.buildings.find(b => b.pos === fp))
+                        || (ownedTiles && !ownedTiles.has(fp))) { ok = false; break; }
+                }
+                if (!ok) continue;
+            }
             const { x, y } = iso(gx, gy);
             hitSVG += `<polygon points="${x},${y - ISO.TH} ${x + ISO.TW},${y} ${x},${y + ISO.TH} ${x - ISO.TW},${y}" fill="transparent" class="tile-hit" data-pos="${pos}" style="cursor:pointer"/>`;
         }

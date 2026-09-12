@@ -4493,3 +4493,11 @@ h2 *, h3 *, .view h2 *, .hero-section-title * { -webkit-text-fill-color: current
 .tool-bob { transform-box: fill-box; transform-origin: center; animation: toolBob 2.6s ease-in-out infinite; }
 @keyframes toolBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.4px); } }
 .worker-job { cursor: help; }
+
+/* The placement highlight is decoration drawn over the real hit-zone. Leaving it
+   clickable meant the tutorial's reachability check for '.tile-hit' always saw
+   the highlight on top and judged the target unreachable, which kicked off the
+   recovery re-render on every placement step - the tutorial appeared to refresh
+   endlessly. The .tile-hit polygon beneath carries the same data-pos, so letting
+   clicks through changes nothing for the player. */
+#village-grid .placement-tile { pointer-events: none; }

@@ -1373,7 +1373,14 @@ function placeBuilding(type, pos) {
     }
     spendResources(cost);
     const dur = (typeof buildDuration === 'function') ? buildDuration(type, 1) : 0;
-    state.buildings.push({ type, level: 1, pos, hp: def.baseHP, justPlaced: Date.now(), constructing: dur > 0, endsAt: Date.now() + dur * 1000 });
+    // The tutorial promises 60 seconds and immediately asks the player to use
+    // what they just built - collect from it, then recruit from the Barracks. A
+    // real build timer made those steps impossible: the collect badge had to be
+    // faked onto a construction site, and the Recruit button never existed
+    // because the Barracks was still going up. Tutorial builds finish at once.
+    const tutBuild = (typeof tutorialActive !== 'undefined') && tutorialActive;
+    const buildSecs = tutBuild ? 0 : dur;
+    state.buildings.push({ type, level: 1, pos, hp: def.baseHP, justPlaced: Date.now(), constructing: buildSecs > 0, endsAt: Date.now() + buildSecs * 1000 });
     updateStorageCaps();
     toast(dur > 0 ? ` ${def.name} under construction (${dur}s)…` : `${def.name} built!`, 'success');
     try { Audio.place(); } catch(e) {}
@@ -3996,7 +4003,7 @@ function showTutorialStep() {
         return;
     }
     const step = TUTORIAL_STEPS[tutorialStep];
-    step._recovered = false;   // fresh entry — allow one auto-recovery if the target is missing
+    step._tries = 0;   // fresh entry — allow auto-recovery again if the target is missing
 
     if (step.autoSwitch) switchView(step.autoSwitch);
 
@@ -4011,8 +4018,95 @@ function showTutorialStep() {
         if (any && typeof renderGrid === 'function') renderGrid();
     }
 
-    // Wait for the DOM to update if we switched view
-    setTimeout(() => renderTutorialStep(step), step.autoSwitch ? 280 : 30);
+    // Wait for the DOM to update if we switched view, then make sure a target
+    // on the board is actually within the visible area before pointing at it.
+    setTimeout(() => {
+        if (step.target && /\.(tile-hit|prod-indicator|bld)\b/.test(step.target)) {
+            tutBringIntoView(step.target);
+        }
+        renderTutorialStep(step);
+    }, step.autoSwitch ? 280 : 30);
+}
+
+// Tutorial steps that point at something on the board (a tile, a building, a
+// collect badge) can point at something the camera isn't showing. The collect
+// step was impossible for exactly this reason: the badge is drawn 44px above its
+// building, so on a building near the top of the board it landed at y=-24, off
+// the top of the screen. The player had nothing to tap, and the step's own
+// recovery then re-rendered on a loop, which is what made the tutorial appear to
+// keep refreshing.
+//
+// Nudge the camera until the target sits inside the safe area between the
+// resource bar and the nav. Works in screen pixels and converts back to camera
+// units, so it doesn't need to model the isometric projection.
+function tutBringIntoView(sel, tries) {
+    const svg = document.querySelector('#iso-svg');
+    if (!svg || !sel) return false;
+    if (CAM.zoom > 1.7) { CAM.zoom = 1.7; applyCamera(svg); }
+
+    const bar = document.getElementById('resource-bar');
+    const nav = document.getElementById('sidebar');
+
+    function shift(dx, dy) {
+        // CAM translate sits outside the scale, so it is in viewBox units.
+        const vb = svg.viewBox && svg.viewBox.baseVal;
+        const pxPerUnit = (vb && vb.width) ? (svg.clientWidth / vb.width) : 0;
+        if (!pxPerUnit) return false;
+        CAM.x += dx / pxPerUnit;
+        CAM.y += dy / pxPerUnit;
+        applyCamera(svg);
+        return true;
+    }
+
+    for (let i = 0; i < (tries || 8); i++) {
+        const el = document.querySelector(sel);
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        if (!r.width && !r.height) return false;
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+
+        // 1. Keep it inside the area not taken by the top bar and the nav
+        //    (a bottom bar under 768px, a left rail above it).
+        const navRect = nav ? nav.getBoundingClientRect() : null;
+        const safeTop = (bar ? bar.getBoundingClientRect().bottom : 0) + 20;
+        const safeBottom = (navRect && navRect.top > window.innerHeight * 0.5)
+            ? navRect.top - 20 : window.innerHeight - 20;
+        const safeLeft = (navRect && navRect.right < window.innerWidth * 0.5)
+            ? navRect.right + 20 : 20;
+        const safeRight = window.innerWidth - 20;
+
+        let dx = 0, dy = 0;
+        if (cy < safeTop) dy = safeTop - cy;
+        else if (cy > safeBottom) dy = safeBottom - cy;
+        if (cx < safeLeft) dx = safeLeft - cx;
+        else if (cx > safeRight) dx = safeRight - cx;
+        if (dx || dy) { if (!shift(dx, dy)) return false; continue; }
+
+        // 2. In the safe area, but a floating control (zoom buttons, 3D toggle)
+        //    may still sit on top. Hit-test rather than trying to enumerate every
+        //    piece of HUD, and slide out from under whatever is actually there.
+        const hit = document.elementFromPoint(cx, cy);
+        if (hit && hit.closest && hit.closest(sel)) return true;
+        if (!hit) return false;
+        const blocker = hit.closest('#zoom-controls, #resource-bar, #sidebar, #tutorial-tip, button') || hit;
+        const b = blocker.getBoundingClientRect();
+        if (!b.width || b.width >= window.innerWidth * 0.98) return false;   // can't escape a full-width cover
+
+        // Slide along whichever axis needs the least movement.
+        const opts = [
+            { d: b.left - 14 - cx, ax: 'x' },
+            { d: b.right + 14 - cx, ax: 'x' },
+            { d: b.top - 14 - cy, ax: 'y' },
+            { d: b.bottom + 14 - cy, ax: 'y' }
+        ].sort((m, n) => Math.abs(m.d) - Math.abs(n.d));
+        const mv = opts[0];
+        if (!shift(mv.ax === 'x' ? mv.d : 0, mv.ax === 'y' ? mv.d : 0)) return false;
+    }
+    const el = document.querySelector(sel);
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return !!(hit && hit.closest && hit.closest(sel));
 }
 
 function renderTutorialStep(step) {
@@ -4056,9 +4150,11 @@ function renderTutorialStep(step) {
         // The target isn't on screen. First try to recover automatically by
         // re-opening the view this step needs (e.g. a build card whose panel was
         // closed), then re-render once.
-        if (step.autoSwitch && !step._recovered) {
-            step._recovered = true;
+        step._tries = (step._tries || 0) + 1;
+        if (step.autoSwitch && step._tries <= 2) {
             try { switchView(step.autoSwitch); } catch (e) {}
+            // A board target may simply be off-camera rather than absent.
+            if (/\.(tile-hit|prod-indicator|bld)\b/.test(step.target || '')) tutBringIntoView(step.target);
             setTimeout(() => { if (tutorialActive && TUTORIAL_STEPS[tutorialStep] === step) renderTutorialStep(step); }, 320);
             return;
         }
@@ -4066,7 +4162,7 @@ function renderTutorialStep(step) {
         showTutorialContinue(progressHTML, "Keep going", "That button isn't on screen right now — tap to continue.");
         return;
     }
-    step._recovered = false;   // reachable; reset so a later re-entry can recover again
+    step._tries = 0;   // reachable: allow recovery again if it later vanishes
 
     // Safety watchdog: if the target later vanishes and the player is stuck, the
     // re-render surfaces the manual Continue card above. Only acts when unreachable,
