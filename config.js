@@ -18,16 +18,22 @@ window.VW_API_BASE = "";
 // ... and paste the resulting hash below.
 window.VW_GATE = {
     enabled: true,
-    // Secure randomly-generated password (the owner keeps the plaintext; only this
-    // SHA-256 hash ships). To rotate it, paste a new hash here (see snippet above).
-    hash: "a752a775095220bd86a467d38616d78a29f28bc3ef67e6ddeeaf6c1ba563f35a",
-    // Any hash in this list unlocks. The original password contains capitals and
-    // a '%', which repeatedly failed to get through on a phone keyboard, so a
-    // simple all-lowercase alternative is accepted too. Remove it to go back to
-    // one password.
-    hashes: [
-        "a752a775095220bd86a467d38616d78a29f28bc3ef67e6ddeeaf6c1ba563f35a", // druCyCrze8T6AY%1
-        "10fb4c9ee60d97914350ab603dc3f6ddb1fbdfb9fd3adff8aca46893f8569783"  // villagewar
-    ],
+    // The check value is derived with PBKDF2-HMAC-SHA256 over a random salt, not
+    // a bare hash. This file is public, so the value below WILL be taken and
+    // attacked offline; the iteration count is what makes that expensive.
+    //
+    // Never write the plaintext password in this repo. It was previously kept in
+    // a comment right here and echoed by deploy.sh, which published it in full.
+    //
+    // To rotate, in a terminal:
+    //   python3 - <<'EOF'
+    //   import hashlib, secrets
+    //   pw = "your new passphrase"
+    //   salt = secrets.token_bytes(16); it = 310000
+    //   print(salt.hex())
+    //   print(hashlib.pbkdf2_hmac('sha256', pw.encode(), salt, it, dklen=32).hex())
+    //   EOF
+    kdf: { salt: "a0a91047c0cb8b83cc94094d9fe71ef3", iterations: 310000 },
+    hash: "4645ab17f95671cff56a9c7335c3572573a83da89a2b98a7b24f36870770de15",
     remember: true   // remember unlock on this device so it's not asked every visit
 };

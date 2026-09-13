@@ -17,10 +17,34 @@
 
     const LS_KEY = 'vw_gate_ok';
 
-    async function sha256Hex(str) {
-        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    function toHex(buf) {
         return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
     }
+    function fromHex(hex) {
+        return Uint8Array.from((hex || '').match(/../g) || [], h => parseInt(h, 16));
+    }
+
+    // Derive the check value with PBKDF2 rather than a bare SHA-256.
+    //
+    // The hash ships inside config.js on a public site, so anyone can take it
+    // away and attack it offline. A single SHA-256 is one cheap operation per
+    // guess — a commodity GPU runs billions per second. PBKDF2 with 310k
+    // iterations and a random salt makes each guess about six orders of
+    // magnitude more expensive, and the salt means no precomputed table helps.
+    // It costs the player a few hundred milliseconds once.
+    async function deriveHex(pw) {
+        const kdf = cfg.kdf;
+        if (!kdf || !kdf.salt) {                       // legacy single-SHA config
+            return toHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw)));
+        }
+        const key = await crypto.subtle.importKey(
+            'raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+        const bits = await crypto.subtle.deriveBits(
+            { name: 'PBKDF2', salt: fromHex(kdf.salt), iterations: kdf.iterations || 310000, hash: 'SHA-256' },
+            key, 256);
+        return toHex(bits);
+    }
+    const sha256Hex = deriveHex;
 
     // already unlocked on this device?
     try {

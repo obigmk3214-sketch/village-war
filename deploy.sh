@@ -47,7 +47,8 @@ for i in $(seq 1 45); do
         echo
         echo "==> LIVE with the newest work:"
         echo "    $SITE/"
-        echo "    password: druCyCrze8T6AY%1"
+        # Deliberately does not print the password: this script is committed
+        # to a public repo, and echoing it here published it in plaintext.
         exit 0
     fi
     printf '.'
