@@ -42,7 +42,7 @@ echo "    deploy, and it only starts once Pages is switched on in Settings)."
 # merely exists is useless — it was already there from the previous deploy and
 # reports success immediately (which it did, misleadingly).
 STAMP=$(git rev-parse --short HEAD)
-for i in $(seq 1 45); do
+for i in $(seq 1 90); do
     if curl -s --max-time 10 "$SITE/?cb=$RANDOM" | grep -q "v=$STAMP"; then
         echo
         echo "==> LIVE with the newest work:"
