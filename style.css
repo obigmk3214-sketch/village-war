@@ -2787,12 +2787,27 @@ body { background: transparent; }
 /* Toast */
 #toast-container {
     position: fixed;
-    bottom: 1rem;
+    /* Sit clear of the nav. Below 768px the nav is a bottom bar, and a toast
+       pinned to bottom:1rem landed squarely on top of it — the "Now playing"
+       message hid the Heroes and Research buttons entirely. */
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
     right: 1rem;
     z-index: 300;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    pointer-events: none;   /* never swallow a tap meant for the map or nav */
+}
+#toast-container > * { pointer-events: auto; }
+
+@media (max-width: 768px) {
+    #toast-container {
+        /* clear the bottom nav bar entirely */
+        bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+        left: 1rem;
+        right: 1rem;
+        align-items: center;
+    }
 }
 
 .toast {
@@ -4501,3 +4516,24 @@ h2 *, h3 *, .view h2 *, .hero-section-title * { -webkit-text-fill-color: current
    endlessly. The .tile-hit polygon beneath carries the same data-pos, so letting
    clicks through changes nothing for the player. */
 #village-grid .placement-tile { pointer-events: none; }
+
+
+/* The Tutorial button is fixed to the bottom-right at z-index 50, which on a
+   phone parks it directly on top of the bottom nav — it covered Raid and World,
+   and the nav scrolls horizontally so those buttons could not be swiped out from
+   under it either. Lift it above the bar on narrow screens. */
+@media (max-width: 768px) {
+    #restart-tutorial-btn {
+        bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+        right: 10px;
+        font-size: 0.68rem;
+        padding: 5px 11px;
+    }
+    /* Affordance that the nav scrolls: fade the right edge so it is visibly cut
+       off rather than looking like it simply ends. */
+    #sidebar {
+        -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+        mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+        scroll-padding-inline: 12px;
+    }
+}

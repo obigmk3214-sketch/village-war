@@ -67,7 +67,21 @@ function _tRand(n) { const v = Math.sin(n * 91.7 + 41.3) * 21753.19; return v - 
 function _tileShade(hex, gx, gy) {
     const h = hex.replace('#', '');
     if (h.length !== 6) return hex;
-    const d = (_tRand(gx * 3 + gy * 11) - 0.5) * 7;    // ±3.5 per channel — subtle
+    const d = (_tRand(gx * 3 + gy * 11) - 0.5) * 13;   // ±6.5 per channel
+    const ch = (i) => {
+        const v = Math.round(parseInt(h.substr(i, 2), 16) + d);
+        return Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
+    };
+    return '#' + ch(0) + ch(2) + ch(4);
+}
+
+// Shift a hex colour by a signed amount per channel. Used for ground mottling,
+// which must stay close to the tile's own colour: derived from a fixed dark
+// green instead, two patches up to 34px wide at 0.3 opacity read as stains or
+// mould on the grass rather than as variation in it.
+function _shiftHex(hex, d) {
+    const h = hex.replace('#', '');
+    if (h.length !== 6) return hex;
     const ch = (i) => {
         const v = Math.round(parseInt(h.substr(i, 2), 16) + d);
         return Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
@@ -2215,7 +2229,7 @@ function renderIsoWorld() {
     const TW = ISO.TW, TH = ISO.TH, DEPTH = 17;
     const PAL = {
         0: { top: '#6cc049', hi: '#8edd66', lip: '#4f9c31' },  // grass
-        1: { top: '#59ad3a', hi: '#7fcd55', lip: '#3f8226' },  // dark grass
+        1: { top: '#63b742', hi: '#86d45d', lip: '#478c2a' },  // dark grass
         2: { top: '#d6b277', hi: '#ecca97', lip: '#ac8a52' },  // path
         3: { top: '#4a97d8', hi: '#7fc0ee', lip: '#2c608f' },  // water — same hue family as the ocean backdrop
         4: { top: '#ead49d', hi: '#f6e6b8', lip: '#c4aa70' }   // sand
@@ -2434,15 +2448,18 @@ function renderIsoWorld() {
         {
             const inDiamond = (dx, dy) => Math.abs(dx) / TW + Math.abs(dy) / TH <= 0.92;
             let tex = '';
-            // soft colour mottling — two irregular patches per tile
-            for (let m = 0; m < 2; m++) {
+            // Soft mottling. Derived from THIS tile's own colour and kept small and
+            // faint: large patches of a fixed contrasting green read as stains on
+            // the grass rather than as texture within it. Many small variations
+            // beat two big ones.
+            for (let m = 0; m < 5; m++) {
                 const a = _tRand(gx * 11 + gy * 23 + m * 91), b = _tRand(gx * 37 + gy * 5 + m * 47);
-                const dx = (a - 0.5) * TW * 1.1, dy = (b - 0.5) * TH * 1.1;
+                const dx = (a - 0.5) * TW * 1.3, dy = (b - 0.5) * TH * 1.3;
                 if (!inDiamond(dx, dy)) continue;
-                const rr = 14 + _tRand(gx + gy + m * 13) * 20;
-                const mc = (type === 0 || type === 1) ? (m ? '#57a838' : '#3f8226')
-                         : (type === 2) ? '#c29a5e' : (type === 4) ? '#dcc48a' : '#5fa8dc';
-                tex += `<ellipse cx="${x + dx}" cy="${y + dy}" rx="${rr}" ry="${rr * 0.5}" fill="${mc}" opacity="0.3" pointer-events="none"/>`;
+                const rr = 5 + _tRand(gx + gy + m * 13) * 9;
+                const delta = (_tRand(gx * 5 + gy * 17 + m * 29) - 0.45) * 26;
+                const mc = _shiftHex(jit, delta);
+                tex += `<ellipse cx="${x + dx}" cy="${y + dy}" rx="${rr}" ry="${rr * 0.5}" fill="${mc}" opacity="0.30" pointer-events="none"/>`;
             }
             if (type === 0 || type === 1) {
                 // Curved blades springing from a common base, not three straight
@@ -2450,8 +2467,8 @@ function renderIsoWorld() {
                 const tuft = (tx, ty, c, s) => `<path d="M ${tx} ${ty} q ${-1.1 * s} ${-1.9 * s} ${-2.1 * s} ${-3.1 * s}
                     M ${tx} ${ty} q ${0.35 * s} ${-2.2 * s} ${-0.2 * s} ${-4.2 * s}
                     M ${tx} ${ty} q ${1.2 * s} ${-1.8 * s} ${2.3 * s} ${-2.9 * s}"
-                    stroke="${c}" stroke-width="${0.5 * s}" fill="none" stroke-linecap="round" opacity="0.32" pointer-events="none"/>`;
-                for (let k = 0; k < 7; k++) {
+                    stroke="${c}" stroke-width="${0.5 * s}" fill="none" stroke-linecap="round" opacity="0.42" pointer-events="none"/>`;
+                for (let k = 0; k < 14; k++) {
                     const a = _tRand(gx * 7 + gy * 13 + k * 29), b = _tRand(gx * 31 + gy * 17 + k * 53);
                     const dx = (a - 0.5) * TW * 1.4, dy = (b - 0.5) * TH * 1.4;
                     if (!inDiamond(dx, dy)) continue;
@@ -2461,7 +2478,7 @@ function renderIsoWorld() {
                     tex += tuft(x + dx, y + dy, k % 3 === 0 ? '#3d7a24' : (k % 3 === 1 ? '#4f9c31' : '#59a836'), s);
                 }
                 // a few tiny wildflowers
-                for (let k = 0; k < 2; k++) {
+                for (let k = 0; k < 4; k++) {
                     const a = _tRand(gx * 61 + gy * 3 + k * 17), b = _tRand(gx * 5 + gy * 71 + k * 41);
                     const dx = (a - 0.5) * TW * 1.3, dy = (b - 0.5) * TH * 1.3;
                     if (!inDiamond(dx, dy) || _tRand(gx + gy * 3 + k) < 0.55) continue;
