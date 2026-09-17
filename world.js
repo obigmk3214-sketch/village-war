@@ -261,6 +261,89 @@ const flowerSVG = (gx, gy, variant) => {
 // Each returns SVG fragment positioned at given grid coord.
 // Anchor: bottom-center of building sits at iso(gx, gy).
 
+// ---------------------------------------------------------------- upgrade tiers
+// Every renderer takes `level` and not one of them used it: a Town Hall looked
+// identical at level 1 and level 10, so the main reward loop of the game had no
+// visual payoff at all. Rather than rewrite fifteen renderers, the plot itself
+// is upgraded underneath and around whatever the renderer draws.
+//
+//   tier 0  (lv 1-2)   bare earth, small
+//   tier 1  (lv 3-5)   a cut-stone footing appears, building grows
+//   tier 2  (lv 6-8)   deeper footing, corner posts, a banner
+//   tier 3  (lv 9-10)  gilded finial and a second banner
+function buildingTier(level) {
+    const lv = level || 1;
+    return lv >= 9 ? 3 : lv >= 6 ? 2 : lv >= 3 ? 1 : 0;
+}
+
+// Scale ramps with tier so growth reads instantly at a glance, before any detail
+// is legible. Kept modest: past ~0.72 neighbouring plots start to collide.
+function buildingScale(level) {
+    return 0.585 + buildingTier(level) * 0.045;
+}
+
+// An isometric stone slab under the building. Drawn in tile space (never scaled
+// with the art) so it always seats exactly on its own plot.
+function buildingPlinth(x, y, tier, scale) {
+    if (tier < 1) return '';
+    // Must track the building's own scale. Sized to the full tile it drew a slab
+    // far wider than the building standing on it, which read as a rendering bug
+    // rather than a stone footing.
+    const k = (scale || 0.64) * 0.98;
+    const w = ISO.TW * k, h = ISO.TH * k;
+    const d = 1.6 + tier * 1.5;                       // course depth grows with tier
+    const top = `${x},${y - h} ${x + w},${y} ${x},${y + h} ${x - w},${y}`;
+    const face = (sx) => `${x + sx * w},${y} ${x},${y + h} ${x},${y + h + d} ${x + sx * w},${y + d}`;
+    // Joint lines make it read as cut blocks rather than a flat grey shape.
+    let joints = '';
+    for (let i = 1; i <= 3; i++) {
+        const t = i / 4;
+        joints += `<line x1="${x - w + w * t}" y1="${y - h * t}" x2="${x + w * t}" y2="${y + h - h * t}" stroke="rgba(96,78,52,0.32)" stroke-width="0.55"/>`;
+    }
+    // Warm sandstone rather than cold grey: a neutral slab read as washed-out
+    // against the saturated grass, more like a missing texture than masonry.
+    // Light comes from the upper left throughout the scene, so the left face is
+    // the lit one and the right face carries the shadow.
+    return `<g class="bld-plinth">
+        <ellipse cx="${x}" cy="${y + d + 1}" rx="${w * 1.02}" ry="${h * 0.9}" fill="rgba(28,20,10,0.20)"/>
+        <polygon points="${face(-1)}" fill="#b09a7a"/>
+        <polygon points="${face(1)}" fill="#7d6a50"/>
+        <polygon points="${top}" fill="#d8c8a8" stroke="#7d6a50" stroke-width="0.7"/>
+        ${joints}
+        <polygon points="${top}" fill="none" stroke="rgba(255,252,240,0.45)" stroke-width="0.6"/>
+    </g>`;
+}
+
+// Corner posts, banners and a gilded finial: the parts a player notices without
+// reading the level badge.
+function buildingCrest(x, y, tier, type, scale) {
+    if (tier < 2) return '';
+    const k = (scale || 0.64) * 0.82;
+    const w = ISO.TW * k, h = ISO.TH * k;
+    const colour = (type === 'barracks' || type === 'fortress' || type === 'archertower' || type === 'cannon')
+        ? '#8e2f22' : '#2f5d8e';
+    let out = '<g class="bld-crest">';
+    // Squat corner posts on the two front edges, so they never hide the facade.
+    [[-1, 0], [1, 0]].forEach(function (c) {
+        const px = x + c[0] * w, py = y + c[1] * h;
+        out += `<g>
+            <polygon points="${px - 2.6},${py - 1} ${px},${py + 0.4} ${px + 2.6},${py - 1} ${px + 2.6},${py - 6} ${px},${py - 7.4} ${px - 2.6},${py - 6}" fill="#8d7a5c"/>
+            <polygon points="${px - 2.6},${py - 6} ${px},${py - 7.4} ${px + 2.6},${py - 6} ${px},${py - 4.7} Z" fill="#d8c8a8" stroke="#7d6a50" stroke-width="0.4"/>
+            <polygon points="${px},${py + 0.4} ${px + 2.6},${py - 1} ${px + 2.6},${py - 6} ${px},${py - 4.7} Z" fill="#7d6a50"/>
+        </g>`;
+    });
+    out += `<g transform="translate(${x - w + 1}, ${y - 1}) scale(0.62)">${FLAG(0, 0, colour)}</g>`;
+    if (tier >= 3) {
+        out += `<g transform="translate(${x + w - 1}, ${y - 1}) scale(0.62)">${FLAG(0, 0, '#c9a227')}</g>`;
+        // gilded ridge finial
+        out += `<g transform="translate(${x}, ${y - h - 2})">
+            <path d="M -3 0 L 0 -7 L 3 0 Z" fill="#e0b73c" stroke="#7a5f14" stroke-width="0.6"/>
+            <circle cx="0" cy="-8.5" r="2" fill="#f2d472" stroke="#7a5f14" stroke-width="0.6"/>
+        </g>`;
+    }
+    return out + '</g>';
+}
+
 function buildingTile(gx, gy, type, level, pos) {
     const { x, y } = iso(gx, gy);
     const fn = BUILDING_RENDERERS[type];
@@ -276,9 +359,12 @@ function buildingTile(gx, gy, type, level, pos) {
     // authored, but at full size neighbouring buildings collide into one mass.
     // Scaling about the anchor keeps every building seated on its own tile with
     // breathing room around it — footprint reads clearly, detail survives.
-    const S = 0.64;
-    return `<g class="bld bld-${type}" data-pos="${pos}" style="cursor:pointer">
+    const tier = buildingTier(level);
+    const S = buildingScale(level);
+    return `<g class="bld bld-${type} bld-tier${tier}" data-pos="${pos}" style="cursor:pointer">
+        ${buildingPlinth(x, y, tier, S)}
         <g transform="translate(${x},${y}) scale(${S}) translate(${-x},${-y})">${fn(x, y, level)}</g>
+        ${buildingCrest(x, y, tier, type, S)}
         <g class="bld-badge" transform="translate(${x + 7}, ${y - 3}) scale(0.55)">
             <rect x="0" y="0" width="22" height="13" rx="6" fill="#1a1a2e" stroke="#fbbf24" stroke-width="1"/>
             <text x="11" y="9.5" text-anchor="middle" font-size="9" font-weight="900" fill="#fbbf24" font-family="Inter, sans-serif">${level}</text>
@@ -2585,7 +2671,7 @@ function renderIsoWorld() {
     let prodSVG = '';
     for (const b of state.buildings) {
         const def = BUILDING_DEFS[b.type];
-        if (!def.production) continue;
+        if (!def || !def.production) continue;   // unknown type: skip, never throw
         const ready = (b.collectReady || 0);
         if (ready < 5) continue;
         const gx = b.pos % ISO.GW, gy = Math.floor(b.pos / ISO.GW);
@@ -2720,7 +2806,7 @@ function collectBuilding(pos) {
     const b = state.buildings.find(b => b.pos === pos);
     if (!b) return;
     const def = BUILDING_DEFS[b.type];
-    if (!def.production || !b.collectReady || b.collectReady < 1) return;
+    if (!def || !def.production || !b.collectReady || b.collectReady < 1) return;
     const amount = Math.floor(b.collectReady);
     const resKey = Object.keys(def.production)[0];
     state.resources[resKey] = Math.min((state.resources[resKey] || 0) + amount, state.maxResources[resKey] || 99999);

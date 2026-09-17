@@ -91,6 +91,30 @@ function run() {
     ok(s.name && s.name.includes(' '), 'has a two-part name');
     eq(s.kills, 0); eq(s.raids, 0);
   });
+  t('buildings visibly change as they level up', () => {
+    // Every renderer took `level` and none of them used it: a Town Hall looked
+    // identical at level 1 and level 10, so the game's main reward loop had no
+    // visual payoff. buildingTile now adds a footing, growth and heraldry by tier.
+    const types = Object.keys(G.eval('BUILDING_DEFS'));
+    const same = [];
+    for (const t of types) {
+      const lo = G.eval(`buildingTile(4, 4, ${JSON.stringify(t)}, 1, 88)`);
+      const hi = G.eval(`buildingTile(4, 4, ${JSON.stringify(t)}, 10, 88)`);
+      const strip = v => String(v).replace(/>1</g, '>10<');   // ignore the level badge itself
+      if (strip(lo) === strip(hi)) same.push(t);
+    }
+    if (same.length) throw new Error(same.length + ' identical at lv1 and lv10: ' + same.join(', '));
+  });
+
+  t('placement art never emits an invalid colour', () => {
+    // A "#59514700" (8-digit, alpha 00) and a "#4a3career" both shipped before;
+    // an invalid fill renders as nothing at all, which is silent and easy to miss.
+    const svg = G.eval('buildingTile(4, 4, "townhall", 10, 88)');
+    const bad = (String(svg).match(/(?:fill|stroke)="#[0-9a-zA-Z]*"/g) || [])
+      .filter(m => !/#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})"$/.test(m));
+    if (bad.length) throw new Error('invalid colour(s): ' + bad.join(', '));
+  });
+
   t('every highlighted placement tile is actually placeable', () => {
     // Regression: the yellow "place here" highlight was drawn on ALL unoccupied
     // tiles while the clickable hit-zone was only drawn on OWNED ones, so 252 of
