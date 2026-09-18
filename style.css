@@ -211,9 +211,14 @@ body {
        there are no light-centre / dark-edge shades. */
     /* Water with DEPTH: pale turquoise shallows around the island falling away
        to deep ocean at the edges, plus a warm sun glint near the horizon. */
+    /* Flat open-ocean base only. The depth reading now comes from an SVG shelf
+       anchored to the ISLAND (see #seaDepth in world.js) - this gradient was
+       anchored to the container, so panning slid its light centre away from the
+       land and left unexplained bands of blue across the water. Keeping this
+       layer flat removes the banding and stops the two fighting each other. */
     background:
-        radial-gradient(ellipse 70% 45% at 50% 10%, rgba(255,247,200,0.18), transparent 58%),
-        radial-gradient(ellipse 58% 52% at 50% 52%, #4e9ac9 0%, #3579b8 42%, #23578e 78%, #1a4372 100%);
+        radial-gradient(ellipse 70% 45% at 50% 8%, rgba(255,247,200,0.16), transparent 60%),
+        linear-gradient(180deg, #2f6ea6 0%, #275f95 55%, #21527f 100%);
 }
 #village-grid::after {
     content: '';

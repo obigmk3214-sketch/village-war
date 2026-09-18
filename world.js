@@ -2230,7 +2230,7 @@ function renderIsoWorld() {
     const PAL = {
         0: { top: '#6cc049', hi: '#8edd66', lip: '#4f9c31' },  // grass
         1: { top: '#63b742', hi: '#86d45d', lip: '#478c2a' },  // dark grass
-        2: { top: '#d6b277', hi: '#ecca97', lip: '#ac8a52' },  // path
+        2: { top: '#b08b58', hi: '#c9a674', lip: '#82633c' },  // path — packed earth, darker than sand
         3: { top: '#4a97d8', hi: '#7fc0ee', lip: '#2c608f' },  // water — same hue family as the ocean backdrop
         4: { top: '#ead49d', hi: '#f6e6b8', lip: '#c4aa70' }   // sand
     };
@@ -2250,6 +2250,22 @@ function renderIsoWorld() {
     // re-render, and all pointer-events:none so it can't steal clicks.
     let seaSVG = '';
     const _sr = (n) => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+
+    // Shallow-water shelf. Water gets its readability from depth reading around
+    // the land: pale turquoise where it laps the shore, falling away to open
+    // ocean. Drawn here rather than in CSS because the CSS gradient is anchored
+    // to the container, so panning slid the shallows off the island and left
+    // bands of blue with no relationship to anything.
+    {
+        const shelfRx = (ISO.GW) * TW * 0.78, shelfRy = (ISO.GH) * TH * 0.92;
+        seaSVG += `<ellipse cx="${c0.x}" cy="${c0.y + 18}" rx="${shelfRx * 1.5}" ry="${shelfRy * 1.5}"
+            fill="url(#seaDepth)" pointer-events="none"/>`;
+        // A brighter band right at the shore, where sand shows through the water.
+        seaSVG += `<ellipse cx="${c0.x}" cy="${c0.y + 20}" rx="${shelfRx * 0.92}" ry="${shelfRy * 0.92}"
+            fill="none" stroke="rgba(190,232,241,0.30)" stroke-width="26" pointer-events="none"/>`;
+        seaSVG += `<ellipse cx="${c0.x}" cy="${c0.y + 20}" rx="${shelfRx * 0.80}" ry="${shelfRy * 0.80}"
+            fill="none" stroke="rgba(214,241,246,0.26)" stroke-width="16" pointer-events="none"/>`;
+    }
     // long swell bands sweeping the whole basin
     for (let i = 0; i < 7; i++) {
         const sy = c0.y - 240 + i * 78 + _sr(i) * 26;
@@ -2493,8 +2509,16 @@ function renderIsoWorld() {
                     tex += `<ellipse cx="${x + dx}" cy="${y + dy}" rx="${1 + a}" ry="${0.5 + a * 0.4}" fill="#c4aa70" opacity="0.45" pointer-events="none"/>`;
                 }
             } else if (type === 2) {
-                // packed-earth path: wheel ruts + scattered pebbles
-                tex += `<path d="M ${x - TW * 0.55} ${y - TH * 0.1} Q ${x} ${y + TH * 0.12} ${x + TW * 0.55} ${y - TH * 0.08}" stroke="#a8834c" stroke-width="1.6" fill="none" opacity="0.35" pointer-events="none"/>`;
+                // Packed earth worn by carts: a pair of ruts running the length of
+                // the tile with a lighter crown between them, then gravel. A single
+                // faint line over near-sand colour read as a washed-out band rather
+                // than a road.
+                const rut = (off, w, op) => `<path d="M ${x - TW * 0.62} ${y - TH * 0.06 + off} Q ${x} ${y + TH * 0.16 + off} ${x + TW * 0.62} ${y - TH * 0.04 + off}"
+                    stroke="#7a5c33" stroke-width="${w}" fill="none" opacity="${op}" stroke-linecap="round" pointer-events="none"/>`;
+                tex += rut(-3.4, 3.2, 0.38) + rut(3.4, 3.2, 0.38);
+                // lighter crown of earth between the ruts
+                tex += `<path d="M ${x - TW * 0.58} ${y - TH * 0.05} Q ${x} ${y + TH * 0.15} ${x + TW * 0.58} ${y - TH * 0.03}"
+                    stroke="#c6a473" stroke-width="3" fill="none" opacity="0.30" stroke-linecap="round" pointer-events="none"/>`;
                 for (let k = 0; k < 8; k++) {
                     const a = _tRand(gx * 13 + gy * 29 + k * 37), b = _tRand(gx * 47 + gy * 19 + k * 23);
                     const dx = (a - 0.5) * TW * 1.5, dy = (b - 0.5) * TH * 1.5;
@@ -2723,6 +2747,13 @@ function renderIsoWorld() {
     const VB = islandViewBox(w, h);
     return `<svg viewBox="${VB.vx} ${VB.vy} ${VB.vw} ${VB.vh}" xmlns="http://www.w3.org/2000/svg" id="iso-svg" preserveAspectRatio="xMidYMid meet">
         <defs>
+            <radialGradient id="seaDepth" cx="50%" cy="50%" r="50%">
+                <stop offset="0%"   stop-color="#8fd3e8" stop-opacity="0.85"/>
+                <stop offset="34%"  stop-color="#63b4dd" stop-opacity="0.72"/>
+                <stop offset="58%"  stop-color="#3f8ec4" stop-opacity="0.52"/>
+                <stop offset="78%"  stop-color="#2d6ba4" stop-opacity="0.28"/>
+                <stop offset="100%" stop-color="#1f4d80" stop-opacity="0"/>
+            </radialGradient>
             <filter id="bldShadow" x="-50%" y="-50%" width="200%" height="200%">
                 <feDropShadow dx="2" dy="4" stdDeviation="2" flood-opacity="0.4"/>
             </filter>
