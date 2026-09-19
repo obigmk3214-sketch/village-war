@@ -118,20 +118,70 @@ function genTerrain() {
             else T[gy][gx] = 0;
         }
     }
-    // Winding path from upper-right through middle to lower-left
-    const path = [
-        [12, 0], [12, 1], [11, 2], [10, 3], [9, 3], [8, 4], [7, 4], [6, 5],
-        [5, 5], [5, 6], [4, 7], [4, 8], [5, 9]
-    ];
-    for (const [px, py] of path) {
-        if (px >= 0 && px < ISO.GW && py >= 0 && py < ISO.GH && T[py][px] !== 3) T[py][px] = 2;
-    }
-    // Second branch
-    const path2 = [[8, 4], [9, 5], [10, 6], [11, 7], [12, 7], [13, 8]];
-    for (const [px, py] of path2) {
-        if (px >= 0 && px < ISO.GW && py >= 0 && py < ISO.GH && T[py][px] !== 3) T[py][px] = 2;
-    }
+    // No hardcoded route here any more. Roads are generated from where the player
+    // has actually built (see computeRoads) - a fixed winding path drawn across
+    // the map regardless of the village read as random brown blotches rather than
+    // as roads, because it connected nothing to anything.
     return T;
+}
+
+// Roads that actually serve the village: every building is joined to the Town
+// Hall, so the settlement reads as planned rather than as scattered huts. Walked
+// as an L (across, then down) which in isometric view gives the diagonal lanes
+// the projection reads naturally.
+function computeRoads() {
+    const roads = new Set();
+    if (typeof state === 'undefined' || !state.buildings) return roads;
+    const hall = state.buildings.find(b => b.type === 'townhall');
+    if (!hall) return roads;
+    const GW = ISO.GW, GH = ISO.GH;
+    const hx = hall.pos % GW, hy = Math.floor(hall.pos / GW);
+
+    for (const b of state.buildings) {
+        if (b === hall) continue;
+        let bx = b.pos % GW, by = Math.floor(b.pos / GW);
+        let guard = 0;
+        while (bx !== hx && guard++ < GW) {
+            bx += bx < hx ? 1 : -1;
+            roads.add(bx + by * GW);
+        }
+        guard = 0;
+        while (by !== hy && guard++ < GH) {
+            by += by < hy ? 1 : -1;
+            roads.add(bx + by * GW);
+        }
+    }
+    // A paved courtyard ringing the Town Hall. Early on the whole village fits
+    // within a couple of tiles of the hall, so connecting roads alone come to
+    // almost nothing and the settlement has no centre to read as its heart.
+    {
+        const foot = (typeof buildingFootprint === 'function') ? buildingFootprint(hall.type, hall.pos) : [hall.pos];
+        for (const f of foot) {
+            const fx = f % GW, fy = Math.floor(f / GW);
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    const nx = fx + dx, ny = fy + dy;
+                    if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue;
+                    roads.add(nx + ny * GW);
+                }
+            }
+        }
+    }
+
+    // A road never runs under a building, and never over water.
+    for (const b of state.buildings) {
+        const foot = (typeof buildingFootprint === 'function') ? buildingFootprint(b.type, b.pos) : [b.pos];
+        for (const f of foot) roads.delete(f);
+    }
+    // Never on water, never off the player's own land — the courtyard ring can
+    // otherwise spill a tile onto territory that has not been claimed yet.
+    const ownedSet = (typeof getOwnedTiles === 'function') ? getOwnedTiles() : null;
+    for (const pos of [...roads]) {
+        const gx = pos % GW, gy = Math.floor(pos / GW);
+        if (TERRAIN && TERRAIN[gy] && TERRAIN[gy][gx] === 3) roads.delete(pos);
+        else if (ownedSet && !ownedSet.has(pos)) roads.delete(pos);
+    }
+    return roads;
 }
 
 function pseudoNoise(x, y) {
@@ -2191,6 +2241,8 @@ function buildWorkerEntities() {
 
 function renderIsoWorld() {
     if (!TERRAIN) TERRAIN = genTerrain();
+    // Recomputed every render: roads must follow the village as it is built.
+    const ROADS = computeRoads();
     if (!DECORATIONS) DECORATIONS = genDecorations();
     const { w, h } = isoSetup();
 
@@ -2314,7 +2366,7 @@ function renderIsoWorld() {
     for (const t of land) {
         const { gx, gy, pos, owned, isBuy } = t;
         const { x, y } = iso(gx, gy);
-        const type = owned ? TERRAIN[gy][gx] : 0;
+        const type = owned ? (ROADS.has(pos) ? 2 : TERRAIN[gy][gx]) : 0;
         const p = PAL[type] || PAL[0];
         const topPts = `${x},${y - TH} ${x + TW},${y} ${x},${y + TH} ${x - TW},${y}`;
 
