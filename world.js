@@ -158,12 +158,10 @@ function computeRoads() {
         const foot = (typeof buildingFootprint === 'function') ? buildingFootprint(hall.type, hall.pos) : [hall.pos];
         for (const f of foot) {
             const fx = f % GW, fy = Math.floor(f / GW);
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                    const nx = fx + dx, ny = fy + dy;
-                    if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue;
-                    roads.add(nx + ny * GW);
-                }
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                const nx = fx + dx, ny = fy + dy;
+                if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue;
+                roads.add(nx + ny * GW);
             }
         }
     }
@@ -2329,7 +2327,13 @@ function renderIsoWorld() {
         3: { top: '#4a97d8', hi: '#7fc0ee', lip: '#2c608f' },  // water — same hue family as the ocean backdrop
         4: { top: '#ead49d', hi: '#f6e6b8', lip: '#c4aa70' }   // sand
     };
-    const DIRT_L = '#4a3014', DIRT_R = '#684527';
+    // Sunlit sea-cliff, not wet mud. Measured against the scene: the old values
+    // (luminance 52 and 74) were DARKER than the open sea beside them (101), so
+    // the island rim read as a hard dark outline and the whole landmass looked
+    // cut out and pasted onto the water. Rock in the same sunlight as the grass
+    // has to sit above the sea in tone. Light comes from the upper left, so the
+    // SW face is lit and the SE face carries the shadow.
+    const DIRT_L = '#a08360', DIRT_R = '#846e55';
 
     // Soft drop shadow under the whole island (floating look)
     const c0 = iso(7, 5);
@@ -2409,7 +2413,7 @@ function renderIsoWorld() {
     for (const t of land) {
         const { gx, gy, pos, owned, isBuy } = t;
         const { x, y } = iso(gx, gy);
-        const type = owned ? (ROADS.has(pos) ? 2 : TERRAIN[gy][gx]) : 0;
+        const type = owned ? TERRAIN[gy][gx] : 0;
         const p = PAL[type] || PAL[0];
         const topPts = `${x},${y - TH} ${x + TW},${y} ${x},${y + TH} ${x - TW},${y}`;
 
@@ -2458,21 +2462,21 @@ function renderIsoWorld() {
                 if (off >= DEPTH - 1) break;
                 const op = (0.20 - b * 0.045).toFixed(2);
                 // left (SW) face
-                tilesSVG += `<polyline points="${x - TW},${y + off} ${x},${y + TH + off}" fill="none" stroke="#2b1a0a" stroke-width="1" opacity="${op}" pointer-events="none"/>`;
+                tilesSVG += `<polyline points="${x - TW},${y + off} ${x},${y + TH + off}" fill="none" stroke="#5d472f" stroke-width="1" opacity="${op}" pointer-events="none"/>`;
                 // right (SE) face
-                tilesSVG += `<polyline points="${x},${y + TH + off} ${x + TW},${y + off}" fill="none" stroke="#1f1206" stroke-width="1" opacity="${op}" pointer-events="none"/>`;
+                tilesSVG += `<polyline points="${x},${y + TH + off} ${x + TW},${y + off}" fill="none" stroke="#46341f" stroke-width="1" opacity="${op}" pointer-events="none"/>`;
             }
             // a couple of chipped rock facets for irregularity
             const fx1 = x - TW * 0.55, fy1 = y + TH * 0.55 + 6 + rk * 4;
-            tilesSVG += `<polygon points="${fx1},${fy1} ${fx1 + 8},${fy1 + 3.5} ${fx1 + 6},${fy1 + 9} ${fx1 - 1},${fy1 + 6}" fill="#57381a" opacity="0.5" pointer-events="none"/>`;
+            tilesSVG += `<polygon points="${fx1},${fy1} ${fx1 + 8},${fy1 + 3.5} ${fx1 + 6},${fy1 + 9} ${fx1 - 1},${fy1 + 6}" fill="#b89873" opacity="0.55" pointer-events="none"/>`;
             const fx2 = x + TW * 0.35, fy2 = y + TH * 0.65 + 5 + (1 - rk) * 5;
-            tilesSVG += `<polygon points="${fx2},${fy2} ${fx2 + 7},${fy2 - 3} ${fx2 + 9},${fy2 + 3} ${fx2 + 2},${fy2 + 6}" fill="#3a2410" opacity="0.45" pointer-events="none"/>`;
+            tilesSVG += `<polygon points="${fx2},${fy2} ${fx2 + 7},${fy2 - 3} ${fx2 + 9},${fy2 + 3} ${fx2 + 2},${fy2 + 6}" fill="#5e4b36" opacity="0.5" pointer-events="none"/>`;
             // damp shadow where the cliff meets the water
-            tilesSVG += `<polygon points="${x - TW},${y + DEPTH - 5} ${x},${y + TH + DEPTH - 5} ${x},${y + TH + DEPTH} ${x - TW},${y + DEPTH}" fill="#170e05" opacity="0.35" pointer-events="none"/>`;
-            tilesSVG += `<polygon points="${x},${y + TH + DEPTH - 5} ${x + TW},${y + DEPTH - 5} ${x + TW},${y + DEPTH} ${x},${y + TH + DEPTH}" fill="#170e05" opacity="0.4" pointer-events="none"/>`;
+            tilesSVG += `<polygon points="${x - TW},${y + DEPTH - 5} ${x},${y + TH + DEPTH - 5} ${x},${y + TH + DEPTH} ${x - TW},${y + DEPTH}" fill="#3f4a46" opacity="0.42" pointer-events="none"/>`;
+            tilesSVG += `<polygon points="${x},${y + TH + DEPTH - 5} ${x + TW},${y + DEPTH - 5} ${x + TW},${y + DEPTH} ${x},${y + TH + DEPTH}" fill="#36403d" opacity="0.46" pointer-events="none"/>`;
             // grass overhanging the cliff edge (only on green tiles)
             if (type === 0 || type === 1) {
-                const ov = (sx, sy, dir) => `<path d="M ${sx} ${sy} q ${dir * 1.5} 3 ${dir * 0.6} 5.5" stroke="#3f8226" stroke-width="1.1" fill="none" stroke-linecap="round" opacity="0.75" pointer-events="none"/>`;
+                const ov = (sx, sy, dir) => `<path d="M ${sx} ${sy} q ${dir * 1.5} 3 ${dir * 0.6} 5.5" stroke="#4f9c31" stroke-width="1.1" fill="none" stroke-linecap="round" opacity="0.8" pointer-events="none"/>`;
                 tilesSVG += ov(x - TW * 0.6, y + TH * 0.4 + 4, -1) + ov(x - TW * 0.2, y + TH * 0.8 + 4, -1);
                 tilesSVG += ov(x + TW * 0.3, y + TH * 0.7 + 4, 1) + ov(x + TW * 0.7, y + TH * 0.3 + 4, 1);
             }
@@ -2509,10 +2513,7 @@ function renderIsoWorld() {
             // overlay on top of TERRAIN, so reading TERRAIN alone left every road
             // as a hard-edged brown diamond stamped on the grass while the
             // blending quietly feathered a boundary that was not there.
-            const _tt = (nx, ny) => {
-                if (nx < 0 || nx >= ISO.GW || ny < 0 || ny >= ISO.GH || !_own(nx, ny)) return null;
-                return ROADS.has(nx + ny * ISO.GW) ? 2 : TERRAIN[ny][nx];
-            };
+            const _tt = (nx, ny) => (nx >= 0 && nx < ISO.GW && ny >= 0 && ny < ISO.GH && _own(nx, ny)) ? TERRAIN[ny][nx] : null;
             // corners: N(x,y-TH) E(x+TW,y) S(x,y+TH) W(x-TW,y)
             const edges = [
                 [_tt(gx + 1, gy), [x, y + TH], [x + TW, y]],   // SE
@@ -2669,6 +2670,55 @@ function renderIsoWorld() {
             }
         }
     }
+
+    // ---- Road ribbons -------------------------------------------------------
+    // Drawn OVER the grass rather than replacing tiles. A road that fills a whole
+    // 132px diamond is a plaza, not a lane, and with a courtyard round the hall
+    // the middle of the island turned into one brown mass. A ribbon keeps the
+    // grass dominant and lets the lane actually read as a lane.
+    //
+    // Each road tile connects its centre to the midpoint of every shared edge
+    // with another road tile (or the Town Hall), so junctions and corners form
+    // themselves. Neighbour->edge mapping in iso: gx+1 = SE, gy+1 = SW,
+    // gx-1 = NW, gy-1 = NE.
+    let roadSVG = '';
+    if (ROADS.size) {
+        // Every building, not just the hall: a spur that stops one tile short
+        // leaves a blunt stub of mud in the grass instead of reaching a door.
+        const built = new Set();
+        for (const b of state.buildings) {
+            const foot = (typeof buildingFootprint === 'function')
+                ? buildingFootprint(b.type, b.pos) : [b.pos];
+            for (const f of foot) built.add(f);
+        }
+        const linked = (nx, ny) => {
+            if (nx < 0 || nx >= ISO.GW || ny < 0 || ny >= ISO.GH) return false;
+            const np = nx + ny * ISO.GW;
+            return ROADS.has(np) || built.has(np);
+        };
+        const W = ISO.TW, H = ISO.TH;
+        for (const pos of ROADS) {
+            const gx = pos % ISO.GW, gy = Math.floor(pos / ISO.GW);
+            if (!_own(gx, gy)) continue;
+            const { x, y } = iso(gx, gy);
+            const ends = [];
+            if (linked(gx + 1, gy)) ends.push([x + W / 2, y + H / 2]);   // SE
+            if (linked(gx, gy + 1)) ends.push([x - W / 2, y + H / 2]);   // SW
+            if (linked(gx - 1, gy)) ends.push([x - W / 2, y - H / 2]);   // NW
+            if (linked(gx, gy - 1)) ends.push([x + W / 2, y - H / 2]);   // NE
+            // A lane with no neighbours would be a disc of mud in a field.
+            if (!ends.length) continue;
+            const seg = (w, col, op) => ends.map(([ex, ey]) =>
+                `<path d="M ${x} ${y} L ${ex} ${ey}" stroke="${col}" stroke-width="${w}"
+                       stroke-linecap="round" fill="none" opacity="${op}" pointer-events="none"/>`).join('')
+                + `<circle cx="${x}" cy="${y}" r="${w / 2}" fill="${col}" opacity="${op}" pointer-events="none"/>`;
+            // soft shoulder, packed surface, then a pale crown worn by traffic
+            roadSVG += seg(19, '#9c8154', 0.30);
+            roadSVG += seg(14, '#b08b58', 0.85);
+            roadSVG += seg(5.5, '#c6a473', 0.5);
+        }
+    }
+    tilesSVG += roadSVG;
 
     // Tile hover hit-zones (only OWNED empty tiles are placeable)
     let hitSVG = '';
