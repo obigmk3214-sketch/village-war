@@ -1009,6 +1009,9 @@ function renderGrid() {
         return;
     }
     grid.innerHTML = renderIsoWorld();
+    // A fresh render emits badges at their authored scale; re-apply the camera
+    // counter-scale so they don't jump back to full size on every re-render.
+    { const _svg = grid.querySelector('#iso-svg'); if (_svg) rescaleBadges(_svg); }
 
     // Collect production on indicator click (highest priority — stop propagation)
     grid.querySelectorAll('.prod-indicator').forEach(el => {
@@ -1219,6 +1222,21 @@ function applyView(svg) {
 function applyCamera(svg) {
     const layer = svg.querySelector('.camera-layer');
     if (layer) layer.setAttribute('transform', `translate(${CAM.x}, ${CAM.y}) scale(${CAM.zoom})`);
+    rescaleBadges(svg);
+}
+
+// Badges are information, not scenery: they should stay a readable, constant size
+// on screen instead of ballooning with the camera. At the default 3.1x zoom the
+// collect discs rendered larger than the buildings they belonged to and were the
+// loudest thing in the scene. Counter-scaling against the camera keeps them the
+// size they were designed at, and runs on every zoom so it tracks live.
+const BADGE_REF_ZOOM = 1.7;
+function rescaleBadges(svg) {
+    const k = Math.max(0.42, Math.min(1.25, BADGE_REF_ZOOM / (CAM.zoom || 1)));
+    svg.querySelectorAll('.ui-badge').forEach(g => {
+        const base = parseFloat(g.getAttribute('data-base')) || 0.6;
+        g.setAttribute('transform', `scale(${(base * k).toFixed(3)})`);
+    });
 }
 
 // Tooltip on building hover
@@ -3255,11 +3273,19 @@ function updateAdvisor() {
     if (!chip) {
         chip = document.createElement('button');
         chip.id = 'advisor-chip';
-        chip.style.cssText = 'position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:30;'
-            + 'display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;cursor:pointer;'
-            + 'background:linear-gradient(160deg,rgba(20,30,48,0.92),rgba(14,23,38,0.95));color:#e8e2d0;'
-            + 'border:1px solid rgba(244,196,77,0.55);box-shadow:0 4px 14px rgba(0,0,0,0.4);'
-            + 'font-size:0.8rem;font-weight:700;backdrop-filter:blur(4px)';
+        // Tucked into the top-left rather than floating across the middle of the
+        // board. A near-opaque pill centred over the play area was, at the game's
+        // close zoom, covering a whole building and reading louder than anything
+        // in the world it was advising about. Hint, not headline.
+        chip.style.cssText = 'position:absolute;top:10px;left:10px;z-index:30;'
+            + 'display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;cursor:pointer;'
+            + 'background:linear-gradient(160deg,rgba(20,30,48,0.72),rgba(14,23,38,0.78));color:#d8d3c4;'
+            + 'border:1px solid rgba(244,196,77,0.34);box-shadow:0 2px 8px rgba(0,0,0,0.3);'
+            + 'font-size:0.68rem;font-weight:600;backdrop-filter:blur(4px);'
+            + 'max-width:min(58%,320px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
+            + 'opacity:0.88;transition:opacity .2s';
+        chip.onmouseenter = () => { chip.style.opacity = '1'; };
+        chip.onmouseleave = () => { chip.style.opacity = '0.88'; };
         host.appendChild(chip);
     }
     if (chip.dataset.text !== obj.text) {

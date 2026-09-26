@@ -470,10 +470,10 @@ function buildingTile(gx, gy, type, level, pos) {
         ${buildingPlinth(x, y, tier, S)}
         <g transform="translate(${x},${y}) scale(${S}) translate(${-x},${-y})">${fn(x, y, level)}</g>
         ${buildingCrest(x, y, tier, type, S)}
-        <g class="bld-badge" transform="translate(${x + 7}, ${y - 3}) scale(0.55)">
+        <g class="bld-badge" transform="translate(${x + 7}, ${y - 3})"><g class="ui-badge" data-base="0.55" transform="scale(0.55)">
             <rect x="0" y="0" width="22" height="13" rx="6" fill="#1a1a2e" stroke="#fbbf24" stroke-width="1"/>
             <text x="11" y="9.5" text-anchor="middle" font-size="9" font-weight="900" fill="#fbbf24" font-family="Inter, sans-serif">${level}</text>
-        </g>
+        </g></g>
     </g>`;
 }
 
@@ -2894,7 +2894,7 @@ function renderIsoWorld() {
         } else {
             iconSVG = `<text x="0" y="4" text-anchor="middle" font-size="14"></text>`;
         }
-        prodSVG += `<g class="prod-indicator" data-pos="${b.pos}" style="cursor:pointer" transform="translate(${x}, ${y - 44}) scale(0.62)">
+        prodSVG += `<g class="prod-indicator" data-pos="${b.pos}" style="cursor:pointer" transform="translate(${x}, ${y - 44})"><g class="ui-badge" data-base="0.62" transform="scale(0.62)">
             <circle cx="0" cy="0" r="14" fill="#1a1a2e" stroke="#fbbf24" stroke-width="2" opacity="0.95"/>
             <circle cx="0" cy="0" r="14" fill="none" stroke="#fbbf24" stroke-width="1" opacity="0.5">
                 <animate attributeName="r" values="14;20;14" dur="1.6s" repeatCount="indefinite"/>
@@ -2902,7 +2902,7 @@ function renderIsoWorld() {
             </circle>
             ${iconSVG}
             <text x="11" y="-8" text-anchor="middle" font-size="7" font-weight="900" fill="#fff" stroke="#000" stroke-width="0.5">${Math.floor(ready)}</text>
-        </g>`;
+        </g></g>`;
     }
 
     const VB = islandViewBox(w, h);
