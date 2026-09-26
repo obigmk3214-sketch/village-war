@@ -4549,3 +4549,36 @@ h2 *, h3 *, .view h2 *, .hero-section-title * { -webkit-text-fill-color: current
         scroll-padding-inline: 12px;
     }
 }
+
+
+/* Phone resource bar ------------------------------------------------------
+   At 375px the six chips need 467px, the gaps another 48px and the "Village
+   War" title a further 104px - 619px of content in a 375px bar, so four of the
+   six resources sat off-screen. They were swipeable, but in a game about
+   managing resources the totals have to be readable at a glance, not found by
+   scrolling. Drop the title (the game's name is not news to someone already
+   playing it) and tighten the chips until all six fit. */
+@media (max-width: 480px) {
+    #resource-bar .game-title { display: none; }
+    /* The real overflow was not the chips. .player-info runs 478px wide - a
+       189px "now playing" track name, an 85px "Sign in" and a 52px ON/OFF label
+       - and sat entirely off the right edge of a 375px bar. On a phone the six
+       resource totals matter; the name of the track playing does not. Keep the
+       level and the two toggles as icons, drop the rest. */
+    /* Hidden, not removed: the More menu toggles audio by clicking #music-btn,
+       so the buttons must stay in the DOM. Level and the track name are not
+       things you need mid-raid on a phone; the six resource totals are. */
+    .player-info { display: none; }
+    .resources { flex: 1 1 auto; min-width: 0; gap: 2px; justify-content: space-between; }
+    #resource-bar { gap: 2px; padding-left: 2px; padding-right: 2px; }
+    .resource {
+        padding: 3px 5px 3px 3px;
+        font-size: 0.62rem;
+        gap: 2px;
+        border-radius: 7px;
+        min-width: 0;
+        letter-spacing: -0.01em;
+    }
+    .resource .vw-ic, .resource svg { width: 12px; height: 12px; }
+    .resource img { width: 12px; height: 12px; }
+}

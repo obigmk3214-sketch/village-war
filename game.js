@@ -605,8 +605,12 @@ function toast(msg, type = 'info') {
 }
 
 function formatNum(n) {
-    if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
-    if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+    // Drop the decimal once the number is long enough that the tenth stops
+    // mattering. On a 375px phone the six resource chips did not fit, and
+    // "89.4K" costs two characters more than "89K" to tell the player the same
+    // thing - shortening the text beats shrinking it past readability.
+    if (n >= 1000000) return (n / 1000000).toFixed(n >= 10000000 ? 0 : 1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'K';
     return Math.floor(n).toString();
 }
 
