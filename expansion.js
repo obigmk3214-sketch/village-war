@@ -189,7 +189,7 @@ const WHEEL_PRIZES = [
     { label: '1500c', color: '#f59e0b', give: () => expGainRes({ coins: 1500 }, ' +1500 coins') },
     { label: '20',  color: '#38bdf8', give: () => { addGems(20); } },
     { label: 'Potion',color: '#4ade80', give: () => { state.exp.items.resource++; toast('+1 Resource Potion', 'success'); } },
-    { label: '400i',  color: '#cbd5e1', give: () => expGainRes({ iron: 400 }, '️ +400 iron') }
+    { label: '400i',  color: '#cbd5e1', give: () => expGainRes({ iron: 400 }, ' +400 iron') }
 ];
 function openWheel() {
     ensureExp();
@@ -342,7 +342,7 @@ const MARKET_RES = ['coins', 'gold', 'iron', 'wood', 'food'];
 function openMarket() {
     ensureExp();
     expModal(`
-        <h3 class="exp-title">${svgIcon('scale')}️ Marketplace</h3>
+        <h3 class="exp-title">${svgIcon('scale')} Marketplace</h3>
         <p class="exp-hint">Convert surplus resources. Rate: 2 in → 1 out (10% royal tax).</p>
         <div class="market-row">
             <label>Trade <select id="mk-from">${MARKET_RES.map(r => `<option value="${r}">${r}</option>`).join('')}</select>
@@ -464,14 +464,14 @@ function useItem(id) {
     } else if (id === 'train') {
         ['warrior', 'archer', 'cavalry'].forEach(t => { if (typeof trainTroop === 'function') { try { trainTroop(t, true); } catch (e) { state.troops[t] = (state.troops[t] || 0) + 1; } } else state.troops[t] = (state.troops[t] || 0) + 1; });
         state.exp.stats.troopsTrained += 3;
-        toast('️ Trained a warrior, archer & cavalry!', 'success');
+        toast(' Trained a warrior, archer & cavalry!', 'success');
     } else if (id === 'resource') {
         expGainRes({ coins: 2000, gold: 1000, iron: 1000 }, ' Resources granted!');
     } else if (id === 'research') {
         addPassXp(250); addGems(25); toast('+250 pass XP, +25', 'success');
     } else if (id === 'shield') {
         if (typeof grantShield === 'function') grantShield(180);
-        toast('️ 3-hour shield active!', 'success');
+        toast(' 3-hour shield active!', 'success');
     }
     saveGame(); updateResources(); openItems();
 }
@@ -555,11 +555,11 @@ function openPass() {
     ensureExp();
     const p = state.exp.pass;
     expModal(`
-        <h3 class="exp-title">${svgIcon('medal')}️ Season Pass <span class="pass-tier">Tier ${p.tier + 1}/${PASS_TIERS.length}</span></h3>
+        <h3 class="exp-title">${svgIcon('medal')} Season Pass <span class="pass-tier">Tier ${p.tier + 1}/${PASS_TIERS.length}</span></h3>
         ${passTrackHTML()}
         <div class="exp-actions"><button class="btn" onclick="closeExpModal()">Close</button></div>`);
 }
-function buyGoldPass() { ensureExp(); if (!spendGems(120)) return; state.exp.pass.gold = true; toast('️ Gold Pass unlocked!', 'success'); saveGame(); journalRefresh(openPass); }
+function buyGoldPass() { ensureExp(); if (!spendGems(120)) return; state.exp.pass.gold = true; toast(' Gold Pass unlocked!', 'success'); saveGame(); journalRefresh(openPass); }
 function claimPass(i, track) {
     ensureExp();
     const p = state.exp.pass;
@@ -568,7 +568,7 @@ function claimPass(i, track) {
     if (p.claimed[track].includes(i)) return;
     grantPassReward(PASS_TIERS[i][track]);
     p.claimed[track].push(i);
-    toast('️ Reward claimed!', 'success');
+    toast(' Reward claimed!', 'success');
     saveGame(); updateResources(); journalRefresh(openPass);
 }
 
@@ -730,7 +730,7 @@ function openRegions() {
     ensureExp();
     const thLvl = (typeof getBuilding === 'function' && getBuilding('townhall')) ? getBuilding('townhall').level : 1;
     expModal(`
-        <h3 class="exp-title">${svgIcon('map')}️ World Regions</h3>
+        <h3 class="exp-title">${svgIcon('map')} World Regions</h3>
         <p class="exp-hint">Conquer regions for permanent passive bonuses. Higher regions need a bigger Town Hall.</p>
         <div class="region-list">
             ${REGIONS.map(r => {
@@ -786,7 +786,7 @@ function openBossRaid() {
             <div class="boss-reward">Rewards: ${svgIcon('coins')}5000 · ${svgIcon('coin')}2500 · ${svgIcon('gem')}15 · ${svgIcon('gift')} Crate</div>
         </div>
         <div class="exp-actions">
-            <button class="btn btn-danger btn-glow" onclick="startBossRaid(${bossLvl})">${svgIcon('swords')}️ Attack Boss</button>
+            <button class="btn btn-danger btn-glow" onclick="startBossRaid(${bossLvl})">${svgIcon('swords')} Attack Boss</button>
             <button class="btn" onclick="closeExpModal()">Close</button>
         </div>`);
 }
@@ -819,15 +819,15 @@ function openClanWar() {
     let w = state.exp.clanWar;
     if (!w || w.over) {
         expModal(`
-            <h3 class="exp-title">${svgIcon('swords')}️ Clan Wars</h3>
+            <h3 class="exp-title">${svgIcon('swords')} Clan Wars</h3>
             <p class="exp-hint">Declare war on a rival clan. Win 3 of 5 attacks to claim victory.</p>
             <div class="war-foes">
-                <div class="war-foe">${svgIcon('shield')}️ Your Clan<br><b>${(state.club && state.club.name) || 'Lone Wolves'}</b></div>
+                <div class="war-foe">${svgIcon('shield')} Your Clan<br><b>${(state.club && state.club.name) || 'Lone Wolves'}</b></div>
                 <div class="war-vs">VS</div>
                 <div class="war-foe">${svgIcon('fire')} Iron Vipers<br><b>5 warriors</b></div>
             </div>
             <div class="exp-actions">
-                <button class="btn btn-danger btn-glow" onclick="startClanWar()">${svgIcon('swords')}️ Declare War</button>
+                <button class="btn btn-danger btn-glow" onclick="startClanWar()">${svgIcon('swords')} Declare War</button>
                 <button class="btn" onclick="closeExpModal()">Close</button>
             </div>`);
     } else { renderClanWar(); }
@@ -841,11 +841,11 @@ function startClanWar() {
 function renderClanWar() {
     const w = state.exp.clanWar;
     expModal(`
-        <h3 class="exp-title">${svgIcon('swords')}️ Clan War — Battle ${Math.min(w.round + 1, 5)}/5</h3>
+        <h3 class="exp-title">${svgIcon('swords')} Clan War — Battle ${Math.min(w.round + 1, 5)}/5</h3>
         <div class="war-score"><span class="war-win">${w.wins} won</span> · <span class="war-loss">${w.losses} lost</span></div>
         <div class="war-log">${w.log.map(l => `<div class="war-line ${l.win ? 'w' : 'l'}">${l.win ? '' : ''} ${l.text}</div>`).join('') || '<div class="war-line">Attack to begin!</div>'}</div>
         <div class="exp-actions">
-            ${w.over ? '' : `<button class="btn btn-danger btn-glow" onclick="clanWarAttack()">${svgIcon('swords')}️ Send Attack</button>`}
+            ${w.over ? '' : `<button class="btn btn-danger btn-glow" onclick="clanWarAttack()">${svgIcon('swords')} Send Attack</button>`}
             <button class="btn" onclick="closeExpModal()">Close</button>
         </div>`);
 }
@@ -898,7 +898,7 @@ function renderTournament() {
         <p class="exp-hint">${t.out ? 'You were knocked out.' : t.over ? ' You are the champion!' : `${t.alive.length} fighters remain.`}</p>
         <div class="tourney-bracket">${t.alive.map(n => `<span class="tourney-chip ${n === 'You' ? 'you' : ''}">${n}</span>`).join('')}</div>
         <div class="exp-actions">
-            ${(!t.over && !t.out) ? `<button class="btn btn-primary btn-glow" onclick="tourneyFight()">${svgIcon('swords')}️ Fight Round</button>` : ''}
+            ${(!t.over && !t.out) ? `<button class="btn btn-primary btn-glow" onclick="tourneyFight()">${svgIcon('swords')} Fight Round</button>` : ''}
             <button class="btn" onclick="closeExpModal()">Close</button>
         </div>`);
 }
@@ -1061,7 +1061,7 @@ function openCollection() {
         <div class="codex-grid">
             ${troops.map(([id, d]) => `<div class="codex-card">
                 <div class="codex-nm">${d.name || id}</div>
-                <div class="codex-stat">${d.hp ? ' ' + d.hp : ''} ${d.attack || d.atk ? '️ ' + (d.attack || d.atk) : ''}</div>
+                <div class="codex-stat">${d.hp ? ' ' + d.hp : ''} ${d.attack || d.atk ? ' ' + (d.attack || d.atk) : ''}</div>
             </div>`).join('') || '<div class="codex-empty">—</div>'}
         </div>
         <h4 class="codex-h">Heroes</h4>
@@ -1088,11 +1088,11 @@ function openProfile() {
         [' Trophies', formatNum(state.trophies || 0)],
         [' Level', state.level || 1],
         [' Buildings', owned],
-        ['️ Regions conquered', Object.keys(state.exp.regions).length],
-        ['️ Raids won', s.raidsWon],
+        [' Regions conquered', Object.keys(state.exp.regions).length],
+        [' Raids won', s.raidsWon],
         [' Raids lost', s.raidsLost],
         [' Boss kills', s.bossKills],
-        ['️ Clan wars won', s.warWins],
+        [' Clan wars won', s.warWins],
         [' Wheel spins', s.spins],
         [' Crates opened', s.cratesOpened],
         [' Troops trained', s.troopsTrained],
@@ -1115,7 +1115,7 @@ function openSettings() {
     ensureExp();
     const s = state.exp.settings;
     expModal(`
-        <h3 class="exp-title">${svgIcon('gear')}️ Settings</h3>
+        <h3 class="exp-title">${svgIcon('gear')} Settings</h3>
         <div class="set-row" style="gap:8px">
             <span>${svgIcon('castle')} Commander name</span>
             <span style="display:flex;gap:6px;flex:1;justify-content:flex-end">
@@ -1132,7 +1132,7 @@ function openSettings() {
         <div class="settings-actions">
             <button class="btn btn-primary" onclick="exportSave()"> Export Save</button>
             <button class="btn btn-primary" onclick="importSave()"> Import Save</button>
-            <button class="btn btn-danger" onclick="confirmHardReset()">️ Reset Game</button>
+            <button class="btn btn-danger" onclick="confirmHardReset()"> Reset Game</button>
         </div>
         <div class="exp-actions"><button class="btn" onclick="closeExpModal()">Close</button></div>`);
 }

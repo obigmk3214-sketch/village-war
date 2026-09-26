@@ -261,7 +261,7 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
                 <div class="lb-vign"></div>
             </div>
             <div class="lb-top">
-                <span class="lb-title">${svgIcon('swords')}️ ${spec.name}</span>
+                <span class="lb-title">${svgIcon('swords')} ${spec.name}</span>
                 <span class="lb-destruction" id="lb-destr">0%</span>
                 <span class="lb-starbar" id="lb-stars">${svgIcon('starOutline').repeat(3)}</span>
                 <span class="lb-timer" id="lb-timer">50</span>

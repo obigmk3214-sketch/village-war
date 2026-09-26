@@ -178,7 +178,7 @@ function buyShopItem(id) {
 const WEEKLY_EVENTS = [
     { id: 'coinrush',  name: 'Coin Rush',      desc: '+50% coins from raids',  lootMult: { coins: 1.5 } },
     { id: 'goldrush',  name: 'Gold Rush',      desc: '+50% gold from raids',   lootMult: { gold: 1.5 } },
-    { id: 'warweek',   name: '️ War Week',       desc: '+50% XP from battles',   xpMult: 1.5 },
+    { id: 'warweek',   name: ' War Week',       desc: '+50% XP from battles',   xpMult: 1.5 },
     { id: 'harvest',   name: 'Harvest Fest',   desc: '+50% food & wood loot',  lootMult: { food: 1.5, wood: 1.5 } }
 ];
 function activeEvent() {
@@ -320,7 +320,7 @@ function scoutCamp(index) {
         </div>
         <div class="scout-info">Garrison: ${Object.entries(camp.troops).map(([t, c]) => `${c} ${TROOP_DEFS[t]?.name || t}`).join(', ')}</div>
         <p class="shop-hint">Defenses (red) will fire at your troops. Deploy from the bottom edge. Destroy 50% for 1${svgIcon('star')}, the Town Hall for 2${svgIcon('star')}, everything for 3${svgIcon('star')}.</p>
-        <button class="btn btn-danger btn-glow" onclick="document.getElementById('modal-overlay').classList.add('hidden'); launchRaid('cpu', ${index})">${svgIcon('swords')}️ Attack Now</button>`;
+        <button class="btn btn-danger btn-glow" onclick="document.getElementById('modal-overlay').classList.add('hidden'); launchRaid('cpu', ${index})">${svgIcon('swords')} Attack Now</button>`;
     overlay.classList.remove('hidden');
 }
 
@@ -586,14 +586,14 @@ function renderWorldView() {
             </div>
             <div class="world-card league-card">
                 <h3>${lg.icon} ${lg.name} League</h3>
-                <p>${svgIcon('trophy')} ${state.trophies || 0} trophies${shieldLeft > 0 ? ` · ${svgIcon('shield')}️ shield ${Math.ceil(shieldLeft / 60000)}m` : ''}</p>
+                <p>${svgIcon('trophy')} ${state.trophies || 0} trophies${shieldLeft > 0 ? ` · ${svgIcon('shield')} shield ${Math.ceil(shieldLeft / 60000)}m` : ''}</p>
                 <div class="lb-rows">
                     ${rows.slice(0, 6).map((r, i) => `<div class="lb-row ${r.you ? 'you' : ''}"><span>#${i + 1}</span><span>${r.name}</span><span>${svgIcon('trophy')}${r.trophies}</span></div>`).join('')}
                 </div>
             </div>
         </div>
 
-        <h3 class="hero-section-title">${svgIcon('swords')}️ Campaign</h3>
+        <h3 class="hero-section-title">${svgIcon('swords')} Campaign</h3>
         <p class="campaign-note">${svgIcon('castle')} You can clear <b>2 missions per Town Hall level</b>. You're at Town Hall <b>Lv${thLevel}</b> — upgrade it to unlock more.</p>
         ${campaignMapSVG()}
 
@@ -612,7 +612,7 @@ function renderWorldView() {
             ` : `<p>Join a club (Club tab) to unlock troop donations & clan chat.</p>`}
         </div>
 
-        <h3 class="hero-section-title">${svgIcon('gear')}️ Account</h3>
+        <h3 class="hero-section-title">${svgIcon('gear')} Account</h3>
         <div class="world-card account-row">
             <button class="btn btn-primary" onclick="exportSave()">${svgIcon('upload')} Export Save Code</button>
             <button class="btn btn-primary" onclick="importSave()">${svgIcon('download')} Import Save Code</button>

@@ -559,7 +559,7 @@ function clearDeco(key, type) {
         }
     } catch(e) {}
     if (typeof addGems === 'function' && Math.random() < 0.3) addGems(1 + Math.floor(Math.random() * 3));
-    toast(type === 'tree' ? ' Tree cleared! +wood' : '️ Rock cleared! +iron', 'success');
+    toast(type === 'tree' ? ' Tree cleared! +wood' : 'Rock cleared! +iron', 'success');
     renderGrid();
     updateResources();
     saveGame();
@@ -1676,26 +1676,26 @@ function renderArmyView() {
     const reserveN = getSoldiers('reserve').length;
 
     view.innerHTML = `
-        <h2>️ Forces</h2>
+        <h2>${svgIcon("swords")} Forces</h2>
         <div id="army-capacity">
             <span> Total ${cur}/${cap}</span>
             <div class="cap-bar"><div class="cap-fill" style="width:${Math.min(100, cur/cap*100)}%"></div></div>
-            <span class="formation-power">️ ${getArmyPower(getDeployed(currentFormation))} pwr</span>
+            <span class="formation-power">${svgIcon("bolt")} ${getArmyPower(getDeployed(currentFormation))} pwr</span>
         </div>
 
         <div class="formation-tabs">
             <button class="formation-tab ${currentFormation==='army'?'active':''}" onclick="switchFormation('army')">
-                ️ Army <span class="ft-count">${armyN}</span><small>raids</small>
+                ${svgIcon("swords")} Army <span class="ft-count">${armyN}</span><small>raids</small>
             </button>
             <button class="formation-tab ${currentFormation==='patrol'?'active':''}" onclick="switchFormation('patrol')">
-                ️ Patrol <span class="ft-count">${patrolN}</span><small>defends</small>
+                ${svgIcon("shield")} Patrol <span class="ft-count">${patrolN}</span><small>defends</small>
             </button>
         </div>
 
         <p class="formation-hint">${currentFormation === 'army'
             ? 'These soldiers go on <b>raids</b>. Click a reserve below, then click a tile to deploy. Front rows (top) fight first.'
             : 'These soldiers <b>guard your kingdom</b> from CPU attacks. Click a reserve below, then a tile to deploy.'}
-            <br>️ <b>Soldiers who die in battle are gone forever.</b>
+            <br>${svgIcon("skull")} <b>Soldiers who die in battle are gone forever.</b>
             <br>Morale: <b>${typeof moraleWord === 'function' ? moraleWord() : 'Steady'}</b>${typeof state.morale === 'number' && state.morale < 45 ? ' — the men speak of the fallen. Hold a funeral at the Memorial.' : ''}
             · Survivors earn ranks: <b>+6% HP &amp; ATK per rank</b>, a trait at Veteran.</p>
 
@@ -1837,7 +1837,7 @@ function renderRecruitList() {
         card.innerHTML = `
             <div class="card-icon">${def.icon}</div>
             <h4>${def.name}${boostFlag}</h4>
-            <div class="card-desc">${def.desc}<br><small>️${dispHP} ️${dispATK} ️${dispDEF}</small></div>
+            <div class="card-desc">${def.desc}<br><small>${svgIcon("heal")}${dispHP} ${svgIcon("dagger")}${dispATK} ${svgIcon("shield")}${dispDEF}</small></div>
             <div class="card-cost">Each: ${costHTML(def.cost)}</div>
             ${locked ? `
                 <div class="train-controls"><button class="btn btn-locked" disabled style="width:100%"> ${RESEARCH_NODES[def.requiresResearch]?.name || '?'}</button></div>
@@ -2029,7 +2029,7 @@ function renderRaidView() {
                 <div class="xp-pill">+${camp.xp} XP</div>
                 ${locked
                     ? `<button class="btn btn-locked" disabled> Unlocks at Lv${camp.minLvl}</button>`
-                    : `<button class="btn btn-danger btn-glow" onclick="launchRaid('cpu', ${i})"><span class="btn-icon">️</span> Attack</button>
+                    : `<button class="btn btn-danger btn-glow" onclick="launchRaid('cpu', ${i})"><span class="btn-icon">${svgIcon("swords")}</span> Attack</button>
                        <button class="btn btn-primary" style="margin-left:6px" onclick="scoutCamp(${i})"> Scout</button>`
                 }
             `;
@@ -2047,7 +2047,7 @@ function renderRaidView() {
                 <div class="enemy-forces">Defense: ${p.defense} | Power: ${getArmyPower(p.troops)}</div>
                 <div class="loot-preview">Loot: ${costHTML(p.loot, false)}</div>
                 <div style="font-size:0.75rem;color:var(--gold);margin-bottom:0.5rem"> ${p.trophies} trophies</div>
-                <button class="btn btn-danger" onclick="launchRaid('player', ${i})">️ Attack</button>
+                <button class="btn btn-danger" onclick="launchRaid('player', ${i})"> Attack</button>
             `;
             targets.appendChild(card);
         }
@@ -2181,7 +2181,7 @@ function showBattleResult(result, target, logEntry) {
     el.classList.remove('hidden');
     el.innerHTML = `
         <div class="result-inner ${result.victory ? 'victory' : 'defeat'}">
-            <h2>${result.victory ? '️ VICTORY!' : ' DEFEAT!'}</h2>
+            <h2>${result.victory ? '${svgIcon("trophy")} VICTORY!' : ' DEFEAT!'}</h2>
             <p style="color:var(--text2);margin-bottom:1rem">Battle against ${target.name} (${result.rounds} rounds)</p>
             ${result.victory ? `
                 <div class="loot-gained">
@@ -2210,7 +2210,7 @@ function showBattleResult(result, target, logEntry) {
 function cpuAttack() {
     if (state.buildings.length < 3) return;
     if (Date.now() < state.attackCooldownEnd) return;
-    if (typeof hasShield === 'function' && hasShield()) return;  // ️ shield blocks attacks
+    if (typeof hasShield === 'function' && hasShield()) return;  //  shield blocks attacks
 
     const intensity = Math.min(state.level, 10);
     const troops = {};
@@ -2253,7 +2253,7 @@ function cpuAttack() {
             state.resources[r] = Math.max(0, state.resources[r] - stolen);
         }
         logEntry.loot = stolenLoot;
-        if (typeof grantShield === 'function') grantShield(10);   // ️ post-attack shield
+        if (typeof grantShield === 'function') grantShield(10);   //  post-attack shield
         if (typeof notifyUser === 'function') notifyUser('You were attacked!', `${attackerName} raided your village.`);
     } else {
         const xp = intensity * 10;
@@ -2351,7 +2351,7 @@ function renderClubView() {
         const sorted = [...war.groups].sort((a, b) => b.score - a.score);
         warHTML = `
             <div class="club-war-group">
-                <h4>️ Club War - ${war.name}</h4>
+                <h4> Club War - ${war.name}</h4>
                 <p style="font-size:0.8rem;color:var(--text2);margin-bottom:0.5rem">Compete for the best rewards! Raid to earn points.</p>
                 ${sorted.map((g, i) => `
                     <div class="war-opponent ${g.isPlayer ? 'you' : ''}">
@@ -2370,12 +2370,12 @@ function renderClubView() {
             </div>
         `;
     } else {
-        warHTML = `<button class="btn btn-gold" style="margin-bottom:1rem" onclick="startClubWar()">️ Start Club War</button>`;
+        warHTML = `<button class="btn btn-gold" style="margin-bottom:1rem" onclick="startClubWar()"> Start Club War</button>`;
     }
 
     content.innerHTML = `
         <div class="club-card">
-            <h3>️ ${state.club.name}</h3>
+            <h3> ${state.club.name}</h3>
             <p style="color:var(--text2)">Members: ${state.club.members.length}/20 | Total Trophies: ${state.club.members.reduce((s, m) => s + m.trophies, 0)} </p>
         </div>
         ${warHTML}
@@ -2405,7 +2405,7 @@ function renderAvailableClubs() {
         el.innerHTML += `
             <div class="club-card" style="display:flex;justify-content:space-between;align-items:center">
                 <div>
-                    <strong>️ ${name}</strong><br>
+                    <strong> ${name}</strong><br>
                     <span style="font-size:0.8rem;color:var(--text2)">${members}/20 members |  ${trophies}</span>
                 </div>
                 <button class="btn btn-success" onclick="joinClub('${name}', ${members}, ${trophies})">Join</button>
@@ -2549,7 +2549,7 @@ function renderResearchView() {
     }
 
     const categories = ['economy', 'military', 'territory'];
-    const catTitles = { economy: ' Economy', military: '️ Military', territory: '️ Territory' };
+    const catTitles = { economy: ' Economy', military: ' Military', territory: ' Territory' };
 
     const buildSection = (cat) => {
         const nodes = Object.entries(RESEARCH_NODES).filter(([, n]) => n.category === cat);
@@ -2566,7 +2566,7 @@ function renderResearchView() {
                     const tName = t === 'all' ? 'All troops' : TROOP_DEFS[t]?.name || t;
                     return Object.entries(b).map(([s, v]) => `<span class="effect-pill">${tName} +${Math.round((v - 1) * 100)}% ${s.toUpperCase()}</span>`).join('');
                 }).join('')
-                : n.effect.expand ? `<span class="effect-pill effect-unlock">️ +${n.effect.expand === 999 ? 'MAX' : n.effect.expand} tiles</span>`
+                : n.effect.expand ? `<span class="effect-pill effect-unlock"> +${n.effect.expand === 999 ? 'MAX' : n.effect.expand} tiles</span>`
                 : '';
 
             return `
@@ -2599,9 +2599,9 @@ function renderResearchView() {
     el.innerHTML = `
         <h2> Research</h2>
         <div class="research-summary">
-            <span>️ Lab Level <strong>${lab.level}/${BUILDING_DEFS.researchlab.maxLevel}</strong></span>
+            <span> Lab Level <strong>${lab.level}/${BUILDING_DEFS.researchlab.maxLevel}</strong></span>
             <span> Researched <strong>${done}/${total}</strong></span>
-            <span>️ Land <strong>${state.ownedTiles.length}/${landCap()}</strong> tiles (cap rises with level)</span>
+            <span> Land <strong>${state.ownedTiles.length}/${landCap()}</strong> tiles (cap rises with level)</span>
         </div>
         ${categories.map(buildSection).join('')}
     `;
@@ -2654,9 +2654,9 @@ function renderHeroesView() {
                 <div class="hero-name">${def.name}</div>
                 <div class="hero-title">${def.title}</div>
                 <div class="hero-stats">
-                    <span>️ ${stats.hp}</span>
-                    <span>️ ${stats.attack}</span>
-                    <span>️ ${stats.defense}</span>
+                    <span> ${stats.hp}</span>
+                    <span> ${stats.attack}</span>
+                    <span> ${stats.defense}</span>
                 </div>
                 <div class="hero-ability">
                     <strong>${def.ability}</strong>
@@ -2797,7 +2797,7 @@ function renderBattleLog() {
     }
     el.innerHTML = state.battleLog.map((entry, idx) => {
         const isAttack = entry.type === 'attack';
-        const icon = isAttack ? (entry.victory ? '️' : '') : (entry.victory ? '️' : '');
+        const icon = isAttack ? (entry.victory ? '' : '') : (entry.victory ? '' : '');
         const cls = isAttack ? (entry.victory ? 'victory' : 'defeat') : (entry.victory ? 'defense victory' : 'defense defeat');
         const time = new Date(entry.time);
         const timeStr = time.toLocaleTimeString();
@@ -3397,7 +3397,7 @@ function playBirdseyeBattle({ attackerList, defenderCounts, target, result, kill
                 <div class="bt-units">${enemy.map(unitHTML).join('')}${mine.map(unitHTML).join('')}</div>
                 <div class="bt-fx" id="bt-fx"></div>
             </div>
-            <div class="bt-banner">${isDefense ? '️ DEFENDING' : '️ RAID'} · ${target.name || target}</div>
+            <div class="bt-banner">${isDefense ? ' DEFENDING' : ' RAID'} · ${target.name || target}</div>
             <div class="bt-label bt-label-top">${isDefense ? 'Invaders' : (target.name || 'Enemy')}</div>
             <div class="bt-label bt-label-bot">${isDefense ? 'Your Patrol' : 'Your Army'} · ${mine.length}</div>
             <div class="bt-status" id="bt-status">CHARGE!</div>
@@ -3662,7 +3662,7 @@ function playBattleAnimation(attackerTroops, defenderTroops, target, result, cal
                 ${atkUnits.map(renderUnit).join('')}
                 ${defUnits.map(renderUnit).join('')}
             </div>
-            <div class="bv-banner">️ Assault on ${target.name || target}</div>
+            <div class="bv-banner"> Assault on ${target.name || target}</div>
             <div class="bv-status" id="bv-status">CHARGE!</div>
             <button class="bv-skip" id="bv-skip">Skip</button>
         </div>
@@ -3775,7 +3775,7 @@ const TUTORIAL_STEPS = [
     {
         action: "TAP",
         label: "the Build button",
-        hint: "It's in the {NAV} — looks like a crane ️",
+        hint: "It's in the {NAV} — looks like a crane ",
         target: '.nav-btn[data-view="build"]',
         position: 'right'
     },
