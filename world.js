@@ -290,14 +290,31 @@ const treeSVG = (gx, gy, variant) => {
 
 const rockSVG = (gx, gy, variant) => {
     const { x, y } = iso(gx, gy);
+    // A rock is faceted, not a smooth dome with a single blurry highlight. Stone
+    // reads as stone from flat planes meeting at hard edges: each facet takes a
+    // different tone from the same light direction (upper left), plus a few
+    // fracture lines and some chips at the base where it has weathered.
     if (variant === 0) {
-        return `<ellipse cx="${x + 1}" cy="${y + 4}" rx="9" ry="2" fill="rgba(0,0,0,0.35)"/>
-        <path d="M ${x - 8} ${y + 3} Q ${x - 9} ${y - 6} ${x - 2} ${y - 8} Q ${x + 6} ${y - 7} ${x + 8} ${y - 1} Q ${x + 7} ${y + 4} ${x - 8} ${y + 3} Z" fill="#8e8278" stroke="#3e3328" stroke-width="0.6"/>
-        <path d="M ${x - 6} ${y - 4} Q ${x - 2} ${y - 8} ${x + 4} ${y - 6}" stroke="#b8a89c" stroke-width="0.6" fill="none" opacity="0.7"/>`;
+        return `<ellipse cx="${x + 2}" cy="${y + 3.6}" rx="10" ry="2.4" fill="rgba(0,0,0,0.32)"/>
+        <polygon points="${x - 8},${y + 3} ${x - 6.5},${y - 4.5} ${x - 1},${y - 8} ${x + 2},${y - 3} ${x - 2},${y + 3.4}" fill="#9a8e82"/>
+        <polygon points="${x - 1},${y - 8} ${x + 5.5},${y - 6.5} ${x + 8},${y - 1} ${x + 2},${y - 3}" fill="#b6a99b"/>
+        <polygon points="${x + 2},${y - 3} ${x + 8},${y - 1} ${x + 6.5},${y + 3.2} ${x - 2},${y + 3.4}" fill="#6f6459"/>
+        <polygon points="${x - 8},${y + 3} ${x - 6.5},${y - 4.5} ${x - 1},${y - 8} ${x + 5.5},${y - 6.5} ${x + 8},${y - 1} ${x + 6.5},${y + 3.2}"
+                 fill="none" stroke="#3e3328" stroke-width="0.65" stroke-linejoin="round"/>
+        <path d="M ${x - 4.5} ${y - 5.2} L ${x - 1.5} ${y - 1} L ${x + 1} ${y + 2.6}" stroke="#574d42" stroke-width="0.5" fill="none" opacity="0.7"/>
+        <path d="M ${x + 0.5} ${y - 6.6} L ${x + 3.4} ${y - 4}" stroke="#574d42" stroke-width="0.4" fill="none" opacity="0.55"/>
+        <path d="M ${x - 5.6} ${y - 5.4} L ${x - 1.2} ${y - 7.4}" stroke="rgba(255,252,242,0.5)" stroke-width="0.7" fill="none"/>
+        <ellipse cx="${x - 7}" cy="${y + 3.4}" rx="1.6" ry="0.7" fill="#7d7266"/>
+        <ellipse cx="${x + 5.4}" cy="${y + 3.8}" rx="1.2" ry="0.6" fill="#8a7e72"/>`;
     }
-    return `<ellipse cx="${x + 1}" cy="${y + 3}" rx="7" ry="2" fill="rgba(0,0,0,0.35)"/>
-    <path d="M ${x - 6} ${y + 2} Q ${x - 7} ${y - 4} ${x} ${y - 6} Q ${x + 6} ${y - 4} ${x + 6} ${y + 1} Q ${x + 4} ${y + 3} ${x - 6} ${y + 2} Z" fill="#a89c8e" stroke="#3e3328" stroke-width="0.5"/>
-    <ellipse cx="${x - 1}" cy="${y - 3}" rx="2" ry="1" fill="rgba(255,255,255,0.4)"/>`;
+    return `<ellipse cx="${x + 1.4}" cy="${y + 2.8}" rx="7.5" ry="2" fill="rgba(0,0,0,0.30)"/>
+    <polygon points="${x - 6},${y + 2.2} ${x - 5},${y - 3.4} ${x - 0.5},${y - 6} ${x + 1.5},${y - 2} ${x - 1},${y + 2.4}" fill="#a2968a"/>
+    <polygon points="${x - 0.5},${y - 6} ${x + 4.6},${y - 3.8} ${x + 6},${y + 0.6} ${x + 1.5},${y - 2}" fill="#bfb2a4"/>
+    <polygon points="${x + 1.5},${y - 2} ${x + 6},${y + 0.6} ${x + 4.6},${y + 2.6} ${x - 1},${y + 2.4}" fill="#7a6f64"/>
+    <polygon points="${x - 6},${y + 2.2} ${x - 5},${y - 3.4} ${x - 0.5},${y - 6} ${x + 4.6},${y - 3.8} ${x + 6},${y + 0.6} ${x + 4.6},${y + 2.6}"
+             fill="none" stroke="#3e3328" stroke-width="0.55" stroke-linejoin="round"/>
+    <path d="M ${x - 3.4} ${y - 4} L ${x - 0.8} ${y + 0.4}" stroke="#574d42" stroke-width="0.4" fill="none" opacity="0.6"/>
+    <path d="M ${x - 4.2} ${y - 4} L ${x - 0.8} ${y - 5.6}" stroke="rgba(255,252,242,0.45)" stroke-width="0.6" fill="none"/>`;
 };
 
 const bushSVG = (gx, gy) => {
@@ -2576,7 +2593,15 @@ function renderIsoWorld() {
                     // clumps grow in patches, so skip roughly a third at random
                     if (_tRand(k * 3 + gx * 2 + gy) < 0.32) continue;
                     const s = 0.55 + _tRand(k * 7 + gx + gy) * 0.4;
-                    tex += tuft(x + dx, y + dy, k % 3 === 0 ? '#3d7a24' : (k % 3 === 1 ? '#4f9c31' : '#59a836'), s);
+                    // Every tuft colour used to be DARKER than the grass beneath
+                    // (by 23-63 luminance), so the texture read as scratches or
+                    // dirt rather than as blades. Sunlit grass catches light at
+                    // the tips: mostly highlights, with a darker blade every
+                    // third clump for depth. Derived from the tile's own colour
+                    // so it stays right as the ground tone varies.
+                    const tc = (k % 3 === 2) ? _shiftHex(jit, -34)
+                             : (k % 3 === 1) ? _shiftHex(jit, 30) : _shiftHex(jit, 18);
+                    tex += tuft(x + dx, y + dy, tc, s);
                 }
                 // a few tiny wildflowers
                 for (let k = 0; k < 4; k++) {
