@@ -2310,13 +2310,13 @@ function renderIsoWorld() {
     // bands of blue with no relationship to anything.
     {
         const shelfRx = (ISO.GW) * TW * 0.78, shelfRy = (ISO.GH) * TH * 0.92;
-        seaSVG += `<ellipse cx="${c0.x}" cy="${c0.y + 18}" rx="${shelfRx * 1.5}" ry="${shelfRy * 1.5}"
+        seaSVG += `<ellipse cx="${c0.x}" cy="${c0.y + 18}" rx="${shelfRx * 1.18}" ry="${shelfRy * 1.18}"
             fill="url(#seaDepth)" pointer-events="none"/>`;
         // A brighter band right at the shore, where sand shows through the water.
         seaSVG += `<ellipse cx="${c0.x}" cy="${c0.y + 20}" rx="${shelfRx * 0.92}" ry="${shelfRy * 0.92}"
-            fill="none" stroke="rgba(190,232,241,0.30)" stroke-width="26" pointer-events="none"/>`;
+            fill="none" stroke="rgba(190,232,241,0.22)" stroke-width="20" pointer-events="none"/>`;
         seaSVG += `<ellipse cx="${c0.x}" cy="${c0.y + 20}" rx="${shelfRx * 0.80}" ry="${shelfRy * 0.80}"
-            fill="none" stroke="rgba(214,241,246,0.26)" stroke-width="16" pointer-events="none"/>`;
+            fill="none" stroke="rgba(214,241,246,0.18)" stroke-width="12" pointer-events="none"/>`;
     }
     // long swell bands sweeping the whole basin
     for (let i = 0; i < 7; i++) {
@@ -2462,7 +2462,14 @@ function renderIsoWorld() {
         // two fading steps. Hard diamond seams between grass/path/sand were the
         // last thing making the ground read as tiles rather than land.
         {
-            const _tt = (nx, ny) => (nx >= 0 && nx < ISO.GW && ny >= 0 && ny < ISO.GH && _own(nx, ny)) ? TERRAIN[ny][nx] : null;
+            // Must agree with what the tile loop actually drew. Roads are an
+            // overlay on top of TERRAIN, so reading TERRAIN alone left every road
+            // as a hard-edged brown diamond stamped on the grass while the
+            // blending quietly feathered a boundary that was not there.
+            const _tt = (nx, ny) => {
+                if (nx < 0 || nx >= ISO.GW || ny < 0 || ny >= ISO.GH || !_own(nx, ny)) return null;
+                return ROADS.has(nx + ny * ISO.GW) ? 2 : TERRAIN[ny][nx];
+            };
             // corners: N(x,y-TH) E(x+TW,y) S(x,y+TH) W(x-TW,y)
             const edges = [
                 [_tt(gx + 1, gy), [x, y + TH], [x + TW, y]],   // SE
@@ -2565,12 +2572,13 @@ function renderIsoWorld() {
                 // the tile with a lighter crown between them, then gravel. A single
                 // faint line over near-sand colour read as a washed-out band rather
                 // than a road.
-                const rut = (off, w, op) => `<path d="M ${x - TW * 0.62} ${y - TH * 0.06 + off} Q ${x} ${y + TH * 0.16 + off} ${x + TW * 0.62} ${y - TH * 0.04 + off}"
-                    stroke="#7a5c33" stroke-width="${w}" fill="none" opacity="${op}" stroke-linecap="round" pointer-events="none"/>`;
-                tex += rut(-3.4, 3.2, 0.38) + rut(3.4, 3.2, 0.38);
-                // lighter crown of earth between the ruts
-                tex += `<path d="M ${x - TW * 0.58} ${y - TH * 0.05} Q ${x} ${y + TH * 0.15} ${x + TW * 0.58} ${y - TH * 0.03}"
-                    stroke="#c6a473" stroke-width="3" fill="none" opacity="0.30" stroke-linecap="round" pointer-events="none"/>`;
+                // Hairline ruts only. At 3.2px wide and 0.38 opacity these rendered
+                // at the game's close zoom as thick dark bars lying on the dirt -
+                // they read as logs, not wheel tracks. Thin and faint is the whole
+                // point: a rut is a depression, not an object.
+                const rut = (off) => `<path d="M ${x - TW * 0.62} ${y - TH * 0.06 + off} Q ${x} ${y + TH * 0.16 + off} ${x + TW * 0.62} ${y - TH * 0.04 + off}"
+                    stroke="#8a6a3e" stroke-width="1.1" fill="none" opacity="0.30" stroke-linecap="round" pointer-events="none"/>`;
+                tex += rut(-2.6) + rut(2.6);
                 for (let k = 0; k < 8; k++) {
                     const a = _tRand(gx * 13 + gy * 29 + k * 37), b = _tRand(gx * 47 + gy * 19 + k * 23);
                     const dx = (a - 0.5) * TW * 1.5, dy = (b - 0.5) * TH * 1.5;
@@ -2800,10 +2808,15 @@ function renderIsoWorld() {
     return `<svg viewBox="${VB.vx} ${VB.vy} ${VB.vw} ${VB.vh}" xmlns="http://www.w3.org/2000/svg" id="iso-svg" preserveAspectRatio="xMidYMid meet">
         <defs>
             <radialGradient id="seaDepth" cx="50%" cy="50%" r="50%">
-                <stop offset="0%"   stop-color="#8fd3e8" stop-opacity="0.85"/>
-                <stop offset="34%"  stop-color="#63b4dd" stop-opacity="0.72"/>
-                <stop offset="58%"  stop-color="#3f8ec4" stop-opacity="0.52"/>
-                <stop offset="78%"  stop-color="#2d6ba4" stop-opacity="0.28"/>
+                <!-- Kept deliberately restrained. At the close zoom the game
+                     actually plays at, a strong pale shelf filled the whole view
+                     and the sea stopped reading as water at all - it looked like
+                     washed-out grey. The shallows should hug the shore, not
+                     flood the basin. -->
+                <stop offset="0%"   stop-color="#8fd3e8" stop-opacity="0.50"/>
+                <stop offset="46%"  stop-color="#63b4dd" stop-opacity="0.40"/>
+                <stop offset="68%"  stop-color="#3f8ec4" stop-opacity="0.20"/>
+                <stop offset="86%"  stop-color="#2d6ba4" stop-opacity="0.06"/>
                 <stop offset="100%" stop-color="#1f4d80" stop-opacity="0"/>
             </radialGradient>
             <filter id="bldShadow" x="-50%" y="-50%" width="200%" height="200%">
