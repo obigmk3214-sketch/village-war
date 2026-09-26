@@ -302,12 +302,38 @@ const rockSVG = (gx, gy, variant) => {
 
 const bushSVG = (gx, gy) => {
     const { x, y } = iso(gx, gy);
-    return `<ellipse cx="${x + 1}" cy="${y + 3}" rx="10" ry="2" fill="rgba(0,0,0,0.3)"/>
-    <circle cx="${x - 4}" cy="${y - 2}" r="5" fill="#2e8b30" stroke="#1a5e1c" stroke-width="0.5"/>
-    <circle cx="${x + 4}" cy="${y - 2}" r="5" fill="#2e8b30" stroke="#1a5e1c" stroke-width="0.5"/>
-    <circle cx="${x}" cy="${y - 5}" r="5" fill="#33a04a" stroke="#1a5e1c" stroke-width="0.5"/>
-    <circle cx="${x - 2}" cy="${y - 4}" r="1.5" fill="#ff6b6b"/>
-    <circle cx="${x + 3}" cy="${y - 3}" r="1.5" fill="#ff6b6b"/>`;
+    // Three plain circles with two dots on top is the "green candy floss" look.
+    // A shrub reads as a shrub from scalloped clumps of foliage at three depths,
+    // a few twigs breaking the silhouette, and berries that catch the light -
+    // never from outlined discs.
+    const clump = (cx, cy, r, fill) => {
+        let d = `M ${cx - r} ${cy}`;
+        const lobes = 7;
+        for (let i = 0; i < lobes; i++) {
+            const a0 = Math.PI - (i / lobes) * Math.PI * 2;
+            const a1 = Math.PI - ((i + 1) / lobes) * Math.PI * 2;
+            const bulge = r * (i % 2 ? 1.30 : 1.12);
+            const mx = cx + Math.cos((a0 + a1) / 2) * bulge;
+            const my = cy - Math.sin((a0 + a1) / 2) * bulge * 0.82;
+            d += ` Q ${mx} ${my} ${cx + Math.cos(a1) * r} ${cy - Math.sin(a1) * r * 0.82}`;
+        }
+        return `<path d="${d} Z" fill="${fill}" stroke="#14501a" stroke-width="0.45"/>`;
+    };
+    return `<ellipse cx="${x + 1}" cy="${y + 3.4}" rx="11" ry="2.4" fill="rgba(0,0,0,0.30)"/>
+    <path d="M ${x - 1} ${y + 3} q -1.2 -4 -3.4 -6.4 M ${x + 1} ${y + 3} q 1.4 -4.4 3.6 -6.8"
+          stroke="#4a3418" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+    ${clump(x - 4.4, y - 1.4, 5.0, '#1f6b26')}
+    ${clump(x + 4.6, y - 1.8, 5.2, '#256f2b')}
+    ${clump(x + 0.4, y - 4.6, 5.4, '#2f8b39')}
+    ${clump(x - 1.8, y - 3.0, 3.4, '#3aa347')}
+    <path d="M ${x - 4} ${y - 5.6} q 2.6 -1.8 5.6 -1.2" stroke="rgba(190,240,170,0.5)" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+    <g>
+      <circle cx="${x - 2.2}" cy="${y - 3.4}" r="1.35" fill="#c9372c"/>
+      <circle cx="${x - 2.6}" cy="${y - 3.8}" r="0.45" fill="rgba(255,235,225,0.85)"/>
+      <circle cx="${x + 3.1}" cy="${y - 2.6}" r="1.25" fill="#b52f26"/>
+      <circle cx="${x + 2.8}" cy="${y - 3.0}" r="0.4" fill="rgba(255,235,225,0.8)"/>
+      <circle cx="${x + 0.6}" cy="${y - 6.4}" r="1.1" fill="#d34434"/>
+    </g>`;
 };
 
 const flowerSVG = (gx, gy, variant) => {
