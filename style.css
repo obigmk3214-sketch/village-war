@@ -4558,6 +4558,19 @@ h2 *, h3 *, .view h2 *, .hero-section-title * { -webkit-text-fill-color: current
    managing resources the totals have to be readable at a glance, not found by
    scrolling. Drop the title (the game's name is not news to someone already
    playing it) and tighten the chips until all six fit. */
+/* 481-768px (small tablets, split-screen, the awkward middle): the phone rules
+   stop at 480 but the bar is still too narrow for the title AND the player-info
+   block AND six resources. Drop the title and the track name here too, but keep
+   the level and audio buttons, which do fit at this width. */
+@media (min-width: 481px) and (max-width: 768px) {
+    #resource-bar .game-title { display: none; }
+    .player-info #music-player { display: none; }
+    .player-info #account-chip { display: none; }
+    .player-info { gap: 4px; }
+    .resources { gap: 4px; }
+    .resource { padding: 4px 6px 4px 4px; font-size: 0.68rem; }
+}
+
 @media (max-width: 480px) {
     #resource-bar .game-title { display: none; }
     /* The real overflow was not the chips. .player-info runs 478px wide - a
