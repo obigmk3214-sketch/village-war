@@ -574,15 +574,67 @@ function saveGame() {
     try { localStorage.setItem('villagewar_save', JSON.stringify(state)); } catch(e) {}
 }
 
+// A save is untrusted input: it can be truncated by a write that was interrupted,
+// hand-edited, or left over from an older build with a different shape. The old
+// loader spread it blindly over the defaults, so a save carrying
+// `"buildings": "nope"` replaced the array with a string and the next
+// state.buildings.find() threw - an unrecoverable game with no way back except
+// clearing storage, which the player has no way to know about.
+//
+// Repair what can be repaired, drop what cannot, and keep the defaults for
+// anything missing. Losing one bad field beats losing the save.
+function sanitizeState(st) {
+    const ARRAYS = ['buildings', 'soldiers', 'memorial', 'log', 'clearedDecos', 'ownedTiles'];
+    for (const k of ARRAYS) {
+        if (k in st && !Array.isArray(st[k])) delete st[k];
+    }
+    if ('resources' in st) {
+        if (!st.resources || typeof st.resources !== 'object' || Array.isArray(st.resources)) {
+            delete st.resources;
+        } else {
+            for (const [k, v] of Object.entries(st.resources)) {
+                if (typeof v !== 'number' || !isFinite(v) || v < 0) delete st.resources[k];
+            }
+        }
+    }
+    if ('maxResources' in st && (!st.maxResources || typeof st.maxResources !== 'object')) delete st.maxResources;
+    // Buildings themselves: drop entries that are not usable rather than letting
+    // one bad record take the whole village render down.
+    if (Array.isArray(st.buildings)) {
+        st.buildings = st.buildings.filter(b =>
+            b && typeof b === 'object' && typeof b.type === 'string' && typeof b.pos === 'number');
+    }
+    if (Array.isArray(st.soldiers)) {
+        st.soldiers = st.soldiers.filter(s => s && typeof s === 'object' && typeof s.type === 'string');
+    }
+    return st;
+}
+
 function loadGame() {
     try {
         const s = localStorage.getItem('villagewar_save');
         if (s) {
-            const loaded = JSON.parse(s);
+            const loaded = sanitizeState(JSON.parse(s) || {});
             state = { ...state, ...loaded };
             state.lastTick = Date.now();
         }
-    } catch(e) {}
+    } catch (e) {
+        // Unparseable: keep the defaults and carry on with a new village rather
+        // than leaving the player staring at a dead screen.
+        console.warn('Save could not be read; starting fresh state.', e);
+    }
+    if (!Array.isArray(state.buildings)) state.buildings = [];
+    if (!Array.isArray(state.soldiers)) state.soldiers = [];
+    // Backfill rather than leave holes: sanitize DELETES a bad resource value
+    // (negative, NaN, not a number), and an undefined coin count poisons every
+    // sum and comparison downstream - `undefined - 200` is NaN, and NaN spreads.
+    const RES_DEFAULTS = { coins: 1200, gold: 200, iron: 250, wood: 450, food: 350 };
+    if (!state.resources || typeof state.resources !== 'object') state.resources = {};
+    for (const [k, v] of Object.entries(RES_DEFAULTS)) {
+        if (typeof state.resources[k] !== 'number' || !isFinite(state.resources[k])) {
+            state.resources[k] = v;
+        }
+    }
 }
 
 // ============================================================

@@ -202,6 +202,46 @@ function run() {
     eq(after, before);
   });
 
+  // Runs LAST on purpose: it calls loadGame(), which REPLACES the shared `state`
+  // this suite runs against. Sitting mid-file it broke the four tests after it.
+  t('a corrupt save never bricks the game', () => {
+    // A save is untrusted input - truncated by an interrupted write, left over
+    // from an older build, or hand-edited. loadGame used to spread it blindly
+    // over the defaults, so `"buildings": "nope"` replaced the array with a
+    // string and the next state.buildings.find() threw: an unplayable game with
+    // no recovery the player could discover.
+    // The suite shares one live `state`, and loadGame() REPLACES it - restoring
+    // only localStorage left the following tests running against a state they
+    // had not set up, and four of them failed. Snapshot the object itself.
+    const snapshot = G.eval('JSON.stringify(state)');
+    const real = G.eval('localStorage.getItem("villagewar_save")');
+    const cases = {
+      garbage:     'not json {{{',
+      wrongShape:  '{"buildings":"nope","resources":null,"soldiers":3}',
+      emptyObject: '{}',
+      badBuilding: '{"buildings":[null,{"type":"farm","pos":"x"},{"type":"farm","pos":60,"level":1,"hp":10}]}',
+      badResource: '{"resources":{"coins":-500,"wood":null}}'
+    };
+    const broken = [];
+    for (const [name, payload] of Object.entries(cases)) {
+      try {
+        G.eval(`localStorage.setItem("villagewar_save", ${JSON.stringify(payload)})`);
+        G.eval('loadGame()');
+        // the exact operations that used to throw
+        G.eval('state.buildings.find(b => b && b.type === "farm")');
+        G.eval('(() => { let n = 0; for (const s of state.soldiers) n++; return n; })()');
+        const ok = G.eval('["coins","gold","iron","wood","food"].every(k => typeof state.resources[k] === "number" && isFinite(state.resources[k]) && state.resources[k] >= 0)');
+        if (!ok) broken.push(name + ' (resource not a usable number)');
+      } catch (e) {
+        broken.push(name + ' -> ' + e.message);
+      }
+    }
+    G.eval(real ? `localStorage.setItem("villagewar_save", ${JSON.stringify(real)})` : 'localStorage.removeItem("villagewar_save")');
+    G.eval(`Object.keys(state).forEach(k => delete state[k]); Object.assign(state, ${snapshot});`);
+    if (broken.length) throw new Error(broken.join('; '));
+  });
+
+
   // restore the player's real save so tests never clobber progress
   try {
     if (realSave != null) localStorage.setItem(SAVE_KEY, realSave); else localStorage.removeItem(SAVE_KEY);
