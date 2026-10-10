@@ -202,6 +202,73 @@ function run() {
     eq(after, before);
   });
 
+  t('spendResources refuses what the player cannot afford', () => {
+    // It used to subtract unconditionally: 10 coins minus a 5000-coin cost left
+    // the player on -4990, and a negative balance poisons every comparison after.
+    const snap = G.eval('JSON.stringify(state.resources)');
+    try {
+      G.eval('state.resources.coins = 10');
+      const refused = G.eval('spendResources({ coins: 5000 })');
+      eq(refused, false, 'unaffordable spend should return false, got');
+      eq(G.eval('state.resources.coins'), 10, 'balance must be untouched, got');
+
+      // An affordable spend still goes through and still reports success.
+      G.eval('state.resources.coins = 500');
+      eq(G.eval('spendResources({ coins: 200 })'), true, 'affordable spend should return true, got');
+      eq(G.eval('state.resources.coins'), 300, 'coins after spending 200 of 500');
+
+      // A missing resource key must not produce NaN. A zero-cost entry is the
+      // path that reaches the subtraction, since canAfford lets 0 through -
+      // `undefined - 0` is NaN, and NaN compares false against every cap and
+      // price in the game, so it spreads silently once it lands in a balance.
+      G.eval('delete state.resources.gold');
+      eq(G.eval('spendResources({ gold: 0 })'), true, 'a zero cost is affordable, got');
+      eq(G.eval('state.resources.gold'), 0, 'missing key after a zero-cost spend');
+
+      // An unaffordable spend against a missing key is refused outright, so the
+      // key is left exactly as it was rather than written as NaN.
+      G.eval('delete state.resources.gold');
+      eq(G.eval('spendResources({ gold: 5 })'), false, 'missing key cannot afford 5, got');
+      eq(G.eval('typeof state.resources.gold'), 'undefined', 'refused spend wrote to the balance; type is');
+
+      // A malformed cost is refused rather than turning a balance into NaN.
+      G.eval('state.resources.iron = 100');
+      eq(G.eval('spendResources({ iron: undefined })'), false, 'undefined cost should refuse, got');
+      eq(G.eval('spendResources({ iron: NaN })'), false, 'NaN cost should refuse, got');
+      eq(G.eval('state.resources.iron'), 100, 'iron after two malformed spends');
+    } finally {
+      G.eval(`state.resources = JSON.parse(${JSON.stringify(snap)})`);
+    }
+  });
+
+  t('every cost the game can quote is a real number', () => {
+    // spendResources now rejects a malformed cost, so a cost table carrying a
+    // stray undefined would silently refuse a purchase the player can afford.
+    const bad = G.eval(`(function () {
+      const bad = [];
+      let checked = 0;
+      const check = (label, cost) => {
+        if (!cost || typeof cost !== 'object') return;
+        checked++;
+        for (const [r, amt] of Object.entries(cost)) {
+          if (typeof amt !== 'number' || !isFinite(amt) || amt < 0) bad.push(label + '.' + r + '=' + amt);
+        }
+      };
+      Object.keys(BUILDING_DEFS).forEach(t => {
+        check('place:' + t, typeof getPlaceCost === 'function' && getPlaceCost(t));
+        // Upgrade costs scale per level, so they are the likeliest to go bad.
+        for (let lv = 2; lv <= 12; lv++) check('upgrade:' + t + ':' + lv, getBuildingCost(t, lv));
+      });
+      Object.entries(TROOP_DEFS).forEach(([t, d]) => check('troop:' + t, d.cost));
+      Object.entries(HERO_DEFS).forEach(([h, d]) => check('hero:' + h, d.unlockCost));
+      Object.entries(RESEARCH_NODES).forEach(([k, d]) => check('research:' + k, d.cost));
+      // Guard against this test quietly checking nothing if a table is renamed.
+      if (checked < 150) bad.push('only ' + checked + ' costs examined');
+      return bad.join(', ');
+    })()`);
+    eq(bad, '', 'malformed costs');
+  });
+
   // Runs LAST on purpose: it calls loadGame(), which REPLACES the shared `state`
   // this suite runs against. Sitting mid-file it broke the four tests after it.
   t('a corrupt save never bricks the game', () => {

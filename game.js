@@ -691,12 +691,23 @@ function canAfford(cost) {
 }
 
 function spendResources(cost) {
+    // Every caller is expected to gate on canAfford first, and today they all do.
+    // But this used to subtract unconditionally, so one missed guard would drive a
+    // balance negative - and a negative (or NaN) balance silently poisons every
+    // canAfford, storage-cap and UI comparison downstream, which is far harder to
+    // trace than a refused purchase. Refuse the transaction instead, and report it.
+    for (const amt of Object.values(cost)) {
+        if (typeof amt !== 'number' || !isFinite(amt) || amt < 0) return false;
+    }
+    if (!canAfford(cost)) return false;
     for (const [r, amt] of Object.entries(cost)) {
-        state.resources[r] -= amt;
+        // `|| 0` so a missing resource key can never produce NaN.
+        state.resources[r] = (state.resources[r] || 0) - amt;
     }
     // Feed the "Spend 1000 coins" daily quest (metric was never tracked anywhere,
     // so that quest could never be completed).
     if (cost.coins > 0 && typeof track === 'function') track('coinsSpent', cost.coins);
+    return true;
 }
 
 function addResources(loot) {
