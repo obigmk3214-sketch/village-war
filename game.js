@@ -601,8 +601,18 @@ function sanitizeState(st) {
     // Buildings themselves: drop entries that are not usable rather than letting
     // one bad record take the whole village render down.
     if (Array.isArray(st.buildings)) {
-        st.buildings = st.buildings.filter(b =>
-            b && typeof b === 'object' && typeof b.type === 'string' && typeof b.pos === 'number');
+        st.buildings = st.buildings.filter(b => {
+            if (!b || typeof b !== 'object') return false;
+            if (typeof b.type !== 'string' || typeof b.pos !== 'number') return false;
+            // Drop a type this build no longer defines. There are fifteen
+            // BUILDING_DEFS[b.type] lookups that do not guard the result, and the
+            // one in the production tick runs continuously - an unknown type threw
+            // "Cannot read properties of undefined (reading 'production')" on every
+            // tick, freezing the whole economy. Filtering here fixes all of them at
+            // once rather than guarding fifteen call sites.
+            if (typeof BUILDING_DEFS !== 'undefined' && !BUILDING_DEFS[b.type]) return false;
+            return true;
+        });
     }
     if (Array.isArray(st.soldiers)) {
         st.soldiers = st.soldiers.filter(s => s && typeof s === 'object' && typeof s.type === 'string');
@@ -3014,7 +3024,7 @@ function gameTick() {
     let anyReady = false;
     for (const b of state.buildings) {
         const def = BUILDING_DEFS[b.type];
-        if (def.production) {
+        if (def && def.production) {
             for (const [r, base] of Object.entries(def.production)) {
                 const researchMult = getResearchProdMult(r);
                 const rate = base * Math.pow(def.prodMult || 1, b.level - 1) * researchMult;
