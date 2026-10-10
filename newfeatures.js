@@ -337,7 +337,15 @@ function checkDailyReward() {
     // land on top of "click an empty tile to place the building" and eat the tap.
     const tutOverlay = document.getElementById('tutorial-overlay');
     const modal = document.getElementById('modal-overlay');
+    // The title screen counts as busy too. Without this the reward fired while
+    // the splash was still up and was sitting over the village the moment the
+    // player pressed Play - their first sight of the game was a dialog, before
+    // they had seen a single building.
+    const splash = document.getElementById('splash-screen');
+    const splashUp = splash && getComputedStyle(splash).display !== 'none'
+                            && !splash.classList.contains('splash-fade');
     const busy =
+        splashUp ||
         (typeof tutorialActive !== 'undefined' && tutorialActive) ||
         (tutOverlay && !tutOverlay.classList.contains('hidden')) ||
         (typeof placingBuilding !== 'undefined' && placingBuilding) ||
