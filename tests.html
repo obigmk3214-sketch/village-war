@@ -221,7 +221,8 @@ function run() {
       emptyObject: '{}',
       badBuilding: '{"buildings":[null,{"type":"farm","pos":"x"},{"type":"farm","pos":60,"level":1,"hp":10}]}',
       badResource: '{"resources":{"coins":-500,"wood":null}}',
-      unknownType:  '{"buildings":[{"type":"zeppelinpad","level":2,"pos":211,"hp":100}]}'
+      unknownType:  '{"buildings":[{"type":"zeppelinpad","level":2,"pos":211,"hp":100}]}',
+      unknownTroop: '{"soldiers":[{"id":1,"type":"dragonrider","assignment":"army"}]}'
     };
     const broken = [];
     for (const [name, payload] of Object.entries(cases)) {
@@ -235,6 +236,7 @@ function run() {
         // BUILDING_DEFS lookup, so an unknown type froze the economy on every
         // frame. Load and render alone did not catch it.
         G.eval('state.buildings.forEach(b => { const d = BUILDING_DEFS[b.type]; if (!d) throw new Error("undefined building def survived load: " + b.type); })');
+        G.eval('state.soldiers.forEach(s => { const d = TROOP_DEFS[s.type]; if (!d) throw new Error("undefined troop def survived load: " + s.type); })');
         const ok = G.eval('["coins","gold","iron","wood","food"].every(k => typeof state.resources[k] === "number" && isFinite(state.resources[k]) && state.resources[k] >= 0)');
         if (!ok) broken.push(name + ' (resource not a usable number)');
       } catch (e) {

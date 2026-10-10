@@ -615,7 +615,14 @@ function sanitizeState(st) {
         });
     }
     if (Array.isArray(st.soldiers)) {
-        st.soldiers = st.soldiers.filter(s => s && typeof s === 'object' && typeof s.type === 'string');
+        st.soldiers = st.soldiers.filter(s => {
+            if (!s || typeof s !== 'object' || typeof s.type !== 'string') return false;
+            // Same rule as buildings. The troop lookups happen to be defensive
+            // enough that an unknown type does not crash today, but leaving one in
+            // the save means every future TROOP_DEFS[s.type] is a latent throw.
+            if (typeof TROOP_DEFS !== 'undefined' && !TROOP_DEFS[s.type]) return false;
+            return true;
+        });
     }
     return st;
 }
