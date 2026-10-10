@@ -1275,6 +1275,38 @@ function applyView(svg) {
     svg.style.transform = `rotateX(${VIEW.tilt}deg) rotateZ(${VIEW.spin}deg)`;
 }
 
+// Open on the player's village, not on empty grass.
+//
+// The camera starts at CAM.x/y = 0, which is the centre of the whole 20x14 map,
+// not the centre of the small patch the player actually owns. Measured on a
+// fresh game at 1280x820: the Town Hall sat 779px right of the pane centre -
+// completely off-screen. The first thing a new player saw was an empty field
+// with a road running through it and no building anywhere.
+//
+// Works in screen pixels and converts back to camera units, so it does not need
+// to model the isometric projection or the current zoom.
+function centerOnTownHall() {
+    const svg = document.querySelector('#iso-svg');
+    if (!svg) return false;
+    const hall = (state.buildings || []).find(b => b.type === 'townhall') || (state.buildings || [])[0];
+    if (!hall) return false;
+    const el = document.querySelector(`.bld[data-pos="${hall.pos}"]`);
+    const grid = document.getElementById('village-grid');
+    if (!el || !grid) return false;
+    const r = el.getBoundingClientRect();
+    const g = grid.getBoundingClientRect();
+    if (!r.width || !g.width) return false;
+    const vb = svg.viewBox && svg.viewBox.baseVal;
+    const pxPerUnit = (vb && vb.width) ? (svg.clientWidth / vb.width) : 0;
+    if (!pxPerUnit) return false;
+    // Sit the hall slightly below centre: the buildings grow upward from their
+    // tile, so a dead-centre anchor pushes the roof into the top half.
+    CAM.x += ((g.left + g.width / 2) - (r.left + r.width / 2)) / pxPerUnit;
+    CAM.y += ((g.top + g.height * 0.56) - (r.top + r.height / 2)) / pxPerUnit;
+    applyCamera(svg);
+    return true;
+}
+
 function applyCamera(svg) {
     const layer = svg.querySelector('.camera-layer');
     if (layer) layer.setAttribute('transform', `translate(${CAM.x}, ${CAM.y}) scale(${CAM.zoom})`);
@@ -4581,6 +4613,9 @@ function setupSplash() {
         } catch (e) {}
         splash.classList.add('splash-fade');
         setTimeout(() => splash.style.display = 'none', 700);
+        // Frame the village once the pane has its real size (the splash is still
+        // fading, so measuring immediately gives the wrong rect).
+        setTimeout(() => { try { centerOnTownHall(); } catch (e) {} }, 760);
     };
 }
 
