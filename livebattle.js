@@ -248,12 +248,12 @@ function startLiveBattle({ armyList, base, spec, onDone }) {
                 ${base.buildings.map((b, i) => `
                     <div class="lb-bld ${b.th ? 'lb-th' : ''}" id="lbb-${i}" style="left:${b.x}%;top:${b.y}%;width:${b.w}%">
                         <div class="lb-bhp"><div class="lb-bhpfill"></div></div>
-                        ${(typeof buildingIcon === 'function' && buildingIcon(b.type)) || ''}
+                        ${(typeof buildingSprite === 'function' && buildingSprite(b.type, Math.max(1, ((spec && spec.level) || 1)))) || (typeof buildingIcon === 'function' && buildingIcon(b.type)) || ''}
                     </div>`).join('')}
                 ${base.defenses.map((d, i) => `
                     <div class="lb-bld lb-def" id="lbd-${i}" style="left:${d.x}%;top:${d.y}%;width:${d.w}%">
                         <div class="lb-bhp"><div class="lb-bhpfill"></div></div>
-                        ${(typeof buildingIcon === 'function' && buildingIcon(d.type)) || ''}
+                        ${(typeof buildingSprite === 'function' && buildingSprite(d.type, Math.max(1, ((spec && spec.level) || 1)))) || (typeof buildingIcon === 'function' && buildingIcon(d.type)) || ''}
                         <div class="lb-range" style="width:${d.range * 2}%;"></div>
                     </div>`).join('')}
                 <div class="lb-troops" id="lb-troops"></div>

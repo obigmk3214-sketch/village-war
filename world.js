@@ -449,6 +449,22 @@ function buildingCrest(x, y, tier, type, scale) {
     return out + '</g>';
 }
 
+// A standalone sprite of a building, for use outside the isometric grid.
+//
+// The live battle drew the enemy base from BUILDING_ICON, a second and much
+// simpler art set (~1.5k of SVG per building against 4-9k for the village
+// renderers), so a raid looked like a cruder game than the village it was
+// launched from - and raiding is half the time a player spends here. The
+// village renderers already draw at an arbitrary origin, so they work as sprites
+// with nothing more than a viewBox around them.
+function buildingSprite(type, level) {
+    const fn = (typeof BUILDING_RENDERERS !== 'undefined') && BUILDING_RENDERERS[type];
+    if (!fn) return '';
+    // Same framing the art gallery uses, which fits every renderer's extents.
+    return `<svg viewBox="-46 -62 92 78" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet">`
+         + fn(0, 0, level || 1) + `</svg>`;
+}
+
 function buildingTile(gx, gy, type, level, pos) {
     const { x, y } = iso(gx, gy);
     const fn = BUILDING_RENDERERS[type];
