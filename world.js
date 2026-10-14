@@ -234,9 +234,26 @@ const tileSVG = (gx, gy, type) => {
     // Diamond polygon: top, right, bottom, left
     const pts = `${x},${y - TH} ${x + TW},${y} ${x},${y + TH} ${x - TW},${y}`;
     const animate = type === 3 ? `<animate attributeName="fill" values="${f.top};${f.light};${f.top}" dur="3s" repeatCount="indefinite"/>` : '';
+
+    // Grass and forest floor are continuous ground, so they are drawn without
+    // the per-tile outline and with the highlight varied per tile.
+    //
+    // Every tile used to carry a shadow-coloured stroke AND an identical
+    // highlight wedge at a fixed 0.35. Both repeat exactly once per diamond, so
+    // a field of grass read as a patchwork of flat tiles with a visible grid
+    // over it rather than as ground. Two low-frequency noise samples (one for
+    // the fill, one for the highlight) break that repetition; the variation is
+    // small (+-5 per channel) so it reads as uneven turf, not as checkerboard.
+    const ground = type === 0 || type === 1;
+    const nFill = pseudoNoise(gx * 3.1, gy * 2.7);
+    const nLit = pseudoNoise(gx * 1.3 + 11.5, gy * 1.9 + 4.2);
+    const topFill = ground ? _shiftHex(f.top, Math.round((nFill - 0.5) * 11)) : f.top;
+    const edge = ground ? '' : ` stroke="${f.shadow}" stroke-width="0.6" stroke-opacity="0.3"`;
+    const litOp = ground ? (0.12 + nLit * 0.26).toFixed(2) : '0.35';
+
     return `
-        <polygon points="${pts}" fill="${f.top}" stroke="${f.shadow}" stroke-width="0.6" stroke-opacity="0.3">${animate}</polygon>
-        <polygon points="${x},${y - TH} ${x + TW * 0.45},${y - TH * 0.3} ${x},${y - TH * 0.1} ${x - TW * 0.45},${y - TH * 0.3}" fill="${f.light}" opacity="0.35"/>
+        <polygon points="${pts}" fill="${topFill}"${edge}>${animate}</polygon>
+        <polygon points="${x},${y - TH} ${x + TW * 0.45},${y - TH * 0.3} ${x},${y - TH * 0.1} ${x - TW * 0.45},${y - TH * 0.3}" fill="${f.light}" opacity="${litOp}"/>
     `;
 };
 
