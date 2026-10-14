@@ -2763,7 +2763,12 @@ body { background: transparent; }
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 16px 12px;
 }
+/* #modal itself is the scroll box (see the #modal rule below). Do NOT give
+   #modal-content its own max-height: it nests a second scroller inside the
+   first, sized to the viewport rather than to its parent, so the inner box ends
+   up taller than the outer one and scrolling it moves nothing useful. */
 
 #modal {
     background: var(--card);
@@ -2774,6 +2779,15 @@ body { background: transparent; }
     width: 90%;
     position: relative;
     animation: popIn 0.2s ease;
+    /* A tall modal had no height bound above 768px, and the overlay centres it,
+       so anything taller than the window overflowed equally off the top and the
+       bottom - and the part off the top cannot be scrolled to. The buttons at
+       the end of a long modal were simply unreachable on a short desktop window.
+       The <=768px block below tightens this to 86dvh; this is the floor for
+       every other width. */
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
 }
 
 .close-btn {
@@ -3671,6 +3685,46 @@ h2, .more-section-title, .exp-title, .shop-title {
 }
 #account-chip:hover { background: rgba(56,189,248,0.28); }
 #account-chip .vw-ic { width: 16px; height: 16px; }
+
+/* Progress not yet saved anywhere but this browser. Amber, not red: nothing is
+   broken, there is just something worth doing. No animation - a permanently
+   pulsing chip in the top bar is a nag, and this state can last for days. */
+#account-chip.chip-warn {
+    background: linear-gradient(180deg, rgba(251,191,36,0.20), rgba(251,191,36,0.06));
+    border-color: rgba(251,191,36,0.55); color: #fde9b8;
+}
+#account-chip.chip-warn:hover { background: rgba(251,191,36,0.30); }
+
+/* ---- Save-progress panel ---- */
+.vw-save-opt {
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; margin: 10px 0; background: rgba(255,255,255,0.03);
+}
+.vw-save-opt-primary { border-color: rgba(56,189,248,0.45); background: rgba(56,189,248,0.07); }
+.vw-save-opt-off { opacity: 0.85; }
+.vw-save-opt-h {
+    display: flex; align-items: center; gap: 7px;
+    font-weight: 800; font-size: 0.95rem; margin-bottom: 4px;
+}
+.vw-save-opt-h .vw-ic { width: 18px; height: 18px; }
+.vw-save-tag {
+    font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 2px 7px; border-radius: 999px;
+    background: rgba(56,189,248,0.22); color: #bfe6ff; border: 1px solid rgba(56,189,248,0.4);
+}
+.vw-save-tag-off { background: rgba(148,163,184,0.18); color: #cbd5e1; border-color: rgba(148,163,184,0.35); }
+.vw-save-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.vw-save-actions .btn { flex: 1 1 auto; min-width: 140px; }
+/* A backup code is a long single token; let it wrap and scroll rather than
+   stretch the modal, and keep it selectable so copying by hand still works
+   where the clipboard API is blocked. */
+.vw-code-box {
+    width: 100%; margin-top: 8px; padding: 8px 10px; resize: vertical;
+    border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.72rem;
+    line-height: 1.35; word-break: break-all; overflow-wrap: anywhere;
+}
 .online-as { font-size: 0.72rem; color: #7dd3fc; }
 .online-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0 12px; }
 .online-actions input { flex: 1; min-width: 120px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
@@ -4565,7 +4619,12 @@ h2 *, h3 *, .view h2 *, .hero-section-title * { -webkit-text-fill-color: current
 @media (min-width: 481px) and (max-width: 768px) {
     #resource-bar .game-title { display: none; }
     .player-info #music-player { display: none; }
-    .player-info #account-chip { display: none; }
+    /* Icon-only rather than hidden. The label was the expensive part (~85px);
+       the chip itself is the only visible way to save progress at this width,
+       so it stays. (On phones .player-info goes entirely - there the route is
+       More > Account & Saves.) */
+    .player-info #account-chip { padding: 4px 7px; }
+    .player-info #account-chip span:not(.vw-ic) { display: none; }
     .player-info { gap: 4px; }
     .resources { gap: 4px; }
     .resource { padding: 4px 6px 4px 4px; font-size: 0.68rem; }

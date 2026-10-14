@@ -129,6 +129,11 @@ function genTerrain() {
 // Hall, so the settlement reads as planned rather than as scattered huts. Walked
 // as an L (across, then down) which in isometric view gives the diagonal lanes
 // the projection reads naturally.
+// How many buildings a village needs before the Town Hall gets paving around it.
+// Below this the hall stands on open grass, which is what a new settlement
+// should look like.
+const PLAZA_MIN_BUILDINGS = 4;
+
 function computeRoads() {
     const roads = new Set();
     if (typeof state === 'undefined' || !state.buildings) return roads;
@@ -151,14 +156,21 @@ function computeRoads() {
             roads.add(bx + by * GW);
         }
     }
-    // A paved courtyard ringing the Town Hall. Early on the whole village fits
-    // within a couple of tiles of the hall, so connecting roads alone come to
-    // almost nothing and the settlement has no centre to read as its heart.
-    {
+    // A paved courtyard around the Town Hall - but only once there is a village
+    // to justify one. This used to be laid unconditionally and from orthogonal
+    // neighbours alone, which on a 2x2 hall is a hollow 8-tile outline: on a
+    // starting village, whose only building IS the hall, the player opened the
+    // game to a closed loop of mud circling the hall and joining nothing. It
+    // read as a racetrack drawn on the grass, not as a town centre.
+    //
+    // It now waits for enough buildings to read as a settlement, and fills its
+    // corners so the paving is a square the hall sits in rather than a ring
+    // drawn around it.
+    if (state.buildings.length >= PLAZA_MIN_BUILDINGS) {
         const foot = (typeof buildingFootprint === 'function') ? buildingFootprint(hall.type, hall.pos) : [hall.pos];
         for (const f of foot) {
             const fx = f % GW, fy = Math.floor(f / GW);
-            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
                 const nx = fx + dx, ny = fy + dy;
                 if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue;
                 roads.add(nx + ny * GW);
@@ -2728,10 +2740,17 @@ function renderIsoWorld() {
                 `<path d="M ${x} ${y} L ${ex} ${ey}" stroke="${col}" stroke-width="${w}"
                        stroke-linecap="round" fill="none" opacity="${op}" pointer-events="none"/>`).join('')
                 + `<circle cx="${x}" cy="${y}" r="${w / 2}" fill="${col}" opacity="${op}" pointer-events="none"/>`;
-            // soft shoulder, packed surface, then a pale crown worn by traffic
-            roadSVG += seg(19, '#9c8154', 0.30);
-            roadSVG += seg(14, '#b08b58', 0.85);
-            roadSVG += seg(5.5, '#c6a473', 0.5);
+            // Soft shoulder, packed surface, then a pale crown worn by traffic.
+            //
+            // These were 19/14/5.5 in a more saturated brown. Measured against
+            // the grass the lightness was never the problem (-22 to +15), but a
+            // 19px band on a 66px tile is 29% of the tile, and the orange sat
+            // against a saturated green, so lanes read as mud poured over the
+            // village. Narrower, and desaturated ~38% at near-constant
+            // luminance, so they stay legible without dominating the board.
+            roadSVG += seg(15, '#8e7e62', 0.28);
+            roadSVG += seg(10.5, '#9f8869', 0.82);
+            roadSVG += seg(3.5, '#b6a183', 0.45);
         }
     }
     tilesSVG += roadSVG;

@@ -96,7 +96,7 @@ const MORE_CARDS = [
     { id: 'collection',icon: 'book',       name: 'Collection',      desc: 'Troop & hero codex', cat: 'progression' },
     { id: 'profile',   icon: 'profile',    name: 'Profile & Stats', desc: 'Your lifetime record', cat: 'progression' },
 
-    { id: 'online',    icon: 'cloud',      name: 'Online',          desc: 'Accounts, cloud saves & real clans', cat: 'system' },
+    { id: 'online',    icon: 'cloud',      name: 'Account & Saves', desc: 'Save your progress off this device', cat: 'system' },
     { id: 'settings',  icon: 'gear',       name: 'Settings',        desc: 'Sound, saves & options', cat: 'system' },
     { id: 'credits',   icon: 'book',       name: 'Credits',         desc: 'Music & art attributions', cat: 'system' }
 ];

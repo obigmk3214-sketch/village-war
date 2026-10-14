@@ -269,6 +269,97 @@ function run() {
     eq(bad, '', 'malformed costs');
   });
 
+  t('a starting village has no ring of road around the hall', () => {
+    // The hall's paving was laid unconditionally, and from orthogonal neighbours
+    // only - on a 2x2 hall that is a hollow 8-tile outline. A brand new village,
+    // whose only building IS the hall, opened onto a closed loop of road
+    // circling it and joining nothing.
+    const snap = G.eval('JSON.stringify(state.buildings)');
+    try {
+      G.eval("state.buildings = state.buildings.filter(b => b.type === 'townhall')");
+      eq(G.eval('state.buildings.length'), 1, 'test setup: buildings');
+      eq(G.eval('computeRoads().size'), 0, 'roads around a lone Town Hall');
+
+      // Once a village grows, paving appears - and fills its corners, so it
+      // reads as a square rather than as an outline drawn around the hall.
+      // Tiles are taken from the owned set rather than from fixed offsets, which
+      // are not all guaranteed to be free.
+      const added = G.eval(`(function(){
+        const taken = new Set();
+        state.buildings.forEach(b => buildingFootprint(b.type, b.pos).forEach(f => taken.add(f)));
+        const free = [...getOwnedTiles()].filter(p => !taken.has(p));
+        const need = PLAZA_MIN_BUILDINGS - state.buildings.length + 1;
+        free.slice(0, Math.max(0, need)).forEach(p => state.buildings.push({ type:'farm', pos:p, level:1, hp:100 }));
+        return state.buildings.length;
+      })()`);
+      ok(added >= G.eval('PLAZA_MIN_BUILDINGS'), 'test setup: grown village has ' + added + ' buildings');
+      ok(G.eval('computeRoads().size') > 0, 'a grown village should have paving');
+    } finally {
+      G.eval(`state.buildings = JSON.parse(${JSON.stringify(snap)})`);
+    }
+  });
+
+  t('cloud save is not starved by the autosave loop', () => {
+    // saveGame() runs about every 2s. queueCloudSave debounced by 4s and cleared
+    // the pending timer on every call, so the timer never survived long enough
+    // to fire: 5 saves in 10s produced 0 POSTs to /api/save. The max-wait is
+    // what makes a sync eventually happen at all.
+    // VWNet and VW_SAVE_MAX_WAIT are top-level consts, so they are NOT window
+    // properties - reach them through eval in the frame, as with BUILDING_DEFS.
+    const net = G.eval('VWNet');
+    const maxWait = G.eval('VW_SAVE_MAX_WAIT');
+    const prev = { online: net.online, token: net.token, pending: net._savePending };
+    const realNow = G.cloudSaveNow;
+    let fired = 0;
+    try {
+      net.online = true; net.token = 'test-token';
+      G.cloudSaveNow = function () { fired++; net._savePending = 0; };
+
+      net._savePending = 0;
+      G.queueCloudSave();
+      eq(fired, 0, 'first call should defer, not fire; fired');
+
+      // Simulate the autosave loop having kept it deferred past the max wait.
+      net._savePending = Date.now() - (maxWait + 1000);
+      G.queueCloudSave();
+      eq(fired, 1, 'a save pending past the max wait must go through; fired');
+
+      // Signed out, nothing should ever be sent.
+      net.token = null; net._savePending = 0;
+      G.queueCloudSave();
+      eq(fired, 1, 'signed out must not sync; fired');
+    } finally {
+      G.cloudSaveNow = realNow;
+      net.online = prev.online; net.token = prev.token; net._savePending = prev.pending;
+      clearTimeout(net._saveTimer);
+    }
+  });
+
+  t('a backup code round-trips and refuses junk', () => {
+    const code = G.eval('vwBackupCode()');
+    ok(code && code.length > 50, 'backup code looks empty');
+    const back = JSON.parse(decodeURIComponent(escape(atob(code))));
+    eq(back.buildings.length, G.eval('state.buildings.length'), 'buildings in the backup');
+    eq(JSON.stringify(back.resources), G.eval('JSON.stringify(state.resources)'), 'resources in the backup');
+
+    // Restoring is the one path that overwrites a player's village, so a code
+    // that is damaged or simply not ours must be refused before it is written.
+    const saveBefore = G.eval('localStorage.getItem("villagewar_save")');
+    const attempt = v => G.eval(`(function(){
+      document.body.insertAdjacentHTML('beforeend',
+        '<div id="tmp-restore"><textarea id="vw-restore-code"></textarea><div id="vw-restore-err"></div></div>');
+      document.getElementById('vw-restore-code').value = ${JSON.stringify(v)};
+      vwRestoreSubmit();
+      const e = document.getElementById('vw-restore-err').textContent;
+      document.getElementById('tmp-restore').remove();
+      return e;
+    })()`);
+    ok(attempt(''), 'an empty code should be refused');
+    ok(attempt('not a code at all !!'), 'a malformed code should be refused');
+    ok(attempt(btoa('{"not":"a village"}')), 'valid base64 with no village should be refused');
+    eq(G.eval('localStorage.getItem("villagewar_save")'), saveBefore, 'a refused restore must not touch the save');
+  });
+
   // Runs LAST on purpose: it calls loadGame(), which REPLACES the shared `state`
   // this suite runs against. Sitting mid-file it broke the four tests after it.
   t('a corrupt save never bricks the game', () => {

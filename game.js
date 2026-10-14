@@ -572,6 +572,12 @@ let _wipingSave = false;
 function saveGame() {
     if (_wipingSave) return;
     try { localStorage.setItem('villagewar_save', JSON.stringify(state)); } catch(e) {}
+    // Cloud sync is not called here: netcode.js wraps this function to call
+    // queueCloudSave() after it. Calling it here too would just double-trigger
+    // the same debounce.
+    //
+    // Offer, once, to make progress safe in the first place.
+    try { if (typeof maybeOfferAccount === 'function') maybeOfferAccount(); } catch(e) {}
 }
 
 // A save is untrusted input: it can be truncated by a write that was interrupted,
