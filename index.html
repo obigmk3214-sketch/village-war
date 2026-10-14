@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0d1220">
     <title>Village War</title>
-    <link rel="stylesheet" href="style.css?v=963c821">
+    <link rel="stylesheet" href="style.css?v=454f6f6">
 </head>
 <body>
     <div id="app">
@@ -132,6 +132,15 @@
     </div>
 
     <!-- Toast -->
+    <!-- Phone-only way back to saving progress. The top-bar chip is hidden under
+         481px (the bar has ~30px spare at 375px, not enough for it) and More is
+         gated behind Town Hall 3, so a new phone player who pressed "Skip for
+         now" had no route to an account at all. Shown only while progress is
+         unsaved; it goes away for good once there's a backup or an account. -->
+    <button id="save-progress-fab" class="hidden" onclick="openSaveProgress()"
+            title="Your progress is only on this device — tap to save it">
+        <span class="nav-ic" data-ic="cloud"></span><span>Save progress</span>
+    </button>
     <div id="toast-container"></div>
 
     <!-- Tutorial Overlay -->
@@ -185,19 +194,19 @@
         </div>
     </div>
 
-    <script src="config.js?v=963c821"></script>
-    <script src="icons.js?v=963c821"></script>
-    <script src="gate.js?v=963c821"></script>
-    <script src="assets.js?v=963c821"></script>
-    <script src="characters.js?v=963c821"></script>
-    <script src="music.js?v=963c821"></script>
-    <script src="effects.js?v=963c821"></script>
-    <script src="world.js?v=963c821"></script>
-    <script src="newfeatures.js?v=963c821"></script>
-    <script src="livebattle.js?v=963c821"></script>
-    <script src="three-village.js?v=963c821"></script>
-    <script src="expansion.js?v=963c821"></script>
-    <script src="game.js?v=963c821"></script>
-    <script src="netcode.js?v=963c821"></script>
+    <script src="config.js?v=454f6f6"></script>
+    <script src="icons.js?v=454f6f6"></script>
+    <script src="gate.js?v=454f6f6"></script>
+    <script src="assets.js?v=454f6f6"></script>
+    <script src="characters.js?v=454f6f6"></script>
+    <script src="music.js?v=454f6f6"></script>
+    <script src="effects.js?v=454f6f6"></script>
+    <script src="world.js?v=454f6f6"></script>
+    <script src="newfeatures.js?v=454f6f6"></script>
+    <script src="livebattle.js?v=454f6f6"></script>
+    <script src="three-village.js?v=454f6f6"></script>
+    <script src="expansion.js?v=454f6f6"></script>
+    <script src="game.js?v=454f6f6"></script>
+    <script src="netcode.js?v=454f6f6"></script>
 </body>
 </html>

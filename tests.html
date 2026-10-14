@@ -335,6 +335,38 @@ function run() {
     }
   });
 
+  t('an unsaved player always has a route to saving progress', () => {
+    // The top-bar chip is hidden below 481px (the bar has ~30px spare at 375px),
+    // and More - which holds Account & Saves - is gated behind Town Hall 3. So a
+    // new player on a phone who pressed "Skip for now" had no way to an account
+    // at all: the button the skip toast points at did not exist for them yet.
+    ok(G.eval('FEATURE_GATES.more') > 1, 'More is gated, which is what the phone button exists for');
+
+    const net = G.eval('VWNet');
+    const prevPlayer = net.player;
+    const prevBackup = G.eval('localStorage.getItem("vw_last_backup_at")');
+    try {
+      net.player = null;
+      G.eval('localStorage.removeItem("vw_last_backup_at")');
+      G.updateAccountChip();
+      const fab = G.document.getElementById('save-progress-fab');
+      ok(fab, 'the phone save-progress button should exist in the DOM');
+      ok(fab.classList.contains('show'), 'unsaved progress should offer the button');
+      ok(!fab.classList.contains('hidden'), 'unsaved progress should not hide the button');
+
+      // Once progress is safe it goes away and does not come back.
+      G.eval('vwMarkBackedUp()');
+      ok(!fab.classList.contains('show'), 'a backed-up player should not be nagged');
+      ok(fab.classList.contains('hidden'), 'the button should be hidden once progress is safe');
+    } finally {
+      net.player = prevPlayer;
+      G.eval(prevBackup == null
+        ? 'localStorage.removeItem("vw_last_backup_at")'
+        : `localStorage.setItem("vw_last_backup_at", ${JSON.stringify(prevBackup)})`);
+      G.updateAccountChip();
+    }
+  });
+
   t('a backup code round-trips and refuses junk', () => {
     const code = G.eval('vwBackupCode()');
     ok(code && code.length > 50, 'backup code looks empty');

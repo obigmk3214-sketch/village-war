@@ -46,6 +46,7 @@ const VW_SKIP_KEY = 'vw_save_prompt_skipped';
 const VW_BACKUP_KEY = 'vw_last_backup_at';
 
 function updateAccountChip() {
+    updateSaveProgressFab();
     const el = document.getElementById('account-chip');
     if (!el) return;
     // This used to hide itself whenever the backend was unreachable - which is
@@ -77,6 +78,16 @@ function updateAccountChip() {
 // ============================================================
 
 function vwProgressSafe() { return !!VWNet.player || !!localStorage.getItem(VW_BACKUP_KEY); }
+
+// The phone-only button. CSS decides whether the width qualifies; this only
+// decides whether there is anything worth offering.
+function updateSaveProgressFab() {
+    const fab = document.getElementById('save-progress-fab');
+    if (!fab) return;
+    const show = !vwProgressSafe();
+    fab.classList.toggle('hidden', !show);
+    fab.classList.toggle('show', show);
+}
 
 function vwBackupCode() {
     // Same envelope the Settings export has always produced, so codes made by
